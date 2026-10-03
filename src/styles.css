@@ -1,0 +1,516 @@
+/* ---------- Tokens ----------
+   Colours are the base look (src/worlds/base.ts); a world overrides them on
+   :root[data-world="…"] (src/worlds/index.ts). Use only these variables for colour. */
+:root {
+  --bg: #fff8ee;
+  --surface: #ffffff;
+  --surface-2: #fbefdc;
+  --line: #eadfcb;
+  --ink: #24203a;
+  --ink-soft: #5d5873;
+  --brand: #4c35b5;
+  --brand-ink: #ffffff;
+  --brand-soft: #ece8fb;
+  --accent: #ffb627;
+  --good: #1f7a3a;
+  --danger: #b6402c;
+  --danger-ink: #ffffff;
+  /* Playful colours for numbers and signs (large text: 3:1 or more on --bg). */
+  --num-1: #d6334a;
+  --num-2: #1b72c9;
+  --num-3: #23844a;
+  --num-4: #c4470c;
+
+  /* Shape and depth */
+  --radius: 22px;
+  --radius-sm: 14px;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 10px 28px rgba(36, 32, 58, 0.1);
+  /* The "3D" edge under chunky buttons. */
+  --press: 0 5px 0 rgba(0, 0, 0, 0.22);
+
+  /* Spacing */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  /* Type */
+  --font: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  --fs-sm: 0.9rem;
+  --fs-md: 1.1rem;
+  --fs-lg: 1.4rem;
+  --fs-xl: 2rem;
+
+  /* Motion. Feedback stays at or under 600ms (docs/ARCHITECTURE.md §6.6). */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast: 120ms;
+  --t-med: 260ms;
+  --t-slow: 520ms;
+
+  /* Touch targets: at least 48px. */
+  --touch: 48px;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16142a;
+    --surface: #211e3a;
+    --surface-2: #2b2748;
+    --line: #3a3560;
+    --ink: #f1eefc;
+    --ink-soft: #b3add0;
+    --brand: #b7a8ff;
+    --brand-ink: #17122e;
+    --brand-soft: #2e2856;
+    --accent: #ffc94d;
+    --good: #6fdc8c;
+    --danger: #ff8f7a;
+    --danger-ink: #1e0f0c;
+    --num-1: #ff8095;
+    --num-2: #6cb8ff;
+    --num-3: #6fdc8c;
+    --num-4: #ffa94d;
+    --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    --press: 0 5px 0 rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Rubik (SIL OFL 1.1, public/fonts/OFL.txt): Hebrew + basic Latin, weights 400–800 in one variable
+   file (~33KB), kept in the repo so nothing is fetched from Google and it works offline. */
+@font-face {
+  font-family: 'Rubik';
+  src: url('/fonts/rubik.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* A visible focus ring for keyboard users, in every world (--ink is 4.5:1 or more on --bg and
+   --surface). Mouse and touch do not show it (:focus-visible). */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Still read by screen readers, but not shown. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+html,
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+/* Exercises and numbers read left to right inside the RTL app ("7 + 5 = 12"). */
+.math {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Layout ---------- */
+
+.screen {
+  /* 100vh first for Safari before 15.4; dvh follows the address bar as it shows and hides. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: max(var(--s5), env(safe-area-inset-top)) var(--s4) max(var(--s5), env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.screen.loading {
+  justify-content: center;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  min-height: var(--touch);
+  padding: var(--s3) var(--s5);
+  border-radius: 999px;
+  border: 0;
+  font-weight: 700;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.btn:active {
+  transform: translateY(4px) scale(0.98);
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+  box-shadow: var(--press);
+}
+
+.btn-primary:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--line);
+}
+
+.btn-big {
+  min-height: 64px;
+  font-size: var(--fs-lg);
+  padding: var(--s4) var(--s6);
+}
+
+.speak-btn {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.speak-inline {
+  vertical-align: middle;
+  margin-inline-start: var(--s1);
+}
+
+/* ---------- Feedback line ---------- */
+
+.feedback {
+  min-height: 1.6em;
+  text-align: center;
+  font-weight: 600;
+}
+
+.feedback.is-good {
+  color: var(--good);
+}
+
+.feedback.is-bad {
+  color: var(--danger);
+}
+
+.feedback-msg {
+  display: inline-block;
+  animation: pop var(--t-med) var(--ease-back);
+}
+
+.speech-install ul {
+  margin: var(--s2) 0 0;
+  padding-inline-start: var(--s5);
+}
+
+/* ---------- Splash ---------- */
+
+.splash {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: var(--s5);
+  overflow: hidden;
+}
+
+.splash-stage {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1 / 0.9;
+  display: grid;
+  place-items: center;
+}
+
+.splash-title {
+  font-size: clamp(3.2rem, 17vw, 4.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.splash-letter {
+  display: inline-block;
+  opacity: 0;
+  animation: drop-in 700ms var(--ease-back) var(--d) forwards;
+}
+
+.num-1 {
+  color: var(--num-1);
+}
+.num-2 {
+  color: var(--num-2);
+}
+.num-3 {
+  color: var(--num-3);
+}
+.num-4 {
+  color: var(--num-4);
+}
+
+.splash-bit {
+  position: absolute;
+  inset-inline-start: var(--x);
+  top: var(--y);
+  font-size: clamp(2rem, 11vw, 2.8rem);
+  font-weight: 800;
+  opacity: 0;
+  animation: pop-in 600ms var(--ease-back) var(--d) forwards;
+}
+
+.splash-bit-float {
+  display: inline-block;
+  transform: rotate(var(--r));
+  animation: float var(--f) ease-in-out calc(var(--d) + 600ms) infinite alternate;
+}
+
+.splash-sub {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink-soft);
+  opacity: 0;
+  animation: rise-in 500ms var(--ease-out) 800ms forwards;
+}
+
+.splash-go {
+  min-width: 240px;
+  opacity: 0;
+  animation:
+    rise-in 500ms var(--ease-out) 1000ms forwards,
+    breathe 1.8s ease-in-out 1.6s infinite;
+}
+
+.splash-go:active {
+  animation: none;
+  opacity: 1;
+}
+
+/* After the tap: the button pops, everything else lifts away. */
+.splash.is-leaving .splash-go {
+  animation: tap-pop 360ms var(--ease-back) forwards;
+  opacity: 1;
+}
+
+.splash.is-leaving .splash-stage,
+.splash.is-leaving .splash-sub {
+  transition:
+    transform 480ms var(--ease-out),
+    opacity 480ms var(--ease-out);
+  transform: translateY(-24px) scale(1.04);
+  opacity: 0;
+}
+
+/* ---------- Placeholder after the splash ---------- */
+
+.coming-soon {
+  justify-content: center;
+  text-align: center;
+}
+
+.cs-title {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.cs-worlds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: var(--s4);
+  font-size: 2.4rem;
+}
+
+.cs-worlds li {
+  animation: float 2.4s ease-in-out infinite alternate;
+}
+
+.cs-worlds li:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.cs-worlds li:nth-child(3) {
+  animation-delay: 0.6s;
+}
+.cs-worlds li:nth-child(4) {
+  animation-delay: 0.9s;
+}
+
+.enter {
+  animation: rise-in 420ms var(--ease-out);
+}
+
+.version {
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+}
+
+/* ---------- Keyframes (transform and opacity only) ---------- */
+
+@keyframes pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes drop-in {
+  from {
+    transform: translateY(-60px) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  from {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  to {
+    transform: translateY(-10px) rotate(calc(var(--r, 0deg) * -1));
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes tap-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+}
+
+/* ---------- Reduced motion ----------
+   Set by src/fx/motion.ts from the phone's setting (later also a profile choice). Feedback and
+   decoration become short fades or stop. Teaching animations (manipulatives/, from phase 3) are
+   NOT turned off here: they opt out with their own slow timing, because they are the lesson. */
+:root[data-motion='reduced'] .splash-letter,
+:root[data-motion='reduced'] .splash-bit,
+:root[data-motion='reduced'] .splash-sub,
+:root[data-motion='reduced'] .splash-go,
+:root[data-motion='reduced'] .enter,
+:root[data-motion='reduced'] .feedback-msg {
+  animation: fade-in 200ms linear forwards;
+}
+
+:root[data-motion='reduced'] .splash-bit-float,
+:root[data-motion='reduced'] .cs-worlds li {
+  animation: none;
+}
+
+:root[data-motion='reduced'] .splash.is-leaving .splash-stage,
+:root[data-motion='reduced'] .splash.is-leaving .splash-sub {
+  transform: none;
+}
+
+:root[data-motion='reduced'] .btn {
+  transition: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
