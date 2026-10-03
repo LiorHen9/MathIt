@@ -3,16 +3,17 @@
 // If IndexedDB is unavailable (some private-browsing modes), data lives in memory
 // for the session and the app still works.
 //
-// Stores today: meta (schemaVersion, deviceId, errorLog…) and profiles.
-// Later phases add skillStates, nodeProgress, inventory and sessions (docs/ARCHITECTURE.md §9):
-// each addition bumps SCHEMA_VERSION and adds a step to MIGRATIONS.
+// Stores today: meta (schemaVersion, deviceId, errorLog…), profiles, and skillStates (version 2:
+// a profile's results per skill – level, best stars, rounds; storage/skillStates.ts).
+// Later phases add nodeProgress, inventory and sessions (docs/ARCHITECTURE.md §9): each addition
+// bumps SCHEMA_VERSION and adds a step to MIGRATIONS.
 
-export type StoreName = 'meta' | 'profiles';
+export type StoreName = 'meta' | 'profiles' | 'skillStates';
 
 const DB_NAME = 'mathit';
 /** Bump when stores change, and add a migration step below. */
-export const SCHEMA_VERSION = 1;
-const STORES: StoreName[] = ['meta', 'profiles'];
+export const SCHEMA_VERSION = 2;
+const STORES: StoreName[] = ['meta', 'profiles', 'skillStates'];
 
 /**
  * Migration steps, by the version they upgrade TO. Each runs inside the upgrade transaction,
@@ -23,6 +24,10 @@ const MIGRATIONS: Record<number, (db: IDBDatabase, tx: IDBTransaction) => void> 
     for (const name of ['meta', 'profiles']) {
       if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
     }
+  },
+  // Phase 2: results per profile and skill, key `${profileId}:${skillId}`. Nothing to convert.
+  2: (db) => {
+    if (!db.objectStoreNames.contains('skillStates')) db.createObjectStore('skillStates');
   }
 };
 

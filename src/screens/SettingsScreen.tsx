@@ -10,7 +10,7 @@ import { SpeechInstall } from '../components/Speak';
 import { WorldPicker } from '../components/WorldPicker';
 import { hasPin, withoutPin, withPin } from '../profiles/pin';
 import { byGender, saveProfile, type PlayWorldId, type Profile } from '../profiles/profiles';
-import { replaceActive, updateSettings, useActiveProfile } from '../profiles/settings';
+import { activeProfile, replaceActive, updateSettings, useActiveProfile } from '../profiles/settings';
 import { applyWorld } from '../worlds/index';
 
 interface Props {
@@ -38,14 +38,22 @@ export function SettingsScreen({ onBack, onEdit }: Props) {
   const s = profile.settings;
   const motion: MotionChoice = s.reducedMotion === null ? 'phone' : s.reducedMotion ? 'on' : 'off';
 
-  async function change(p: Profile) {
-    await saveProfile(p);
-    replaceActive(p);
+  /**
+   * Change the profile from its current state (not the one this render saw) and switch to it
+   * before saving: otherwise a quick second change (the volume right after a world) could be
+   * overwritten when the first save finishes.
+   */
+  async function change(edit: (p: Profile) => Profile | Promise<Profile>) {
+    const cur = activeProfile();
+    if (!cur) return;
+    const next = await edit(cur);
+    replaceActive(next);
+    await saveProfile(next);
   }
 
   function pickWorld(id: PlayWorldId) {
     void applyWorld(id);
-    void change({ ...profile!, worldId: id });
+    void change((p) => ({ ...p, worldId: id }));
   }
 
   return (
@@ -187,7 +195,7 @@ export function SettingsScreen({ onBack, onEdit }: Props) {
                   setMismatch(true);
                   return false;
                 }
-                await change(await withPin(profile, pin));
+                await change((p) => withPin(p, pin));
                 setPinStep('saved');
               }}
             />
@@ -207,7 +215,7 @@ export function SettingsScreen({ onBack, onEdit }: Props) {
                   class="btn btn-secondary"
                   data-pin="remove"
                   onClick={() => {
-                    void change(withoutPin(profile));
+                    void change(withoutPin);
                     setPinStep('removed');
                   }}
                 >

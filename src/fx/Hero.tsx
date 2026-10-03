@@ -3,17 +3,60 @@
 // Colours come only from the world's --hero-* variables, so a hero inside a preview card takes
 // that card's world (worldStyle) and the same hero works in light and dark mode.
 //
-// Phase 1 has the `idle` state (breathing, blinking, a moving prop – CSS in styles.css, transform
-// and opacity only) and a hop on tap (fx/motion.ts). Phase 2 adds think · happy · cheer · oops,
-// phase 5 walk and attack (docs/ARCHITECTURE.md §6.2).
+// States (CSS in styles.css, transform and opacity only): `idle` (breathing, blinking, a moving
+// prop), `think` (head tilted, a slow sway), `happy` (a hop), `cheer` (jumping for joy), `oops`
+// (a small flinch and head shake – gentle, never scary). A hop on tap is fx/motion.ts.
+// Phase 5 adds walk and attack (docs/ARCHITECTURE.md §6.2).
+// The Feedback Director (fx/director.ts) sets the mood with setHeroMood; a hero drawn with
+// useHeroMood follows it and goes back to idle by itself.
 //
 // Coordinates: viewBox 0 0 120 160; the head is centred at (60, 50), the feet at y≈150.
 // An animated group must not have a `transform` attribute (CSS transform would replace it), so
 // positioned parts are a plain <g transform> around an animated <g class>.
 import type { ComponentChildren } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import type { Gender } from '../profiles/profiles';
 
-export type HeroState = 'idle';
+export type HeroState = 'idle' | 'think' | 'happy' | 'cheer' | 'oops';
+export const HERO_STATES: readonly HeroState[] = ['idle', 'think', 'happy', 'cheer', 'oops'];
+
+/** How long each mood lasts before the hero is idle again (ms). */
+export const MOOD_MS: Record<HeroState, number> = { idle: 0, think: 2600, happy: 900, cheer: 1700, oops: 800 };
+
+/** The shared mood: one hero on screen at a time follows it. `n` changes on every set, so the
+ * same mood twice in a row replays its animation. */
+export interface Mood {
+  state: HeroState;
+  n: number;
+}
+
+let mood: Mood = { state: 'idle', n: 0 };
+let moodTimer: ReturnType<typeof setTimeout> | undefined;
+const moodListeners = new Set<() => void>();
+
+/** Set the hero's mood; it returns to idle after `ms` (default: the mood's own length). */
+export function setHeroMood(state: HeroState, ms = MOOD_MS[state]): void {
+  clearTimeout(moodTimer);
+  mood = { state, n: mood.n + 1 };
+  moodListeners.forEach((f) => f());
+  if (state !== 'idle' && ms > 0) moodTimer = setTimeout(() => setHeroMood('idle'), ms);
+}
+
+export function heroMood(): Mood {
+  return mood;
+}
+
+/** The current mood; re-renders when it changes. */
+export function useHeroMood(): Mood {
+  const [m, setM] = useState(mood);
+  useEffect(() => {
+    const f = () => setM(mood);
+    moodListeners.add(f);
+    f();
+    return () => void moodListeners.delete(f);
+  }, []);
+  return m;
+}
 
 export interface HeroParts {
   /** Behind everything (wings, a cape). */

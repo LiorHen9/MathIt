@@ -1,27 +1,43 @@
-// The profile's home – for now a greeting with the hero of their world, until the quest map
-// arrives (phase 4). Tapping the hero plays the world's sample sound and makes it hop.
-import { useRef } from 'preact/hooks';
+// The profile's home – until the quest map arrives (phase 4): a greeting, the hero of their
+// world (tap: the world's sound and a hop), and the four skills to practise, the ones for the
+// child's age marked "recommended", each with its best stars so far.
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { playSfx, type SfxName } from '../audio/sfx';
 import { Hero } from '../fx/Hero';
 import { hop } from '../fx/motion';
 import { NarrationHelp, SpeakButton, useAutoSpeak } from '../components/Speak';
-import { byGender, stageLabel, type Profile } from '../profiles/profiles';
+import { SKILLS, recommendedSkills } from '../core/skills/index';
+import type { SkillId } from '../core/types';
+import { ageBand, byGender, stageLabel, type Profile } from '../profiles/profiles';
+import { listSkillStates, type SkillState } from '../storage/skillStates';
 import { useWorld } from '../worlds/index';
 
 interface Props {
   profile: Profile;
   onSwitch: () => void;
   onSettings: () => void;
+  onPlay: (skill: SkillId) => void;
 }
 
-export function Home({ profile, onSwitch, onSettings }: Props) {
+export function Home({ profile, onSwitch, onSettings, onPlay }: Props) {
   const world = useWorld();
   const stage = useRef<HTMLButtonElement>(null);
+  const [states, setStates] = useState<Record<string, SkillState>>({});
   const heroName = world.hero?.name(profile.gender) ?? '';
   const greeting = `שלום ${profile.name}!`;
+  const ask = 'מה נתרגל היום?';
   // Ages 5–7: one sentence to hear.
-  const soon = `המסע בעולם ה${world.name} מתחיל בקרוב!`;
-  useAutoSpeak(`${greeting} ${soon}`, profile.id);
+  const speech = `שלום ${profile.name}, מה נתרגל היום?`;
+  useAutoSpeak(speech, profile.id);
+  const recommended = recommendedSkills(ageBand(profile));
+
+  useEffect(() => {
+    let alive = true;
+    void listSkillStates(profile.id).then((s) => alive && setStates(s));
+    return () => {
+      alive = false;
+    };
+  }, [profile.id]);
 
   return (
     <main class="screen home">
@@ -82,9 +98,42 @@ export function Home({ profile, onSwitch, onSettings }: Props) {
         </button>
       )}
 
-      <p class="card home-soon">
-        {soon} <SpeakButton text={`${greeting} ${soon}`} class="speak-inline" />
-      </p>
+      <section class="skills" aria-labelledby="skills-title">
+        <h2 class="section-title skills-title" id="skills-title">
+          {ask} <SpeakButton text={speech} class="speak-inline" />
+        </h2>
+        <div class="skill-grid">
+          {SKILLS.map((s) => {
+            const st = states[s.id];
+            const rec = recommended.includes(s.id);
+            return (
+              <button
+                type="button"
+                key={s.id}
+                class={`skill-btn ${rec ? 'is-rec' : ''}`}
+                data-skill={s.id}
+                onClick={() => {
+                  playSfx('tap');
+                  onPlay(s.id);
+                }}
+              >
+                <span class="skill-icon" aria-hidden="true">
+                  {s.icon}
+                </span>
+                <span class="skill-name">{s.title}</span>
+                {rec && <span class="skill-rec">מומלץ</span>}
+                <span class="skill-stars" aria-label={st ? `${st.bestStars} מתוך 3 כוכבים` : 'עוד לא שיחקנו'}>
+                  {[1, 2, 3].map((n) => (
+                    <span key={n} class={st && n <= st.bestStars ? 'is-on' : ''} aria-hidden="true">
+                      ★
+                    </span>
+                  ))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <NarrationHelp />
     </main>

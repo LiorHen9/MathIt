@@ -202,9 +202,8 @@ p {
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
-  transition:
-    transform var(--t-fast) var(--ease-out),
-    box-shadow var(--t-fast) var(--ease-out);
+  /* Transform only: the pressed shadow changes at once (animations: transform and opacity only). */
+  transition: transform var(--t-fast) var(--ease-out);
 }
 
 .btn:active {
@@ -996,7 +995,7 @@ p {
 }
 
 .home-stage .hero {
-  width: min(56vw, 220px);
+  width: min(36vw, 150px);
   height: auto;
   aspect-ratio: 120 / 160;
 }
@@ -1016,6 +1015,716 @@ p {
   text-align: center;
   font-weight: 600;
   font-size: var(--fs-md);
+}
+
+/* ---------- Feedback layer (fx/particles.ts, fx/motion.ts flyTo) ---------- */
+
+.fx-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.fly-token {
+  position: fixed;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 41;
+}
+
+/* ---------- Hero moods (fx/Hero.tsx; set by the Feedback Director) ----------
+   Finite animations on the groups that idle leaves alone (.h-all, .h-head). */
+
+.hero.is-happy .h-all,
+.hero.is-cheer .h-all,
+.hero.is-oops .h-all {
+  transform-box: view-box;
+  transform-origin: 60px 152px;
+}
+
+.hero.is-cheer .h-head,
+.hero.is-oops .h-head,
+.hero.is-think .h-head {
+  transform-box: view-box;
+  transform-origin: 60px 80px;
+}
+
+.hero.is-happy .h-all {
+  animation: hero-happy 700ms var(--ease-out);
+}
+
+.hero.is-cheer .h-all {
+  animation: hero-cheer 1500ms ease-in-out;
+}
+
+.hero.is-cheer .h-head {
+  animation: hero-nod 500ms ease-in-out 3;
+}
+
+.hero.is-oops .h-all {
+  animation: hero-oops 650ms ease-in-out;
+}
+
+.hero.is-oops .h-head {
+  animation: hero-headshake 650ms ease-in-out;
+}
+
+.hero.is-think .h-head {
+  animation: hero-think 2400ms ease-in-out forwards;
+}
+
+@keyframes hero-happy {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(2px) scale(1.06, 0.94);
+  }
+  45% {
+    transform: translateY(-18px) scale(0.97, 1.04);
+  }
+  75% {
+    transform: translateY(0) scale(1.05, 0.95);
+  }
+}
+
+@keyframes hero-cheer {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  12% {
+    transform: translateY(-22px) rotate(-6deg) scale(1.04);
+  }
+  25% {
+    transform: translateY(0) rotate(0deg) scale(1.05, 0.95);
+  }
+  40% {
+    transform: translateY(-26px) rotate(6deg) scale(1.04);
+  }
+  55% {
+    transform: translateY(0) rotate(0deg) scale(1.05, 0.95);
+  }
+  72% {
+    transform: translateY(-16px) rotate(-3deg);
+  }
+  86% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+}
+
+@keyframes hero-nod {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes hero-oops {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.04, 0.95) translateY(2px);
+  }
+  60% {
+    transform: scale(0.98, 1.02);
+  }
+}
+
+@keyframes hero-headshake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-7deg);
+  }
+  45% {
+    transform: rotate(6deg);
+  }
+  70% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes hero-think {
+  0% {
+    transform: rotate(0deg);
+  }
+  15%,
+  45% {
+    transform: rotate(-10deg) translateX(-1px);
+  }
+  70% {
+    transform: rotate(-7deg);
+  }
+  100% {
+    transform: rotate(-10deg);
+  }
+}
+
+/* ---------- Home: what shall we practise? ---------- */
+
+.skills {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.skills-title {
+  text-align: center;
+  font-size: var(--fs-lg);
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.skill-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 116px;
+  padding: var(--s3) var(--s2);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.skill-btn:active {
+  transform: scale(0.96);
+}
+
+.skill-btn.is-rec {
+  border-color: var(--brand);
+}
+
+.skill-icon {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.skill-name {
+  font-weight: 800;
+  font-size: var(--fs-md);
+  text-align: center;
+  line-height: 1.25;
+}
+
+.skill-rec {
+  position: absolute;
+  top: -10px;
+  inset-inline-start: 10px;
+  padding: 0 var(--s2);
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.skill-stars {
+  color: var(--line);
+  font-size: 1.15rem;
+  letter-spacing: 2px;
+}
+
+.skill-stars .is-on {
+  color: var(--accent);
+}
+
+/* ---------- A practice round (screens/GameHost.tsx, games/Pop.tsx) ---------- */
+
+.game {
+  gap: var(--s3);
+}
+
+.game-top .topbar-title {
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+
+.level-chip {
+  display: inline-block;
+  padding: 0 var(--s2);
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.combo {
+  min-width: var(--touch);
+  text-align: center;
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: var(--num-4);
+  white-space: nowrap;
+}
+
+.combo span {
+  display: inline-block;
+}
+
+.round-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.round-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.round-dot.is-now {
+  box-shadow: inset 0 0 0 3px var(--brand);
+  transform: scale(1.2);
+}
+
+.round-dot.is-first {
+  background: var(--good);
+  box-shadow: none;
+}
+
+.round-dot.is-second {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.round-dot.is-shown {
+  background: var(--line);
+}
+
+.pop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.prompt {
+  align-items: center;
+  text-align: center;
+  padding: var(--s3) var(--s4);
+  gap: var(--s2);
+  animation: rise-in 300ms var(--ease-out);
+}
+
+.prompt-text {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.prompt-math {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.prompt-part {
+  white-space: pre;
+}
+
+.slot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5em;
+  padding: 0 0.15em;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 3px var(--brand);
+  color: var(--brand);
+}
+
+.slot.is-typed {
+  background: var(--brand-soft);
+  color: var(--ink);
+}
+
+.slot.is-answer {
+  box-shadow: inset 0 0 0 3px var(--good);
+  color: var(--good);
+}
+
+.prompt-hint {
+  font-weight: 600;
+  color: var(--ink-soft);
+  animation: rise-in 300ms var(--ease-out);
+}
+
+/* The stars of a question (ui/Dots.tsx), five to a row like a ten frame. */
+.dots {
+  --d: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  min-height: var(--d);
+}
+
+.dots.is-two {
+  --d: 24px;
+}
+
+.dots-group {
+  display: grid;
+  /* Five to a row; fewer items, fewer columns (--cols from ui/Dots.tsx). */
+  grid-template-columns: repeat(var(--cols, 5), var(--d));
+  gap: 3px;
+}
+
+.dot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.dot svg {
+  width: var(--d);
+  height: var(--d);
+  overflow: visible;
+}
+
+.g-1 .dot path:first-child {
+  fill: var(--num-2);
+}
+
+.g-2 .dot path:first-child {
+  fill: var(--num-1);
+}
+
+.dot.is-gone svg {
+  opacity: 0.35;
+}
+
+.dot-x {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.dot-n {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  line-height: 1;
+}
+
+.dots-sign {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.dots.is-hint {
+  animation: pop var(--t-med) var(--ease-back);
+}
+
+/* Answer bubbles: big, round, floating gently. The face floats, the button (and its touch area)
+   stays put, so the Director's pop and shake on the button do not fight the float. */
+.bubbles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: center;
+  gap: var(--s3);
+  padding: var(--s1) 0;
+}
+
+.bubbles.n-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bubble {
+  --c: var(--num-1);
+  width: min(30vw, 112px);
+  aspect-ratio: 1;
+  min-width: 72px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+.bubble.c-2 {
+  --c: var(--num-2);
+}
+.bubble.c-3 {
+  --c: var(--num-3);
+}
+.bubble.c-4 {
+  --c: var(--num-4);
+}
+
+.bubble-face {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, var(--surface) 0 30%, var(--surface-2) 100%);
+  box-shadow:
+    inset 0 0 0 4px var(--c),
+    var(--shadow);
+  color: var(--c);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  animation: bubble-float 2.6s ease-in-out calc(var(--i) * -0.65s) infinite alternate;
+}
+
+.bubble:active .bubble-face {
+  transform: scale(0.92);
+  animation: none;
+}
+
+.bubble.is-wrong,
+.bubble.is-off {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.bubble.is-right .bubble-face {
+  --c: var(--good);
+  animation: none;
+}
+
+.bubble:disabled {
+  cursor: default;
+}
+
+@keyframes bubble-float {
+  from {
+    transform: translateY(-4px);
+  }
+  to {
+    transform: translateY(5px);
+  }
+}
+
+/* The number pad (ui/NumPad.tsx). */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.numpad-key {
+  min-height: 58px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 1.5px var(--line);
+  font-size: 1.7rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.numpad-key:active {
+  transform: scale(0.93);
+  background: var(--brand-soft);
+}
+
+.numpad-key.is-del {
+  color: var(--ink-soft);
+  font-size: 1.5rem;
+}
+
+.numpad-key.is-ok {
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: var(--fs-md);
+  box-shadow: var(--press);
+}
+
+.numpad-key:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The hero beside a speech bubble with the feedback. */
+.game-hero-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+
+.game-hero {
+  width: 70px;
+  height: auto;
+  aspect-ratio: 120 / 160;
+  flex: none;
+}
+
+.speech-bubble {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 64px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: 18px;
+  inset-inline-start: -8px;
+  width: 14px;
+  height: 14px;
+  background: var(--surface);
+  border-inline-start: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+
+.speech-bubble .feedback {
+  font-size: var(--fs-md);
+}
+
+.speech-bubble .feedback:not(.is-good):not(.is-bad) {
+  color: var(--ink-soft);
+}
+
+/* ---------- The end of a round ---------- */
+
+.celebrate {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--s4);
+}
+
+.celebrate-title {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--brand);
+  animation: pop-in 500ms var(--ease-back);
+}
+
+.celebrate-stars {
+  display: flex;
+  gap: var(--s3);
+}
+
+.big-star {
+  font-size: 4.4rem;
+  line-height: 1;
+  color: var(--line);
+}
+
+.big-star:nth-child(2) {
+  transform: translateY(-14px);
+}
+
+.big-star.is-on {
+  color: var(--accent);
+  animation: star-in 520ms var(--ease-back);
+}
+
+.big-star:nth-child(2).is-on {
+  animation-name: star-in-up;
+}
+
+.celebrate-hero {
+  width: min(40vw, 160px);
+  height: auto;
+  aspect-ratio: 120 / 160;
+}
+
+.celebrate-sub {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.level-up {
+  color: var(--good);
+}
+
+.celebrate-actions {
+  width: 100%;
+}
+
+.skip-btn {
+  color: var(--ink-soft);
+}
+
+@keyframes star-in {
+  0% {
+    transform: scale(0.2) rotate(-40deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.35) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes star-in-up {
+  0% {
+    transform: translateY(-14px) scale(0.2) rotate(-40deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-14px) scale(1.35) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-14px) scale(1) rotate(0deg);
+  }
 }
 
 /* ---------- Settings ---------- */
@@ -1322,6 +2031,7 @@ p {
 }
 
 :root[data-motion='reduced'] .splash-bit-float,
+:root[data-motion='reduced'] .bubble-face,
 :root[data-motion='reduced'] .hero *,
 :root[data-motion='reduced'] .chip.is-on,
 :root[data-motion='reduced'] .avatar-xl {
@@ -1329,6 +2039,11 @@ p {
 }
 
 :root[data-motion='reduced'] .world-check,
+:root[data-motion='reduced'] .prompt,
+:root[data-motion='reduced'] .prompt-hint,
+:root[data-motion='reduced'] .dots.is-hint,
+:root[data-motion='reduced'] .celebrate-title,
+:root[data-motion='reduced'] .big-star.is-on,
 :root[data-motion='reduced'] .pin-dots.is-wrong {
   animation: fade-in 200ms linear;
 }
@@ -1343,8 +2058,22 @@ p {
   transform: none;
 }
 
-:root[data-motion='reduced'] .btn {
+:root[data-motion='reduced'] .btn,
+:root[data-motion='reduced'] .skill-btn,
+:root[data-motion='reduced'] .numpad-key,
+:root[data-motion='reduced'] .bubble {
   transition: none;
+}
+
+/* A hero's mood (happy, oops…) becomes a short dim instead of a jump. */
+:root[data-motion='reduced'] .hero:not(.is-idle) {
+  animation: mood-dim 220ms ease-out;
+}
+
+@keyframes mood-dim {
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes fade-in {

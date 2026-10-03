@@ -1,6 +1,6 @@
 // The whole app is a small state machine: one screen at a time, no router (as in ChessIt).
 // loading → splash → "who is playing?" (or straight to a new profile the first time)
-//   → [PIN] → the profile's home ⇄ settings / editing.
+//   → [PIN] → the profile's home ⇄ settings / editing, home ⇄ a practice round (game).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
@@ -11,6 +11,7 @@ import { Splash } from '../screens/Splash';
 import { hasPin } from '../profiles/pin';
 import { deleteProfile, getLastProfileId, listProfiles, saveProfile, setLastProfileId, type Profile } from '../profiles/profiles';
 import { activateProfile, activeProfile, useActiveProfile } from '../profiles/settings';
+import type { SkillId } from '../core/types';
 import { lazy } from './lazy';
 import { logError } from './errorLog';
 
@@ -20,6 +21,8 @@ const ProfileEditor = lazy(() => import('../screens/ProfileEditor').then((m) => 
 const PinScreen = lazy(() => import('../screens/PinScreen').then((m) => m.PinScreen));
 const Home = lazy(() => import('../screens/Home').then((m) => m.Home));
 const SettingsScreen = lazy(() => import('../screens/SettingsScreen').then((m) => m.SettingsScreen));
+// The game brings the generators and the feedback engine with it.
+const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
@@ -31,7 +34,8 @@ type Screen =
   | { name: 'edit'; profile?: Profile; from: EditFrom }
   | { name: 'pin'; profile: Profile; then: 'home' | 'edit' }
   | { name: 'home' }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  | { name: 'game'; skillId: SkillId };
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -164,8 +168,12 @@ export function App() {
             setScreen({ name: 'profiles' });
           }}
           onSettings={() => setScreen({ name: 'settings' })}
+          onPlay={(skillId) => setScreen({ name: 'game', skillId })}
         />
       );
+    case 'game':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <GameHost key={screen.skillId} profile={active} skillId={screen.skillId} onHome={() => setScreen({ name: 'home' })} />;
     case 'settings':
       return (
         <SettingsScreen

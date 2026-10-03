@@ -3,7 +3,11 @@
 // Records written by an older version may lack newer fields: `normalizeProfile` fills them, so
 // adding a field with a default needs no migration (a new store or key does: see storage/db.ts).
 import { dbDelete, dbGet, dbGetAll, dbPut } from '../storage/db';
+import { deleteSkillStates } from '../storage/skillStates';
+import type { AgeBand } from '../core/types';
 import type { WorldId } from '../worlds/types';
+
+export type { AgeBand } from '../core/types';
 
 export type Gender = 'boy' | 'girl' | 'other';
 /** A world a profile can play in (not the neutral base look). */
@@ -93,7 +97,6 @@ export function approxAge(p: Pick<Profile, 'grade' | 'age'>): number {
 }
 
 /** The age band of the skill graph (docs/ARCHITECTURE.md §4.1). */
-export type AgeBand = '4-5' | '6-7' | '8-9' | '10-12';
 export function ageBand(p: Pick<Profile, 'grade' | 'age'>): AgeBand {
   const a = approxAge(p);
   if (a <= 5) return '4-5';
@@ -164,6 +167,7 @@ export function saveProfile(p: Profile): Promise<void> {
 
 export async function deleteProfile(id: string): Promise<void> {
   await dbDelete('profiles', id);
+  await deleteSkillStates(id);
   if ((await getLastProfileId()) === id) await dbDelete('meta', 'lastProfileId');
 }
 

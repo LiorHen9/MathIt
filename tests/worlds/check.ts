@@ -5,7 +5,8 @@
 // - the base world matches the :root defaults in src/styles.css (light and dark);
 // - text for the voice has no emoji, and math signs are read in Hebrew.
 // - the four worlds are registered, each has a hero that renders for every gender, and a sample sound.
-// Later phases check sound packs and feedback mapping too.
+// - feedback: every event is mapped in every world (a real sound, a real hero mood), every sound
+//   builds valid voices, the combo and star pitches climb, "wrong" is soft (no buzzer).
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { BASE } from '../../src/worlds/base';
 import { REQUIRED_VARS, type WorldTheme, type WorldVars } from '../../src/worlds/types';
@@ -14,8 +15,9 @@ import { world as fairies } from '../../src/worlds/fairies/index';
 import { world as football } from '../../src/worlds/football/index';
 import { world as basketball } from '../../src/worlds/basketball/index';
 import { world as ninja } from '../../src/worlds/ninja/index';
-import { Hero } from '../../src/fx/Hero';
-import { SFX_NAMES } from '../../src/audio/sfx';
+import { Hero, HERO_STATES, MOOD_MS } from '../../src/fx/Hero';
+import { SFX_NAMES, comboPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
+import { FEEDBACK_TYPES, SAMPLE_EVENTS, planFeedback } from '../../src/fx/director';
 import { cleanForSpeech } from '../../src/audio/speech';
 
 const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja];
@@ -134,6 +136,69 @@ console.log(`✓ ${WORLDS.length} worlds (base + 4) × light/dark: variables set
     }
   }
   console.log('✓ styles.css defaults match the base world');
+}
+
+// Feedback mapping: every event type has samples, and every sample maps in every world.
+{
+  const covered = new Set(SAMPLE_EVENTS.map((e) => e.type));
+  for (const t of FEEDBACK_TYPES) if (!covered.has(t)) fail(`feedback event "${t}" has no sample in SAMPLE_EVENTS`);
+  for (const w of WORLDS) {
+    for (const e of SAMPLE_EVENTS) {
+      const plan = planFeedback(e, w.id);
+      const what = `${w.id}: ${JSON.stringify(e)}`;
+      if (plan.sound !== null && !SFX_NAMES.includes(plan.sound)) fail(`${what} → unknown sound ${plan.sound}`);
+      if (plan.hero !== null && !HERO_STATES.includes(plan.hero)) fail(`${what} → unknown hero mood ${plan.hero}`);
+      const skipped = e.type === 'roundDone' && e.skipped;
+      if (!plan.sound && !skipped) fail(`${what} → no sound`);
+      if (e.type !== 'tap' && !plan.hero) fail(`${what} → the hero does not react`);
+    }
+    // The world colours a right answer.
+    const c = planFeedback({ type: 'correct', streak: 2 }, w.id);
+    if (c.soundOpts?.flavor !== w.id) fail(`${w.id}: correct does not take the world's flavour`);
+  }
+  // Bigger celebration for a longer streak; a skipped round is quiet; no stars → no fanfare.
+  if (planFeedback({ type: 'correct', streak: 1 }, 'base').hero !== 'happy' || planFeedback({ type: 'correct', streak: 3 }, 'base').hero !== 'cheer') fail('correct: happy, then cheer from 3 in a row');
+  if ((planFeedback({ type: 'correct', streak: 5 }, 'base').particles?.count ?? 0) <= (planFeedback({ type: 'correct', streak: 1 }, 'base').particles?.count ?? 0)) fail('correct: more sparkles for a longer streak');
+  if (planFeedback({ type: 'wrong', attempt: 1 }, 'base').motion !== 'shake' || planFeedback({ type: 'wrong', attempt: 1 }, 'base').hero !== 'oops') fail('wrong: a shake and oops');
+  if (planFeedback({ type: 'roundDone', stars: 2, skipped: true }, 'base').sound !== null) fail('a skipped celebration should be quiet');
+  if (planFeedback({ type: 'roundDone', stars: 0 }, 'base').sound === 'fanfare') fail('no fanfare for no stars');
+  for (const st of HERO_STATES) if (st !== 'idle' && !(MOOD_MS[st] > 0 && MOOD_MS[st] <= 3000)) fail(`hero mood ${st} lasts ${MOOD_MS[st]}ms`);
+  console.log(`✓ feedback: ${FEEDBACK_TYPES.length} events mapped in ${WORLDS.length} worlds, real sounds and hero moods`);
+}
+
+// Sounds: every sound builds valid voices with any options; flavours differ; pitches climb.
+{
+  const WAVES = ['sine', 'square', 'sawtooth', 'triangle', 'noise'];
+  const opts = [{}, { step: 1 }, { step: 3 }, { step: 12 }, ...WORLDS.map((w) => ({ step: 2, flavor: w.id }))];
+  for (const name of SFX_NAMES) {
+    for (const o of opts) {
+      const tones = tonesFor(name, o);
+      if (!tones.length) fail(`sound ${name} ${JSON.stringify(o)} has no voices`);
+      for (const t of tones) {
+        const bad =
+          !WAVES.includes(t.wave) ||
+          !(t.len > 0 && t.len < 3) ||
+          !(t.at >= 0 && t.at < 3) ||
+          !(t.vol > 0 && t.vol <= 1) ||
+          (t.wave !== 'noise' && !(t.freq! > 20 && t.freq! < 12000)) ||
+          (t.to !== undefined && !(t.to > 20 && t.to < 12000));
+        if (bad) {
+          fail(`sound ${name} ${JSON.stringify(o)}: bad voice ${JSON.stringify(t)}`);
+          break;
+        }
+      }
+    }
+  }
+  const base = JSON.stringify(tonesFor('correct', { step: 1 }));
+  for (const w of WORLDS.slice(1)) if (JSON.stringify(tonesFor('correct', { step: 1, flavor: w.id })) === base) fail(`${w.id}: "correct" sounds the same as the base`);
+  for (let s = 1; s < 10; s++) if (!(comboPitch(s + 1) > comboPitch(s))) fail(`combo pitch does not climb at streak ${s + 1}`);
+  if (comboPitch(30) !== comboPitch(10)) fail('combo pitch should stop climbing after ten');
+  if (!(starPitch(1) < starPitch(2) && starPitch(2) < starPitch(3))) fail('star notes should climb');
+  const wrong = tonesFor('wrong');
+  if (wrong.some((t) => t.wave === 'square' || t.wave === 'sawtooth' || (t.freq ?? 0) > 600)) fail('"wrong" should be soft and low (no buzzer)');
+  const need: SfxName[] = ['click', 'correct', 'wrong', 'hint', 'star', 'fanfare'];
+  for (const n of need) if (!SFX_NAMES.includes(n)) fail(`missing sound ${n}`);
+  console.log(`✓ sounds: ${SFX_NAMES.length} sounds build valid voices; world flavours; combo and star pitches climb; soft "wrong"`);
 }
 
 // Narration text.

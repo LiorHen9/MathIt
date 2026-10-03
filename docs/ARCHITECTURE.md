@@ -131,6 +131,12 @@ type Generator = (level: DifficultyLevel, rng: Rng) => Question;
 - **מסיחים חכמים** — למשל ב-`7+5` המסיח `11` (טעות ספירה) ו-`2` (חיסור במקום חיבור).
 - **בעיות מילוליות עם placeholders** — `{hero} בעט {a} כדורים...` — העולם ממלא את השמות.
 
+**מצב היום (שלב 2):** `src/core/types.ts` (טיפוסים), `core/skills/` (ארבע מיומנויות: `count.to10`, `compare.to10`, `add.within10`, `sub.within10`, 2–3 רמות לכל אחת, `recommendedSkills(band)`, `startLevel`), `core/generators/` (מחולל לכל משפחה, `makeQuestion(skill, level, seed)` ו-`makeRound` של 8 שאלות בלי חזרות), `core/round.ts` (ניקוד וכוכבים).
+- `Question` בפועל: `prompt { text, math?, visual?, speech }` (משפט אחד, ניטרלי מבחינת מין; `?` בתוך `math` הוא המקום לתשובה), `answer`, `distractors`, `choices` (מעורבבים לפי ה-seed), `errorTags`, `hints`, `explanation`, `numeric` (אפשר להקליד ב-NumPad), `key` (למניעת חזרות בסבב).
+- `Visual` הוא נתונים בלבד (`dots`: קבוצות, מחוקים, סימן ביניהן, מספור לרמז), ו-`ui/Dots.tsx` מצייר אותו. בשלב 3 הוא יקבל גרסה מונפשת ב-`manipulatives/`.
+- סוגי טעויות (`ErrorTag`): `count-off-by-one`, `added`, `subtracted`, `one-part`, `reversed-sign`, `not-equal`, `near`. בהשוואה יש רק שלושה סימנים, ולכן **שני** מסיחים (הסימן ההפוך ו"שווה"/השני). בחיסור חד-ספרתי "הפוך את הסדר" (b − a) יוצא שלילי, ולכן הטעות המקבילה היא לענות במספר שהורידו (`one-part`).
+- כל המספרים בשאלה ובתשובות בטווח הרמה (`min..max`) ואין שליליים. `tests/core/check.ts` בודק 1,000 seeds לכל מיומנות ורמה.
+
 ### 4.3 תבניות מיני-משחקים (Game Templates)
 כל תבנית מקבלת רצף שאלות ומציגה אותן אחרת. אותה תבנית עובדת בכל העולמות.
 
@@ -201,6 +207,7 @@ interface World {
 - הוספת עולם = תיקייה חדשה ב-`src/worlds/<id>/index.tsx` שמייצאת `world`, שורה ב-`WORLD_LIST` ובטוען ב-`LOADERS` (`worlds/index.ts`). בלי שינוי בקוד הליבה. `tests/worlds/check.ts` בודק שהתיקיות והרישום תואמים.
 - **מצב היום (שלב 1):** `WorldTheme` = `id, name, icon, blurb, light, dark, hero`. כל עולם הוא chunk עצל. `applyWorld` מחליף משתני CSS על `<html>` בלי טעינה מחדש; `worldStyle(w, dark)` מצמיד את משתני העולם לאלמנט אחד (כרטיסים בבוחר, אריחי פרופילים).
 - **צבעי הגיבור** הם משתני עולם: `--hero-skin/hair/main/trim/prop/ink/light` (חלק מ-`REQUIRED_VARS`, כולל בבסיס וב-`styles.css`).
+- **משוב (שלב 2):** מיפוי משוב אחד משותף לכל העולמות (`fx/director.ts`), והעולם רק "צובע" את הצליל של תשובה נכונה (`flavor`: פיות – פעמון, כדורגל – בעיטה וקהל, כדורסל – סוויש, נינג׳ה – להב). `World.fx` ו-`SoundPack` מלא לכל עולם – בשלב 5.
 - אפשר להחליף עולם בפרופיל בכל זמן; ההתקדמות נשמרת (היא שייכת למיומנויות, לא לעולם). האוסף נשמר לכל עולם בנפרד.
 
 ---
@@ -242,6 +249,8 @@ interface World {
 `idle` (נשימה/מצמוץ) · `think` · `happy` · `cheer` (רצף/סיום) · `oops` (טעות, עדין) · `walk` · `attack` (בוס).
 הגיבור מופיע במפה, בכל משחק ובשיעורים, והוא "המורה" שמדבר בהקראה.
 
+**מצב היום (שלב 2):** `idle`, `think`, `happy`, `cheer`, `oops` (CSS על `.h-all`/`.h-head`, אנימציות סופיות). ה-director קורא ל-`setHeroMood(state)`, והגיבור במסך המשחק מצויר עם `useHeroMood()` (מפתח לפי `n`, כך שאותו מצב פעמיים מתנגן מחדש) וחוזר ל-`idle` לבד אחרי `MOOD_MS`. בתנועה מופחתת מצב הופך להבהוב קצר של שקיפות.
+
 ### 6.3 צלילים
 - **אפקטים**: סינתזה ב-Web Audio בסגנון ZzFX — מתנדים, רעש, פילטרים ומעטפות. נשמע הרבה יותר עשיר מהצפצופים של ChessIt, ושוקל כמעט כלום. **לכל עולם חבילת צלילים משלו** (פיות: פעמונים ונצנוץ · כדורגל: שריקה, בעיטה, קהל · כדורסל: כדרור, רשת, באזר רך · נינג׳ה: שוש, גונג, תיפוף).
 - **צליל שמלמד**: מנייה עם סולם עולה, קפיצה על ציר עם תו לכל צעד, עשר שלם = אקורד. האוזן עוזרת לספור.
@@ -266,9 +275,12 @@ interface WorldFx {
 ```
 יתרונות: משחק חדש מקבל משוב מלא בכל העולמות "בחינם"; עולם חדש מגדיר רק מיפוי אירועים; ובבדיקות אפשר לקרוא את יומן האירועים (`window.__mathitFx`, כמו `__chessitSounds`).
 
+**מצב היום (שלב 2):** האירועים `tap{key?}`, `correct{streak}`, `wrong{attempt}`, `hint`, `starEarned{n}`, `roundDone{stars, skipped?}` (`bossHit`, `unlock`, `coin`... יתווספו עם התחנות שלהם). `planFeedback(event, worldId)` היא פונקציה טהורה שמחזירה `FxPlan` (צליל + אפשרויות, מצב גיבור, תנועה, חלקיקים, אסימון שעף), ו-`emit(event, { el, to })` מבצע אותה: `el` הוא האלמנט שבו קרה הדבר (בועה, מקש, כוכב), `to` – לאן הפרס עף (נקודת ההתקדמות). `hushFeedback()` עוצר חגיגה (צלילים, חלקיקים, גיבור). יומן: `window.__mathitFx` עם `type, detail, world, sound, pitch, hero, motion, particles`. `tests/worlds/check.ts` בודק שכל אירוע ממופה בכל עולם לצליל ולמצב גיבור קיימים.
+
 ### 6.5 כלי האנימציה
-- `fx/motion.ts` — פריסטים מעל Web Animations API: `pop`, `shake`, `bounce`, `flyTo(el, target)`, `arc(from, to)` (לקפיצות וזריקות), `countUp`.
-- `fx/particles.ts` — Canvas אחד מעל המסך, מערכת חלקיקים קטנה (נצנוצים, קונפטי, עקבות כדור), עם תקרת חלקיקים.
+- `fx/motion.ts` — פריסטים מעל Web Animations API: `pop`, `shake`, `hop`, `arc(el, from, to)` (פרבולה, לקפיצות וזריקות), `flyTo(from, target, token)` (אסימון שעף בקשת ונעלם), `countUp(el, from, to)`. בתנועה מופחתת כל אחד הופך לדהייה של עד 200ms או קורה מיד.
+- `fx/particles.ts` — Canvas אחד מעל המסך (`.fx-canvas`, בלי נגיעות, `aria-hidden`): `burst(point, 'sparkle' | 'confetti', n)`, `confetti()`, `clearParticles()`. תקרה `MAX_PARTICLES` = 180, רץ רק כשיש חלקיקים, ולא עושה כלום בתנועה מופחתת. `data-count` על ה-Canvas לבדיקות.
+- `audio/sfx.ts` — סינתזה בסגנון ZzFX: מתנדים ורעש עם מעטפת, גלישת גובה, ויברטו, מתנד תאום מכוון מעט (צליל מלא), פילטר נע והד לכל צליל. צלילים עם פרמטרים: `correct` (גובה עולה לפי הרצף, `comboPitch`; נצנוץ מ-3 ברצף; גוון העולם), `star` (תו עולה לכל כוכב, `starPitch`), `click` (מקש לפי הספרה), `wrong` (רך ונמוך, בלי ריבועי/מסור), `hint`, `fanfare`. `hushSfx()` משתיק צלילים שעוד מצלצלים.
 - `fx/Hero.tsx` — הגיבור והמצבים שלו.
 - `fx/director.ts` — Feedback Director.
 - `manipulatives/` — רכיבי האנימציה המלמדת (מסגרת עשר, קוביות, ציר, מערך, פיצה, שעון).
@@ -309,6 +321,8 @@ interface SkillState {
 1. טעות ראשונה → "נסה שוב" + רמז קל (למשל: הצגת ציר מספרים).
 2. טעות שנייה → רמז מפורט / ויזואלי.
 3. טעות שלישית → הסבר צעד-אחר-צעד והתשובה, והשאלה חוזרת בהמשך הסבב.
+
+**מצב היום (שלב 2):** שני ניסיונות לשאלה (`MAX_WRONG` = 2). טעות ראשונה → רעידה, `oops`, "נסה/נסי/נסו שוב" (`byGender`), ואחרי רגע רמז (טקסט + הכוכבים ממוספרים). טעות שנייה → התשובה מוצגת במקומה, הצעד האחרון של ההסבר מוקרא, וכפתור "הבא". ניקוד: בפעם הראשונה 1, בשנייה ½, אחרי הצגה 0; כוכבים לפי החלק מהמקסימום (90% → 3, 65% → 2, 35% → 1). 3 כוכבים מעלים רמה, 0 מורידים. בשלב 3 נוסף ההסבר המונפש, ובשלב 6 ההחזרה של השאלה בהמשך הסבב ומנוע השליטה.
 - סוג הטעות נשמר (למשל "שכח לפרוט"), ומשפיע על בחירת שאלות והסברים.
 
 ### 7.4 התאמה לגיל
@@ -355,13 +369,13 @@ interface Profile {              // src/profiles/profiles.ts
 DB: mathit (IndexedDB)
  ├─ meta          { schemaVersion, deviceId, lastProfileId, errorLog }
  ├─ profiles      Profile (כולל settings) לפי id
- ├─ skillStates   key: profileId:skillId
+ ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed)
  ├─ nodeProgress  key: profileId:nodeId → { stars, bestScore, completedAt }
  ├─ inventory     key: profileId:worldId → collectibles, coins
  └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
 ```
 - **Repository layer** אחד — ה-UI לא ניגש ל-IndexedDB ישירות.
-- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון.
+- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`, `deleteSkillStates` עם מחיקת פרופיל). שדות ה-`SkillState` המלא (שלב 6) יתווספו דרך `normalizeSkillState`, בלי מיגרציה נוספת.
 - שמירה אחרי כל שאלה (לא רק בסוף משחק) — סגירת אפליקציה לא מוחקת התקדמות.
 - כפתור "ייצוא גיבוי" — כי נתונים מקומיים נמחקים בניקוי דפדפן.
 
@@ -377,10 +391,12 @@ MathIt/
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
 │  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog
-│  ├─ screens/        Profiles, WorldPicker, QuestMap, GameHost, Parent, Rewards
+│  ├─ screens/        Profiles, WorldPicker, QuestMap, GameHost (סבב + חגיגת כוכבים), Parent, Rewards
 │  ├─ core/
+│  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
+│  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
 │  │  ├─ skills/      הגדרות גרף המיומנויות (data)
-│  │  ├─ generators/  מחולל לכל משפחת מיומנויות + tests
+│  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
 │  │  ├─ mastery/     מנוע שליטה, חזרה מרווחת
 │  │  ├─ quest/       הגדרות מפה, פרקים, תחנות (data)
 │  │  └─ rng.ts
@@ -392,11 +408,11 @@ MathIt/
 │  │  └─ index.ts     רישום עולמות, applyWorld (טעינה עצלה)
 │  ├─ manipulatives/  אנימציות מלמדות: TenFrame, Blocks, NumberLine, Array, Pizza, Clock
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
-│  ├─ ui/             רכיבים משותפים: NumPad, Button, Stars, Dialog, Speak
+│  ├─ ui/             רכיבים משותפים: NumPad, Dots (ציור Visual), ובהמשך Button, Stars, Dialog
 │  ├─ audio/          sfx.ts (סינתזה), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
-│  ├─ storage/        db.ts, backup.ts, backupState.ts  (מ-ChessIt)
+│  ├─ storage/        db.ts, skillStates.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)
