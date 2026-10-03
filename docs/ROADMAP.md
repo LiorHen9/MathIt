@@ -8,7 +8,7 @@
 
 ---
 
-## שלב 0 — תשתית והעברה מ-ChessIt 🟨
+## שלב 0 — תשתית והעברה מ-ChessIt ✅
 **מטרה:** שלד שעולה ל-GitHub Pages, עם הבסיס הבדוק של ChessIt.
 - ריפו `LiorHen9/MathIt`, Vite + TS strict + Preact, GitHub Actions ← Pages
 - PWA (manifest בעברית, אייקון זמני, עבודה אופליין), גופן Rubik מקומי, RTL
@@ -17,6 +17,8 @@
 - תשתית בדיקות כמו ב-ChessIt (`tests/*/check.ts` ב-bun, `tests/e2e/phase0.cjs`)
 
 **סיום:** כתובת חיה, "הוסף למסך הבית" עובד, טעינה ראשונה מתחת ל-300KB.
+
+> הושלם 3.10.2026 · https://liorhen9.github.io/MathIt/ · טעינה ראשונה כ-45KB (gzip, כולל הגופן) · בדיקות: `tests/core`, `tests/worlds`, `tests/e2e/phase0.cjs` (בנייה מקומית). האתר החי חסום מסביבת העבודה של Claude, אז "הוסף למסך הבית" ואופליין נבדקים בטלפון.
 
 ---
 
