@@ -361,7 +361,7 @@ DB: mathit (IndexedDB)
 ## 10. מבנה תיקיות
 
 ```
-mathit/
+MathIt/
 ├─ CLAUDE.md
 ├─ scripts/local-check.sh   בנייה ובדיקה בלי npm (סביבת Claude)
 ├─ docs/ ARCHITECTURE.md · ROADMAP.md

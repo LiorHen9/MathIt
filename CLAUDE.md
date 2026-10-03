@@ -17,8 +17,8 @@
 
 אפליקציית רשת (PWA) לטלפון ללימוד ותרגול מתמטיקה לילדים, בעברית, בנויה כמסע עם שיעורים, מיני-משחקים, חידות ובוסים, בעולמות לבחירה (פיות, כדורגל, כדורסל, נינג׳ה). כמה פרופילים לכל מכשיר, כל אחד בקצב שלו, וכל הנתונים נשמרים מקומית.
 
-- מאגר: https://github.com/LiorHen9/mathit (ענף `main`; כל דחיפה נבנית ומתפרסמת ב-GitHub Pages)
-- אתר: https://liorhen9.github.io/mathit/
+- מאגר: https://github.com/LiorHen9/MathIt (ענף `main`; כל דחיפה נבנית ומתפרסמת ב-GitHub Pages)
+- אתר: https://liorhen9.github.io/MathIt/
 - **אח בכור: ChessIt** (https://github.com/LiorHen9/ChessIt). אותו סטאק, ומשם מעבירים פרופילים, אחסון, גיבוי, הקראה, ערכות נושא ובדיקות. לפני שכותבים מודול כזה מאפס, לבדוק איך הוא בנוי שם.
 
 ## טכנולוגיה
@@ -45,10 +45,10 @@
 
 ## בנייה ובדיקה
 
-- `npm run build` מריץ בדיקת טיפוסים ובנייה. GitHub Actions הוא מקור האמת: לבדוק אחרי כל דחיפה ש-`Deploy to GitHub Pages` הצליח (`gh run list --repo LiorHen9/mathit`).
+- `npm run build` מריץ בדיקת טיפוסים ובנייה. GitHub Actions הוא מקור האמת: לבדוק אחרי כל דחיפה ש-`Deploy to GitHub Pages` הצליח (`gh run list --repo LiorHen9/MathIt`).
 - **npm חסום בסביבת העבודה של Claude.** במקומו: `scripts/local-check.sh <תיקיית scratchpad>` – משכפל את preact מ-GitHub, בודק טיפוסים ב-`tsc` עם `paths` זמניים, בונה ב-`bun build`, מריץ את בדיקות ה-bun ואת כל `tests/e2e/phase*.cjs` מול `python3 -m http.server 4173`. צילומי המסך נשמרים ב-`<scratchpad>/shots` – להסתכל עליהם.
   - בבנייה המקומית אין manifest ו-Service Worker (‏vite-plugin-pwa רץ רק ב-CI), ו-bun מכניס את כל ה-CSS ל-`main.css`.
-  - את ה-e2e אפשר להריץ גם מול האתר החי: `node tests/e2e/phase0.cjs <shots> https://liorhen9.github.io/mathit/` (אם הרשת מאפשרת). שם נבדקים גם ה-manifest וה-Service Worker.
+  - את ה-e2e אפשר להריץ גם מול האתר החי: `node tests/e2e/phase0.cjs <shots> https://liorhen9.github.io/MathIt/` (אם הרשת מאפשרת). שם נבדקים גם ה-manifest וה-Service Worker.
   - גופני Google ושאר אתרים חסומים בסביבה; הגופן שלנו מקומי, אז זה לא משנה.
 - בדיקות: `tests/core/check.ts` (‏RNG, ובהמשך מחוללים ומנוע שליטה), `tests/worlds/check.ts` (ניגודיות, התאמת `styles.css` לעולם הבסיס, טקסט להקראה), ו-`tests/e2e/phaseN.cjs` (צריך להריץ את כולן בכל שלב). בדיקות צלילים קוראות את `window.__mathitSounds`; משלב 2 בדיקות משוב קוראות גם את `window.__mathitFx`.
 - כפתור "נושם" (אנימציה אינסופית) אף פעם לא "יציב" ל-Playwright: ללחוץ עליו עם `{ force: true }`.
