@@ -73,6 +73,8 @@ export interface HeroParts {
   /** Drawn around (0, 0) and placed at the hand (or at the right foot). */
   prop: ComponentChildren;
   propAt?: 'hand' | 'raised' | 'foot';
+  /** 'blocky': a square head, straight arms and square hands (a world built of cubes). */
+  shape?: 'round' | 'blocky';
 }
 
 export interface HeroDef {
@@ -153,6 +155,13 @@ export function Hero({ def, gender, state = 'idle', class: cls = '', label }: Pr
   const at = p.propAt ?? 'hand';
   const [hx, hy] = HAND[at === 'foot' ? 'hand' : at];
   const [px, py] = HAND[at];
+  const blocky = p.shape === 'blocky';
+  // Arms: a curve to a round hand, or a straight block to a square one.
+  const leftArm = blocky ? 'M41 88 L31 110' : 'M42 90 Q32 100 30 111';
+  const rightArm = blocky ? (at === 'raised' ? 'M79 88 L95 70' : 'M79 88 L89 110') : at === 'raised' ? 'M78 90 Q93 84 95 70' : 'M78 90 Q88 100 90 111';
+  const cap = blocky ? 'square' : 'round';
+  const hand = (x: number, y: number) =>
+    blocky ? <rect x={x - 6} y={y - 6} width="12" height="12" rx="1.5" fill={V.skin} /> : <circle cx={x} cy={y} r="5.6" fill={V.skin} />;
   return (
     <svg
       class={`hero is-${state} ${cls}`}
@@ -170,22 +179,16 @@ export function Hero({ def, gender, state = 'idle', class: cls = '', label }: Pr
           {p.hairBack && <g class="h-hair-back">{p.hairBack}</g>}
           <g class="h-torso">{p.torso}</g>
           {/* Left arm (viewer's left), resting. */}
-          <path d="M42 90 Q32 100 30 111" fill="none" stroke={V.skin} stroke-width="9" stroke-linecap="round" />
-          <circle cx="30" cy="112" r="5.6" fill={V.skin} />
+          <path d={leftArm} fill="none" stroke={V.skin} stroke-width="9" stroke-linecap={cap} />
+          {hand(30, 112)}
           <g class="h-head">
-            <circle cx="60" cy="50" r="30" fill={V.skin} />
+            {blocky ? <rect x="31" y="21" width="58" height="58" rx="3" fill={V.skin} /> : <circle cx="60" cy="50" r="30" fill={V.skin} />}
             {p.face ?? <DefaultFace />}
             {p.hair}
           </g>
           {/* Right arm: down to the hand, or raised holding the prop up. */}
-          <path
-            d={at === 'raised' ? 'M78 90 Q93 84 95 70' : 'M78 90 Q88 100 90 111'}
-            fill="none"
-            stroke={V.skin}
-            stroke-width="9"
-            stroke-linecap="round"
-          />
-          {at !== 'foot' && <circle cx={hx} cy={hy} r="5.6" fill={V.skin} />}
+          <path d={rightArm} fill="none" stroke={V.skin} stroke-width="9" stroke-linecap={cap} />
+          {at !== 'foot' && hand(hx, hy)}
           {at !== 'foot' && (
             <g transform={`translate(${px} ${py})`}>
               <g class="h-prop">{p.prop}</g>

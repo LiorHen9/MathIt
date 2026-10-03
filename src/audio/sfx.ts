@@ -3,7 +3,7 @@
 // an optional detuned twin (a fuller, chorused tone), a filter sweep, and an echo per sound.
 // Phase 5 gives every world its own SoundPack (docs/ARCHITECTURE.md §6.3); for now the shared
 // sounds take a "flavor" from the world (fairies → a bell, football → a kick, basketball → a
-// swish, ninja → a blade) and the `world-*` samples are each world's calling card.
+// swish, ninja → a blade, blocks → a block clicking into place, stage → a synth chord) and the `world-*` samples are each world's calling card.
 // Games never call this directly: they emit feedback events and the Feedback Director
 // (fx/director.ts) picks the sound.
 //
@@ -22,7 +22,9 @@ export type SfxName =
   | 'world-fairies'
   | 'world-football'
   | 'world-basketball'
-  | 'world-ninja';
+  | 'world-ninja'
+  | 'world-blocks'
+  | 'world-stage';
 
 /** Options some sounds take. */
 export interface SfxOpts {
@@ -121,6 +123,15 @@ function correctFlavor(flavor: string | undefined, f: number): Tone[] {
         { wave: 'triangle', freq: 2900, to: 2500, at: 0, len: 0.3, vol: 0.1, attack: 0.003, vib: { rate: 38, depth: 60 } },
         { wave: 'noise', at: 0, len: 0.07, vol: 0.1, attack: 0.002, filter: { type: 'bandpass', freq: 5200, q: 3 } }
       ];
+    case 'blocks':
+      // A block clicks into place: a hollow wooden "tok".
+      return [
+        { wave: 'triangle', freq: 330, to: 220, at: 0, len: 0.07, vol: 0.32, attack: 0.002 },
+        { wave: 'noise', at: 0, len: 0.03, vol: 0.12, attack: 0.001, filter: { type: 'bandpass', freq: 1800, q: 2 } }
+      ];
+    case 'stage':
+      // A bright synth chord stab.
+      return [f, f * 1.26, f * 1.5].map((x): Tone => ({ wave: 'sawtooth', freq: x, at: 0.02, len: 0.26, vol: 0.06, attack: 0.008, detune: 12, filter: { type: 'lowpass', freq: 1800, to: 900 } }));
     default:
       return [];
   }
@@ -234,6 +245,26 @@ const SOUNDS: Record<SfxName, Sound> = {
   },
   // Basketball: three dribbles, getting quicker.
   'world-basketball': { tones: () => [...bounce(0, 0.7), ...bounce(0.27, 0.62), ...bounce(0.48, 0.55)] },
+  // Blocks: two blocks placed (tok, tok), then a gem picked up (a quick rising "bling").
+  'world-blocks': {
+    tones: () => [
+      { wave: 'triangle', freq: 300, to: 200, at: 0, len: 0.08, vol: 0.4, attack: 0.002 },
+      { wave: 'noise', at: 0, len: 0.03, vol: 0.14, attack: 0.001, filter: { type: 'bandpass', freq: 1700, q: 2 } },
+      { wave: 'triangle', freq: 360, to: 240, at: 0.17, len: 0.08, vol: 0.4, attack: 0.002 },
+      { wave: 'noise', at: 0.17, len: 0.03, vol: 0.14, attack: 0.001, filter: { type: 'bandpass', freq: 1900, q: 2 } },
+      { wave: 'square', freq: 988, at: 0.36, len: 0.07, vol: 0.08, attack: 0.002, filter: { type: 'lowpass', freq: 3000 } },
+      { wave: 'square', freq: 1319, at: 0.42, len: 0.16, vol: 0.08, attack: 0.002, filter: { type: 'lowpass', freq: 3500 } }
+    ]
+  },
+  // Stage: a synth chord rises, a shadow whooshes away, a sparkle.
+  'world-stage': {
+    tones: () => [
+      ...[440, 554, 659].map((f): Tone => ({ wave: 'sawtooth', freq: f, at: 0, len: 0.45, vol: 0.07, attack: 0.03, detune: 12, filter: { type: 'lowpass', freq: 600, to: 3200, q: 2 } })),
+      { wave: 'noise', at: 0.25, len: 0.35, vol: 0.12, attack: 0.05, filter: { type: 'bandpass', freq: 3000, to: 400, q: 1.2 } },
+      ...sparkle(0.4, 4, 0.06, 2637)
+    ],
+    echo: { time: 0.15, feedback: 0.3, wet: 0.22 }
+  },
   // Ninja: a "shush" through the air, then the star hits wood.
   'world-ninja': {
     tones: () => [

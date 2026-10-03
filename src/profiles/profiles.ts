@@ -66,7 +66,7 @@ export const GENDERS: { id: Gender; label: string }[] = [
 
 export const AVATARS = ['🦁', '🐯', '🐻', '🐼', '🦊', '🐸', '🐵', '🦄', '🐲', '🐙', '🦉', '🐧', '🐶', '🐱', '🐰', '🦖', '🚀', '⭐'];
 
-export const PLAY_WORLDS: PlayWorldId[] = ['fairies', 'football', 'basketball', 'ninja'];
+export const PLAY_WORLDS: PlayWorldId[] = ['fairies', 'football', 'basketball', 'ninja', 'blocks', 'stage'];
 
 export function newProfileId(): string {
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;

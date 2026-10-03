@@ -7,7 +7,7 @@ import type { HeroDef } from '../fx/Hero';
 /** CSS custom properties without the leading "--", e.g. { bg: '#fff', brand: '#4c35b5' }. */
 export type WorldVars = Record<string, string>;
 
-export type WorldId = 'base' | 'fairies' | 'football' | 'basketball' | 'ninja';
+export type WorldId = 'base' | 'fairies' | 'football' | 'basketball' | 'ninja' | 'blocks' | 'stage';
 
 export interface WorldTheme {
   id: WorldId;

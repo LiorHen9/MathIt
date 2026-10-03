@@ -10,7 +10,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // - a perfect round → 3 stars, the celebration skipped with a tap, the level goes up;
 // - dark + reduced motion in another world: short feedback, no endless animations, no particles;
 // - touch targets ≥ 48px (number pad ≥ 56px), no sideways scroll, transform/opacity only;
-// - screenshots in light and dark, in two worlds.
+// - the stage and blocks worlds: a profile, the hero, a right answer with the world's flavour;
+// - screenshots in light and dark, in four worlds.
 const SHOTS = process.argv[2] || '.';
 const URL = process.argv[3] || 'http://localhost:4173/';
 
@@ -67,7 +68,7 @@ async function solve(p) {
   let m;
   if ((m = /^(\d+) \+ (\d+) =/.exec(math))) return String(Number(m[1]) + Number(m[2]));
   if ((m = /^(\d+) − (\d+) =/.exec(math))) return String(Number(m[1]) - Number(m[2]));
-  if ((m = /^(\d+) \S+ (\d+)$/.exec(math))) {
+  if ((m = /^(\d+)\s*[?<>=]\s*(\d+)$/.exec(math))) {
     const [a, b] = [Number(m[1]), Number(m[2])];
     return a > b ? '>' : a < b ? '<' : '=';
   }
@@ -416,6 +417,41 @@ async function stored(p) {
 
     must(errors.length === 0, 'errors: ' + errors.join('\n'));
     await ctx.close();
+  }
+
+  // ================= The two newer worlds: stage (light) and blocks (dark) =================
+  for (const [scheme, name, gender, worldId, heroName, skill] of [
+    ['light', 'מאיה', 'girl', 'stage', 'זמרת לוחמת', 'count.to10'],
+    ['dark', 'יונתן', 'boy', 'blocks', 'בנאי', 'compare.to10']
+  ]) {
+    const { ctx, p, errors } = await phone(b, { colorScheme: scheme, reducedMotion: 'no-preference' });
+    await startApp(p);
+    await p.waitForSelector('.profile-editor');
+    await p.fill('.profile-editor input[name=name]', name);
+    await p.tap('.avatar-option >> nth=5');
+    await p.tap('[data-grade="0"]');
+    await p.tap(`[data-gender=${gender}]`);
+    await p.tap(`[data-world-id=${worldId}]`);
+    await p.waitForFunction((w) => document.documentElement.dataset.world === w, worldId);
+    must((await sounds(p)).at(-1) === `world-${worldId}`, `no sample sound for ${worldId}`);
+    await p.tap('[data-testid=save-profile]');
+    await p.waitForSelector('.home .skill-btn');
+    must((await p.textContent('.home-hero-name')).trim() === heroName, `${worldId} hero: ` + (await p.textContent('.home-hero-name')));
+    await p.waitForTimeout(500);
+    await p.screenshot({ path: `${SHOTS}/5${worldId === 'stage' ? 0 : 2}-home-${worldId}-${scheme}.png` });
+    await layoutOk(p, `home (${worldId})`);
+    await p.tap(`[data-skill="${skill}"]`);
+    await p.waitForSelector('.game .pop');
+    await answer(p, await solve(p));
+    const e = await lastFx(p, 'correct');
+    must(e && e.world === worldId && e.sound === 'correct', `${worldId}: correct event ` + JSON.stringify(e));
+    await p.waitForTimeout(250);
+    await p.screenshot({ path: `${SHOTS}/5${worldId === 'stage' ? 1 : 3}-game-${worldId}-${scheme}.png` });
+    await layoutOk(p, `game (${worldId})`);
+    await onlyTransformOpacity(p, `game (${worldId})`);
+    must(errors.length === 0, 'errors: ' + errors.join('\n'));
+    await ctx.close();
+    step(`${worldId} (${scheme}): profile, hero "${heroName}", sample sound, a ${skill} answer with the world's flavour`);
   }
 
   await b.close();

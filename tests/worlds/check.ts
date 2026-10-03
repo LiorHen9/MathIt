@@ -15,12 +15,14 @@ import { world as fairies } from '../../src/worlds/fairies/index';
 import { world as football } from '../../src/worlds/football/index';
 import { world as basketball } from '../../src/worlds/basketball/index';
 import { world as ninja } from '../../src/worlds/ninja/index';
+import { world as blocks } from '../../src/worlds/blocks/index';
+import { world as stage } from '../../src/worlds/stage/index';
 import { Hero, HERO_STATES, MOOD_MS } from '../../src/fx/Hero';
 import { SFX_NAMES, comboPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
 import { FEEDBACK_TYPES, SAMPLE_EVENTS, planFeedback } from '../../src/fx/director';
 import { cleanForSpeech } from '../../src/audio/speech';
 
-const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja];
+const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja, blocks, stage];
 let failures = 0;
 const fail = (msg: string) => {
   failures++;
@@ -72,7 +74,7 @@ for (const w of WORLDS) {
     }
   }
 }
-console.log(`✓ ${WORLDS.length} worlds (base + 4) × light/dark: variables set, contrast OK`);
+console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/dark: variables set, contrast OK`);
 
 // Registration: every world folder is listed and loads (as its own module), ids match.
 {
@@ -110,7 +112,7 @@ console.log(`✓ ${WORLDS.length} worlds (base + 4) × light/dark: variables set
     // A male and a female form ("חלוץ" / "חלוצה", "נסיך הפיות" / "פיית הקסם").
     if (w.hero.name('boy') === w.hero.name('girl')) fail(`${w.id}: the hero should have different names for a boy and a girl`);
   }
-  const src = ['fairies', 'football', 'basketball', 'ninja'].map((id) => readFileSync(new URL(`../../src/worlds/${id}/index.tsx`, import.meta.url), 'utf8'));
+  const src = WORLD_LIST.map((w) => w.id).map((id) => readFileSync(new URL(`../../src/worlds/${id}/index.tsx`, import.meta.url), 'utf8'));
   src.push(readFileSync(new URL('../../src/fx/Hero.tsx', import.meta.url), 'utf8'));
   for (const code of src) {
     const literal = /(fill|stroke)=["']#[0-9a-f]{3,8}["']/i.exec(code);

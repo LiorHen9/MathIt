@@ -16,7 +16,9 @@ export const WORLD_LIST: { id: Exclude<WorldId, 'base'>; name: string; icon: str
   { id: 'fairies', name: 'פיות', icon: '🧚' },
   { id: 'football', name: 'כדורגל', icon: '⚽' },
   { id: 'basketball', name: 'כדורסל', icon: '🏀' },
-  { id: 'ninja', name: 'נינג׳ה', icon: '🥷' }
+  { id: 'ninja', name: 'נינג׳ה', icon: '🥷' },
+  { id: 'blocks', name: 'קוביות', icon: '🧱' },
+  { id: 'stage', name: 'כוכבות הבמה', icon: '🎤' }
 ];
 
 // Each world is a separate chunk (not in the first load).
@@ -24,7 +26,9 @@ const LOADERS: Partial<Record<WorldId, () => Promise<{ world: WorldTheme }>>> = 
   fairies: () => import('./fairies/index'),
   football: () => import('./football/index'),
   basketball: () => import('./basketball/index'),
-  ninja: () => import('./ninja/index')
+  ninja: () => import('./ninja/index'),
+  blocks: () => import('./blocks/index'),
+  stage: () => import('./stage/index')
 };
 
 const cache = new Map<string, WorldTheme>([[BASE.id, BASE]]);
@@ -45,7 +49,7 @@ export async function loadWorld(id: string): Promise<WorldTheme> {
   }
 }
 
-/** All four worlds (for the picker and the profile tiles). */
+/** All the worlds (for the picker and the profile tiles). */
 export function loadAllWorlds(): Promise<WorldTheme[]> {
   return Promise.all(WORLD_LIST.map((w) => loadWorld(w.id)));
 }

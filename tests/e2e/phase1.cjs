@@ -155,7 +155,7 @@ async function storedProfiles(p) {
     step('first run: the new-profile form, saving disabled until it is filled');
 
     // Live skin: each world card re-skins the whole screen, plays its sound, the hero hops.
-    for (const id of ['football', 'basketball', 'ninja', 'fairies']) {
+    for (const id of ['football', 'basketball', 'ninja', 'blocks', 'stage', 'fairies']) {
       await p.tap(`[data-world-id=${id}]`);
       await waitWorld(p, id);
       must((await lastSound(p)) === `world-${id}`, `sample sound for ${id}: ${await sounds(p)}`);
@@ -169,7 +169,7 @@ async function storedProfiles(p) {
     await p.$eval('.world-grid', (e) => e.scrollIntoView({ block: 'center' }));
     await p.waitForTimeout(400);
     await p.screenshot({ path: `${SHOTS}/11-editor-worlds.png` });
-    step('world cards: live skin change, a sample sound per world (all 4), the hero hops');
+    step('world cards: live skin change, a sample sound per world (all 6), the hero hops');
 
     // --- נועה: א׳, girl, fairies ---
     await p.$eval('.profile-editor', (e) => e.scrollIntoView());
