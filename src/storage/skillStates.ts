@@ -1,5 +1,6 @@
 // A profile's results per skill (store `skillStates`, key `${profileId}:${skillId}`).
-// Phase 2 keeps what a round needs: the level to play next, the best stars, how many rounds.
+// Phase 2 keeps what a round needs: the level to play next, the best stars, how many rounds;
+// phase 3 adds whether the lesson was watched.
 // Phase 6 grows this into the full SkillState (mastery, recent results, review dates –
 // docs/ARCHITECTURE.md §7.1); `normalizeSkillState` fills missing fields, so it needs no migration.
 import { dbDelete, dbGet, dbGetAll, dbKeys, dbPut } from './db';
@@ -14,6 +15,8 @@ export interface SkillState {
   rounds: number;
   /** ms since 1970. */
   lastPlayed: number;
+  /** The skill's lesson was watched to the end (phase 3; older records: false). */
+  lessonSeen: boolean;
 }
 
 const key = (profileId: string, skillId: string) => `${profileId}:${skillId}`;
@@ -26,7 +29,8 @@ export function normalizeSkillState(raw: Partial<SkillState> & Pick<SkillState, 
     level: int(raw.level, 1, 20, 1),
     bestStars: int(raw.bestStars, 0, 3, 0),
     rounds: int(raw.rounds, 0, 1e9, 0),
-    lastPlayed: typeof raw.lastPlayed === 'number' ? raw.lastPlayed : 0
+    lastPlayed: typeof raw.lastPlayed === 'number' ? raw.lastPlayed : 0,
+    lessonSeen: raw.lessonSeen === true
   };
 }
 
@@ -52,7 +56,24 @@ export async function saveRound(profileId: string, skillId: string, stars: numbe
     level: nextLevel,
     bestStars: Math.max(prev?.bestStars ?? 0, stars),
     rounds: (prev?.rounds ?? 0) + 1,
-    lastPlayed: Date.now()
+    lastPlayed: Date.now(),
+    lessonSeen: prev?.lessonSeen ?? false
+  });
+  await dbPut('skillStates', key(profileId, skillId), next);
+  return next;
+}
+
+/**
+ * The lesson was watched to the end. A skill never played starts its record at `startLevel`
+ * (the level a first round would pick by age), so watching a lesson changes no level.
+ */
+export async function saveLessonSeen(profileId: string, skillId: string, startLevel: number): Promise<SkillState> {
+  const prev = await getSkillState(profileId, skillId);
+  const next = normalizeSkillState({
+    ...(prev ?? { profileId, skillId, level: startLevel, bestStars: 0, rounds: 0, lastPlayed: 0 }),
+    profileId,
+    skillId,
+    lessonSeen: true
   });
   await dbPut('skillStates', key(profileId, skillId), next);
   return next;

@@ -8,6 +8,11 @@ import type { Answer, Hint, Question, Sign } from '../core/types';
 import { SpeakButton } from '../components/Speak';
 import { Dots } from '../ui/Dots';
 import { NumPad } from '../ui/NumPad';
+import { Manipulative } from '../manipulatives/index';
+import { playSfx } from '../audio/sfx';
+
+/** A hint's animation runs a little calmer than a lesson. */
+const HINT_SPEED = 0.85;
 
 export type InputMode = 'bubbles' | 'numpad';
 
@@ -21,6 +26,8 @@ interface Props {
   /** After two mistakes: the right answer is marked. */
   reveal: boolean;
   hint: Hint | null;
+  /** The hero is explaining below: the card keeps only the exercise, no answers to pick. */
+  explaining?: boolean;
   onAnswer: (a: Answer, from: Element) => void;
 }
 
@@ -30,8 +37,9 @@ function say(a: Answer): string {
   return typeof a === 'number' ? String(a) : SIGN_NAME[a];
 }
 
-export function Pop({ question: q, mode, done, tried, reveal, hint, onAnswer }: Props) {
+export function Pop({ question: q, mode, done, tried, reveal, hint, explaining = false, onAnswer }: Props) {
   const [typed, setTyped] = useState('');
+  const [replay, setReplay] = useState(0);
   const slot = useRef<HTMLSpanElement>(null);
   const showAnswer = done || reveal;
   const slotText = showAnswer ? String(q.answer) : mode === 'numpad' && typed ? typed : '?';
@@ -52,7 +60,27 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, onAnswer }: 
         <p class="prompt-text">
           {q.prompt.text} <SpeakButton text={q.prompt.speech} class="speak-inline" />
         </p>
-        {visual && <Dots visual={visual} key={hint ? 'hint' : 'q'} class={hint ? 'is-hint' : ''} />}
+        {hint?.action ? (
+          <div class="hint-anim" data-testid="hint-anim">
+            <Manipulative action={hint.action} speed={HINT_SPEED} play={replay} stopped={done || reveal} />
+            {!done && (
+              <button
+                type="button"
+                class="icon-btn replay-btn"
+                aria-label="להראות שוב"
+                data-testid="hint-replay"
+                onClick={() => {
+                  playSfx('tap');
+                  setReplay((r) => r + 1);
+                }}
+              >
+                ↻
+              </button>
+            )}
+          </div>
+        ) : (
+          visual && !explaining && <Dots visual={visual} key={hint ? 'hint' : 'q'} class={hint ? 'is-hint' : ''} />
+        )}
         <p class={`prompt-math math ${q.prompt.math ? '' : 'is-solo'}`} dir="ltr" data-testid="prompt-math">
           {parts.map((part, i) => [
             part && (
@@ -74,7 +102,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, onAnswer }: 
         )}
       </section>
 
-      {mode === 'bubbles' ? (
+      {explaining ? null : mode === 'bubbles' ? (
         <div class={`bubbles n-${q.choices.length}`} dir="ltr" role="group" aria-label="תשובות">
           {q.choices.map((c, i) => {
             const wrong = tried.includes(c);

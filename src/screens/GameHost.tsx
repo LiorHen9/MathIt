@@ -1,21 +1,23 @@
 // A practice round: 8 questions of one skill in a game template (Pop for now), the hero beside
-// them reacting to everything, a combo counter, two tries per question with a hint after the
-// first mistake and the answer after the second, and stars at the end that appear one by one
-// (a celebration a tap skips). Loaded lazily, with the generators and the feedback engine.
+// them reacting to everything, a combo counter, two tries per question (games/Ask.tsx: an
+// animated hint after the first mistake, an animated step-by-step explanation after the second),
+// and stars at the end that appear one by one (a celebration a tap skips). Loaded lazily, with
+// the generators, the feedback engine and the teaching animations.
 //
 // Every bit of feedback goes through the Feedback Director (fx/director.ts): this screen says
 // *what happened* (correct, wrong, hint, starEarned, roundDone); the director decides how it
 // looks and sounds.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { makeRound } from '../core/generators/index';
-import { MAX_WRONG, ROUND_LENGTH, nextLevel, questionPoints, starsFor } from '../core/round';
+import { ROUND_LENGTH, nextLevel, questionPoints, starsFor } from '../core/round';
 import { getSkill, startLevel } from '../core/skills/index';
-import { isCorrect, type Answer, type Question, type SkillId } from '../core/types';
+import type { Question, SkillId } from '../core/types';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
 import { Hero, setHeroMood, useHeroMood } from '../fx/Hero';
 import { countUp, reducedMotion } from '../fx/motion';
 import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components/Speak';
-import { Pop, type InputMode } from '../games/Pop';
+import type { InputMode } from '../games/Pop';
+import { Ask, msg } from '../games/Ask';
 import { ageBand, approxAge, byGender, type Profile } from '../profiles/profiles';
 import { getSkillState, saveRound } from '../storage/skillStates';
 import { useWorld } from '../worlds/index';
@@ -33,9 +35,6 @@ type Result = 'first' | 'second' | 'shown';
 function inputFor(q: Question, i: number): InputMode {
   return q.numeric && i % 3 === 2 ? 'numpad' : 'bubbles';
 }
-
-let msgId = 0;
-const msg = (text: string, tone: Message['tone'], speech?: string): Message => ({ text, tone, id: ++msgId, speech });
 
 export function GameHost({ profile, skillId, onHome }: Props) {
   const skill = getSkill(skillId)!;
@@ -92,9 +91,6 @@ function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
   const world = useWorld();
   const questions = useMemo(() => makeRound(skillId, level, seed, ROUND_LENGTH), [skillId, level, seed]);
   const [idx, setIdx] = useState(0);
-  const [tried, setTried] = useState<Answer[]>([]);
-  const [status, setStatus] = useState<'asking' | 'solved' | 'shown'>('asking');
-  const [hint, setHint] = useState(false);
   const [streak, setStreak] = useState(0);
   const [results, setResults] = useState<Result[]>([]);
   const [message, setMessage] = useState<Message | null>(null);
@@ -123,47 +119,26 @@ function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
     return ['כל הכבוד!', 'מעולה!', 'יפה מאוד!', 'נכון!'][idx % 4];
   }
 
-  function answer(a: Answer, from: Element) {
-    if (status !== 'asking' || end) return;
+  function right(wrongBefore: number, from: Element) {
+    if (end) return;
     const to = dots.current?.children[idx] ?? null;
-    if (isCorrect(q, a)) {
-      const s = streak + 1;
-      setStreak(s);
-      setStatus('solved');
-      const rs: Result[] = [...results, tried.length === 0 ? 'first' : 'second'];
-      setResults(rs);
-      setMessage(msg(praise(s), 'good', s >= 3 ? `${praise(s).split('!')[0]}!` : undefined));
-      emit({ type: 'correct', streak: s }, { el: from, to });
-      // A timer keeps this render's values: hand it the new results.
-      later(() => next(rs), reducedMotion() ? 500 : 950);
-      return;
-    }
-    const attempt = tried.length + 1;
-    setTried((t) => [...t, a]);
-    setStreak(0);
-    emit({ type: 'wrong', attempt }, { el: from });
-    if (attempt < MAX_WRONG) {
-      const again = byGender(profile, 'נסה שוב!', 'נסי שוב!', 'נסו שוב!');
-      setMessage(msg(again, 'bad'));
-      // The hint a moment later, so the two sounds do not collide.
-      later(() => {
-        setHint(true);
-        emit({ type: 'hint' });
-      }, 450);
-    } else {
-      setStatus('shown');
-      setResults([...results, 'shown']);
-      const shown = typeof q.answer === 'number' ? `התשובה היא ${q.answer}.` : `הסימן הנכון הוא ${q.answer}`;
-      setMessage(msg(shown, 'info', q.explanation.at(-1)?.text));
-    }
+    const s = streak + 1;
+    setStreak(s);
+    const rs: Result[] = [...results, wrongBefore === 0 ? 'first' : 'second'];
+    setResults(rs);
+    setMessage(msg(praise(s), 'good', s >= 3 ? `${praise(s).split('!')[0]}!` : undefined));
+    emit({ type: 'correct', streak: s }, { el: from, to });
+    // A timer keeps this render's values: hand it the new results.
+    later(() => next(rs), reducedMotion() ? 500 : 950);
+  }
+
+  function shown() {
+    setResults([...results, 'shown']);
   }
 
   function next(rs: Result[]) {
     if (idx + 1 < questions.length) {
       setIdx(idx + 1);
-      setTried([]);
-      setStatus('asking');
-      setHint(false);
       setMessage(null);
       return;
     }
@@ -215,26 +190,23 @@ function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
         ))}
       </ol>
 
-      <Pop
+      <Ask
         key={q.id}
         question={q}
         mode={mode}
-        done={status === 'solved'}
-        tried={tried}
-        reveal={status === 'shown'}
-        hint={hint || status === 'shown' ? q.hints[0] : null}
-        onAnswer={answer}
+        profile={profile}
+        onMessage={setMessage}
+        onRight={right}
+        onWrong={() => setStreak(0)}
+        onShown={shown}
+        onNext={() => next(results)}
+        nextLabel={idx + 1 < questions.length ? 'הבא ←' : 'לסיום ←'}
       />
 
       <div class="game-hero-row">
         <Hero def={world.hero!} gender={profile.gender} state={mood.state} key={mood.n} class="game-hero" />
         <div class="speech-bubble">
           <Feedback message={message} idle={mode === 'numpad' ? byGender(profile, 'הקלד ולחץ בדוק', 'הקלידי ולחצי בדוק', 'הקלידו ולחצו בדוק') : byGender(profile, 'בחר תשובה', 'בחרי תשובה', 'בחרו תשובה')} />
-          {status === 'shown' && (
-            <button type="button" class="btn btn-primary" data-testid="next" onClick={() => next(results)}>
-              {idx + 1 < questions.length ? 'הבא ←' : 'לסיום ←'}
-            </button>
-          )}
         </div>
       </div>
     </main>

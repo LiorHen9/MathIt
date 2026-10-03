@@ -11,6 +11,7 @@ export const sub: Generator = (level, rng) => {
   const diff = a - b;
   const went = b === 1 ? 'אחד הלך' : `${b} הלכו`;
   const andWent = b === 1 ? 'ואחד הלך' : `ו-${b} הלכו`;
+  const visual = { kind: 'dots' as const, groups: [a], crossed: b, numbered: true };
   const { distractors, errorTags } = numberDistractors(
     diff,
     [
@@ -35,12 +36,33 @@ export const sub: Generator = (level, rng) => {
     hints: [
       {
         text: `היו ${a} ${andWent}, כמה נשארו?`,
-        visual: { kind: 'dots', groups: [a], crossed: b, numbered: true }
+        visual,
+        action: { kind: 'takeAway', a, b }
+      },
+      {
+        // Added instead: taking away makes fewer.
+        for: ['added'],
+        text: `בחיסור מורידים: ${went}, ונשארים פחות.`,
+        visual,
+        action: { kind: 'takeAway', a, b }
+      },
+      {
+        for: ['count-off-by-one'],
+        text: `מתחילים ב-${a} וקופצים ${b === 1 ? 'קפיצה אחת' : `${b} קפיצות`} אחורה.`,
+        visual,
+        action: { kind: 'jump', from: a, by: -b }
+      },
+      {
+        // Answered with the part that went: count the ones that stay.
+        for: ['one-part'],
+        text: `${went}. סופרים את אלה שנשארו.`,
+        visual,
+        action: { kind: 'takeAway', a, b }
       }
     ],
     explanation: [
-      { text: `היו ${a}.` },
-      { text: `${went}.` },
+      { text: `היו ${a} ${andWent}.`, action: { kind: 'takeAway', a, b } },
+      { text: `על הציר: מ-${a} קופצים ${b} אחורה.`, action: { kind: 'jump', from: a, by: -b } },
       { text: `נשארו ${diff}.`, math: `${a} − ${b} = ${diff}` }
     ],
     numeric: true,

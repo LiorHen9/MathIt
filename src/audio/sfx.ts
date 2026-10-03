@@ -19,6 +19,10 @@ export type SfxName =
   | 'hint'
   | 'star'
   | 'fanfare'
+  | 'count'
+  | 'jump'
+  | 'ten'
+  | 'whoosh'
   | 'world-fairies'
   | 'world-football'
   | 'world-basketball'
@@ -28,7 +32,10 @@ export type SfxName =
 
 /** Options some sounds take. */
 export interface SfxOpts {
-  /** correct: the streak (the pitch climbs); star: which star (1–3); click: the key (0–9). */
+  /**
+   * correct: the streak (the pitch climbs); star: which star (1–3); click: the key (0–9);
+   * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–10).
+   */
   step?: number;
   /** A world id: the shared sounds take its colour. */
   flavor?: string;
@@ -100,6 +107,26 @@ export function comboPitch(streak: number): number {
 export function starPitch(n: number): number {
   const steps = [0, 4, 7, 12];
   return 1046.5 * 2 ** (steps[Math.min(steps.length - 1, Math.max(0, n - 1))] / 12);
+}
+
+/**
+ * Teaching sounds (docs/ARCHITECTURE.md §6.3): the ear helps count. Counting climbs a major
+ * scale, one note per item; a hop on the number line plays the note of the number it lands on,
+ * so going forward climbs and going back falls.
+ */
+const SCALE = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17];
+const G4 = 392;
+
+/** The note for counting the n-th item (1 = the first). Capped after the scale's top. */
+export function countPitch(n: number): number {
+  const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n) - 1));
+  return G4 * 2 ** (SCALE[i] / 12);
+}
+
+/** The note of a number on the number line (0–10). */
+export function jumpPitch(n: number): number {
+  const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n)));
+  return G4 * 2 ** (SCALE[i] / 12);
 }
 
 /** The world's touch on a right answer. */
@@ -224,6 +251,43 @@ const SOUNDS: Record<SfxName, Sound> = {
       ];
     },
     echo: { time: 0.16, feedback: 0.3, wet: 0.2 }
+  },
+  // Counting one item: a soft marimba-like pluck, one scale step higher for each item.
+  count: {
+    tones: (o) => {
+      const f = countPitch(o.step ?? 1);
+      return [
+        { wave: 'sine', freq: f, at: 0, len: 0.28, vol: 0.32, attack: 0.004 },
+        { wave: 'triangle', freq: f * 4, at: 0, len: 0.05, vol: 0.06, attack: 0.002 },
+        { wave: 'sine', freq: f * 2, at: 0, len: 0.12, vol: 0.08, attack: 0.004 }
+      ];
+    }
+  },
+  // A hop on the number line: a little "boing" up, then the note of the number landed on.
+  jump: {
+    tones: (o) => {
+      const f = jumpPitch(o.step ?? 1);
+      return [
+        { wave: 'sine', freq: f * 0.5, to: f, at: 0, len: 0.16, vol: 0.12, attack: 0.01 },
+        { wave: 'triangle', freq: f, at: 0.18, len: 0.24, vol: 0.28, attack: 0.004 },
+        { wave: 'sine', freq: f * 2, at: 0.18, len: 0.12, vol: 0.07, attack: 0.004 }
+      ];
+    }
+  },
+  // A full ten: a warm major chord rolled upwards, with a bell on top.
+  ten: {
+    tones: () => [
+      ...[523.25, 659.25, 783.99, 1046.5].map((f, i): Tone => ({ wave: 'triangle', freq: f, at: i * 0.05, len: 0.7, vol: 0.14, attack: 0.01, detune: 6 })),
+      ...bell(2093, 0.2, 0.12, 0.7)
+    ],
+    echo: { time: 0.13, feedback: 0.25, wet: 0.18 }
+  },
+  // Something flying away: a soft rush of air, rising.
+  whoosh: {
+    tones: () => [
+      { wave: 'noise', at: 0, len: 0.32, vol: 0.22, attack: 0.1, filter: { type: 'bandpass', freq: 600, to: 3600, q: 1.6 } },
+      { wave: 'sine', freq: 300, to: 900, at: 0.02, len: 0.25, vol: 0.05, attack: 0.05 }
+    ]
   },
   // Fairies: two magic bells and a sparkle running up.
   'world-fairies': {
@@ -405,7 +469,7 @@ function voice(ac: AudioContext, t: Tone, t0: number, out: AudioNode): void {
 export function playSfx(name: SfxName, opts: SfxOpts = {}): void {
   if (!enabled || !touched || volume === 0) return;
   sfxLog.push(name);
-  if (sfxLog.length > 80) sfxLog.shift();
+  if (sfxLog.length > 500) sfxLog.shift();
   const ac = audio();
   if (!ac) return;
   if (ac.state === 'suspended') void ac.resume().catch(() => {});

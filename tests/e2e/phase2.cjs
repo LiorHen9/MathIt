@@ -225,12 +225,13 @@ async function stored(p) {
     await p.waitForSelector('[data-testid=hint]');
     e = await lastFx(p, 'hint');
     must(e && e.sound === 'hint' && e.hero === 'think', 'hint event: ' + JSON.stringify(e));
-    must((await p.$$('.prompt .dots.is-hint .dot-n')).length > 0, 'the hint should number the stars');
+    // Phase 3: the hint is an animation (manipulatives/) instead of numbered stars.
+    must(await p.$('.prompt [data-testid=hint-anim] .manip'), 'the hint should be animated');
     let s = (await sounds(p)).slice(before);
     must(s.includes('wrong') && s.includes('hint') && !s.includes('correct'), 'sounds after a mistake: ' + s);
     await p.waitForTimeout(300);
     await p.screenshot({ path: `${SHOTS}/32-game-hint.png` });
-    step('wrong: shake + soft sound + oops + "נסי שוב", then a hint (numbered stars, hero thinks)');
+    step('wrong: shake + soft sound + oops + "נסי שוב", then an animated hint (hero thinks)');
 
     // ...then right.
     await answer(p, right);
@@ -272,7 +273,7 @@ async function stored(p) {
     await p.screenshot({ path: `${SHOTS}/35-game-combo.png` });
     step('combo: 3 in a row (bubbles + number pad with key clicks), the pitch climbs, counter ×3, hero cheers');
 
-    // Q4: two mistakes → the answer is shown, then "next".
+    // Q4: two mistakes → the step-by-step explanation, the answer, then "next".
     right = await solve(p);
     for (const attempt of [1, 2]) {
       await answer(p, await wrongValue(p, right));

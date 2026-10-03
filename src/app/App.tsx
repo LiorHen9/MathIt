@@ -1,6 +1,7 @@
 // The whole app is a small state machine: one screen at a time, no router (as in ChessIt).
 // loading → splash → "who is playing?" (or straight to a new profile the first time)
-//   → [PIN] → the profile's home ⇄ settings / editing, home ⇄ a practice round (game).
+//   → [PIN] → the profile's home ⇄ settings / editing, home ⇄ a practice round (game),
+//   home ⇄ a lesson → (practice).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
@@ -23,6 +24,8 @@ const Home = lazy(() => import('../screens/Home').then((m) => m.Home));
 const SettingsScreen = lazy(() => import('../screens/SettingsScreen').then((m) => m.SettingsScreen));
 // The game brings the generators and the feedback engine with it.
 const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost));
+// A lesson brings the teaching animations (shared with the game).
+const Lesson = lazy(() => import('../screens/Lesson').then((m) => m.Lesson));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
@@ -35,7 +38,8 @@ type Screen =
   | { name: 'pin'; profile: Profile; then: 'home' | 'edit' }
   | { name: 'home' }
   | { name: 'settings' }
-  | { name: 'game'; skillId: SkillId };
+  | { name: 'game'; skillId: SkillId }
+  | { name: 'lesson'; skillId: SkillId };
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -169,11 +173,23 @@ export function App() {
           }}
           onSettings={() => setScreen({ name: 'settings' })}
           onPlay={(skillId) => setScreen({ name: 'game', skillId })}
+          onLesson={(skillId) => setScreen({ name: 'lesson', skillId })}
         />
       );
     case 'game':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return <GameHost key={screen.skillId} profile={active} skillId={screen.skillId} onHome={() => setScreen({ name: 'home' })} />;
+    case 'lesson':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return (
+        <Lesson
+          key={screen.skillId}
+          profile={active}
+          skillId={screen.skillId}
+          onHome={() => setScreen({ name: 'home' })}
+          onPractice={() => setScreen({ name: 'game', skillId: screen.skillId })}
+        />
+      );
     case 'settings':
       return (
         <SettingsScreen

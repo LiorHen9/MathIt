@@ -137,6 +137,8 @@ type Generator = (level: DifficultyLevel, rng: Rng) => Question;
 - סוגי טעויות (`ErrorTag`): `count-off-by-one`, `added`, `subtracted`, `one-part`, `reversed-sign`, `not-equal`, `near`. בהשוואה יש רק שלושה סימנים, ולכן **שני** מסיחים (הסימן ההפוך ו"שווה"/השני). בחיסור חד-ספרתי "הפוך את הסדר" (b − a) יוצא שלילי, ולכן הטעות המקבילה היא לענות במספר שהורידו (`one-part`).
 - כל המספרים בשאלה ובתשובות בטווח הרמה (`min..max`) ואין שליליים. `tests/core/check.ts` בודק 1,000 seeds לכל מיומנות ורמה.
 
+**מצב היום (שלב 3):** `Action` הוא נתונים בלבד – `count{n}`, `tenFrame{n}`, `combine{a,b}`, `takeAway{a,b}`, `jump{from,by}`, `compare{a,b}` – עם `actionResult` (הערך שבו האנימציה נגמרת) ו-`actionValid` (0–10). `Step { text, math?, visual?, action? }`: צעד בלי action משאיר את האנימציה הקודמת על המסך; הפעולה האחרונה בהסבר מגיעה לתשובה (נבדק). `Hint { text, visual?, action?, for?: ErrorTag[] }` ו-`pickHint(q, wrong)`: רמז שנבנה לסוג הטעות, אחרת ברירת המחדל (הראשון). `core/lessons/index.ts`: `Lesson { skillId, title, parts }`, כל חלק `watch { title, steps }` או `try { title, level, key }`; `findQuestion(skill, level, key)` מוצא את ה-seed הראשון עם התרגיל (כך שגם בשיעור יש מסיחים, רמזים והסבר מהמחולל).
+
 ### 4.3 תבניות מיני-משחקים (Game Templates)
 כל תבנית מקבלת רצף שאלות ומציגה אותן אחרת. אותה תבנית עובדת בכל העולמות.
 
@@ -258,6 +260,7 @@ interface World {
 ### 6.3 צלילים
 - **אפקטים**: סינתזה ב-Web Audio בסגנון ZzFX — מתנדים, רעש, פילטרים ומעטפות. נשמע הרבה יותר עשיר מהצפצופים של ChessIt, ושוקל כמעט כלום. **לכל עולם חבילת צלילים משלו** (פיות: פעמונים ונצנוץ · כדורגל: שריקה, בעיטה, קהל · כדורסל: כדרור, רשת, באזר רך · נינג׳ה: שוש, גונג, תיפוף).
 - **צליל שמלמד**: מנייה עם סולם עולה, קפיצה על ציר עם תו לכל צעד, עשר שלם = אקורד. האוזן עוזרת לספור.
+- **מצב היום (שלב 3):** `count{step}` (סולם מז׳ורי מ-G4, `countPitch`), `jump{step}` (התו של המספר שנוחתים עליו, `jumpPitch`), `ten` (אקורד מתגלגל + פעמון), `whoosh` (רעש עם פילטר עולה).
 - **מוזיקה**: לופ קצר וקליל לכל עולם, ברקע בעוצמה נמוכה, יורד אוטומטית בזמן הקראה. נטען בעצלות עם העולם.
 - **הקראה**: הגיבור "מדבר" את המשימות והמשוב (מבוסס על ChessIt).
 - **הגדרות נפרדות לפרופיל**: אפקטים · מוזיקה · הקראה · עוצמה.
@@ -281,6 +284,8 @@ interface WorldFx {
 
 **מצב היום (שלב 2):** האירועים `tap{key?}`, `correct{streak}`, `wrong{attempt}`, `hint`, `starEarned{n}`, `roundDone{stars, skipped?}` (`bossHit`, `unlock`, `coin`... יתווספו עם התחנות שלהם). `planFeedback(event, worldId)` היא פונקציה טהורה שמחזירה `FxPlan` (צליל + אפשרויות, מצב גיבור, תנועה, חלקיקים, אסימון שעף), ו-`emit(event, { el, to })` מבצע אותה: `el` הוא האלמנט שבו קרה הדבר (בועה, מקש, כוכב), `to` – לאן הפרס עף (נקודת ההתקדמות). `hushFeedback()` עוצר חגיגה (צלילים, חלקיקים, גיבור). יומן: `window.__mathitFx` עם `type, detail, world, sound, pitch, hero, motion, particles`. `tests/worlds/check.ts` בודק שכל אירוע ממופה בכל עולם לצליל ולמצב גיבור קיימים.
 
+**מצב היום (שלב 3):** אירועי הוראה – `count{n}`, `jump{n}`, `ten`, `whoosh` (צליל בלבד; לא משנים את מצב הגיבור, כי הוא באמצע הסבר) – ואירועי הסבר – `explain{step}` (גיבור חושב) ו-`explained` (שמח), בלי צליל כי הגיבור מדבר. `TEACHING_TYPES` ו-`EXPLAIN_TYPES` מסמנים אותם לבדיקה. ביומן `pitch` גם ל-count/jump. היומנים (`__mathitFx`, `__mathitSounds`) שומרים עד 500 רשומות.
+
 ### 6.5 כלי האנימציה
 - `fx/motion.ts` — פריסטים מעל Web Animations API: `pop`, `shake`, `hop`, `arc(el, from, to)` (פרבולה, לקפיצות וזריקות), `flyTo(from, target, token)` (אסימון שעף בקשת ונעלם), `countUp(el, from, to)`. בתנועה מופחתת כל אחד הופך לדהייה של עד 200ms או קורה מיד.
 - `fx/particles.ts` — Canvas אחד מעל המסך (`.fx-canvas`, בלי נגיעות, `aria-hidden`): `burst(point, 'sparkle' | 'confetti', n)`, `confetti()`, `clearParticles()`. תקרה `MAX_PARTICLES` = 180, רץ רק כשיש חלקיקים, ולא עושה כלום בתנועה מופחתת. `data-count` על ה-Canvas לבדיקות.
@@ -288,6 +293,8 @@ interface WorldFx {
 - `fx/Hero.tsx` — הגיבור והמצבים שלו.
 - `fx/director.ts` — Feedback Director.
 - `manipulatives/` — רכיבי האנימציה המלמדת (מסגרת עשר, קוביות, ציר, מערך, פיצה, שעון).
+
+**מצב היום (שלב 3):** `manipulatives/timeline.ts` – `Timeline` (scale לפי `speed` ותנועה מופחתת ×`SLOW`=1.6, `anim` שמחכה, שומר את המצב הסופי ב-style ומבטל, `wait`, `stop`) ו-`useRun(root, script, { speed, play, stopped, onDone })` (layout effects; `.is-final` מציג את הסוף; `data-state` = playing/done/stopped; `data-ms` = הזמן המתוכנן). שישה רכיבים: `Counters`, `TenFrame`, `Combine` (שתי קבוצות מתקרבות, הגדולה נאמרת והקטנה נספרת ממנה), `TakeAway` (עפים בקשת, "רוח" במקומם, השאר נספר), `NumberLine` (0–10 LTR, סמן קופץ, קשת מקווקוות לכל קפיצה), `Compare` (מפוזרים → שורות, זוגות מחוברים, העודף בולט). `Manipulative({ action })` בוחר לפי `Action`. הצלילים דרך ה-director. `Explainer.tsx` – הסבר צעד-צעד מסונכרן להקראה (`sayAndWait`, `readingMs` ב-`audio/speech.ts`), `skip` מציג את הצעד האחרון במצב סופי. ברמז: `speed` 0.85, בלי מספר התוצאה הגדול (הספירה היא הרמז).
 
 ### 6.6 כללים
 - **רק `transform` ו-`opacity`** באנימציות, 60fps גם בטלפון ישן.
@@ -325,6 +332,8 @@ interface SkillState {
 1. טעות ראשונה → "נסה שוב" + רמז קל (למשל: הצגת ציר מספרים).
 2. טעות שנייה → רמז מפורט / ויזואלי.
 3. טעות שלישית → הסבר צעד-אחר-צעד והתשובה, והשאלה חוזרת בהמשך הסבב.
+
+**מצב היום (שלב 3):** `games/Ask.tsx` מנהל שאלה אחת בסבב ובשיעור. טעות ראשונה → "נסה שוב" ואחרי 450ms רמז לפי `pickHint` עם אנימציה בכרטיס השאלה (במקום הכוכבים הממוספרים), ניתן לניגון חוזר; תשובה נכונה עוצרת אותו במצב הסופי. טעות שנייה → הבועות נעלמות, `Explainer` מסביר צעד-צעד עם הקראה, ורק בסופו התשובה במשבצת ו"הבא" ("דלג" זמין כל הזמן). הניקוד לא השתנה.
 
 **מצב היום (שלב 2):** שני ניסיונות לשאלה (`MAX_WRONG` = 2). טעות ראשונה → רעידה, `oops`, "נסה/נסי/נסו שוב" (`byGender`), ואחרי רגע רמז (טקסט + הכוכבים ממוספרים). טעות שנייה → התשובה מוצגת במקומה, הצעד האחרון של ההסבר מוקרא, וכפתור "הבא". ניקוד: בפעם הראשונה 1, בשנייה ½, אחרי הצגה 0; כוכבים לפי החלק מהמקסימום (90% → 3, 65% → 2, 35% → 1). 3 כוכבים מעלים רמה, 0 מורידים. בשלב 3 נוסף ההסבר המונפש, ובשלב 6 ההחזרה של השאלה בהמשך הסבב ומנוע השליטה.
 - סוג הטעות נשמר (למשל "שכח לפרוט"), ומשפיע על בחירת שאלות והסברים.
@@ -395,22 +404,23 @@ MathIt/
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
 │  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog
-│  ├─ screens/        Profiles, WorldPicker, QuestMap, GameHost (סבב + חגיגת כוכבים), Parent, Rewards
+│  ├─ screens/        Profiles, WorldPicker, QuestMap, GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Parent, Rewards
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
 │  │  ├─ skills/      הגדרות גרף המיומנויות (data)
 │  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
 │  │  ├─ mastery/     מנוע שליטה, חזרה מרווחת
+│  │  ├─ lessons/     שיעורים לכל מיומנות (data)
 │  │  ├─ quest/       הגדרות מפה, פרקים, תחנות (data)
 │  │  └─ rng.ts
-│  ├─ games/          תבנית לכל מיני-משחק (Pop, Jump, Build, ...)
+│  ├─ games/          Ask (שאלה אחת: רמז והסבר), תבנית לכל מיני-משחק (Pop, Jump, Build, ...)
 │  ├─ puzzles/
 │  ├─ worlds/
 │  │  ├─ base.ts      המראה לפני שנבחר עולם (= ברירות המחדל ב-styles.css)
 │  │  ├─ fairies/ football/ basketball/ ninja/
 │  │  └─ index.ts     רישום עולמות, applyWorld (טעינה עצלה)
-│  ├─ manipulatives/  אנימציות מלמדות: TenFrame, Blocks, NumberLine, Array, Pizza, Clock
+│  ├─ manipulatives/  אנימציות מלמדות: timeline.ts, Counters, TenFrame, Combine, TakeAway, NumberLine, Compare, Explainer (ובהמשך Blocks, Array, Pizza, Clock)
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
 │  ├─ ui/             רכיבים משותפים: NumPad, Dots (ציור Visual), ובהמשך Button, Stars, Dialog
 │  ├─ audio/          sfx.ts (סינתזה), music.ts (סקוונסר), speech.ts (הקראה)

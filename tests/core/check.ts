@@ -4,9 +4,10 @@
 // skills and recommendations; round scoring. Phase 6 adds the mastery engine.
 import { createRng } from '../../src/core/rng';
 import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/skills/index';
-import { GENERATORS, makeQuestion, makeRound } from '../../src/core/generators/index';
+import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
+import { LESSONS, getLesson } from '../../src/core/lessons/index';
 import { MAX_WRONG, nextLevel, questionPoints, starsFor } from '../../src/core/round';
-import { isCorrect, type Answer, type Question, type Visual } from '../../src/core/types';
+import { ACTION_KINDS, actionResult, actionValid, isCorrect, pickHint, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -66,6 +67,51 @@ const ok = (msg: string) => console.log('✓', msg);
   ok('rng.shuffle and rng.pick');
 }
 
+/** What is wrong with an animated explanation, or '' if nothing. */
+function explanationProblem(steps: Step[], answer: Answer): string {
+  const actions = steps.map((s) => s.action).filter((a): a is Action => !!a);
+  if (!actions.length) return 'explanation without an animation';
+  for (const s of steps) {
+    if (!s.text.trim()) return 'an explanation step without text';
+    if (s.action && !actionValid(s.action)) return `invalid action ${JSON.stringify(s.action)}`;
+  }
+  const end = actionResult(actions.at(-1)!);
+  if (end !== answer) return `the explanation ends on ${end}, the answer is ${answer}`;
+  return '';
+}
+
+// ---------- Actions ----------
+{
+  const cases: [Action, Answer][] = [
+    [{ kind: 'count', n: 4 }, 4],
+    [{ kind: 'tenFrame', n: 10 }, 10],
+    [{ kind: 'combine', a: 3, b: 4 }, 7],
+    [{ kind: 'takeAway', a: 9, b: 3 }, 6],
+    [{ kind: 'jump', from: 5, by: 3 }, 8],
+    [{ kind: 'jump', from: 7, by: -3 }, 4],
+    [{ kind: 'compare', a: 2, b: 5 }, '<'],
+    [{ kind: 'compare', a: 6, b: 1 }, '>'],
+    [{ kind: 'compare', a: 3, b: 3 }, '=']
+  ];
+  for (const [a, want] of cases) {
+    if (actionResult(a) !== want) fail(`actionResult(${JSON.stringify(a)}) = ${actionResult(a)}, expected ${want}`);
+    if (!actionValid(a)) fail(`${JSON.stringify(a)} should be valid`);
+  }
+  if (new Set(cases.map(([a]) => a.kind)).size !== ACTION_KINDS.length) fail('not every action kind is checked');
+  const bad: Action[] = [
+    { kind: 'count', n: 0 },
+    { kind: 'count', n: 11 },
+    { kind: 'combine', a: 6, b: 5 },
+    { kind: 'takeAway', a: 3, b: 4 },
+    { kind: 'jump', from: 8, by: 3 },
+    { kind: 'jump', from: 2, by: -3 },
+    { kind: 'jump', from: 2, by: 0 },
+    { kind: 'tenFrame', n: 2.5 }
+  ];
+  for (const a of bad) if (actionValid(a)) fail(`${JSON.stringify(a)} should be invalid`);
+  ok('actions: results and limits (0–10)');
+}
+
 // ---------- Generators: 1,000 seeds per skill and level ----------
 {
   const SIGNS = ['<', '>', '='];
@@ -118,6 +164,13 @@ const ok = (msg: string) => console.log('✓', msg);
         if (!q.prompt.text || !q.prompt.speech || /[^\s]\.\s+\S.*[.?!]$/.test(q.prompt.speech)) err(`prompt should be one sentence: "${q.prompt.speech}"`);
         if (q.hints.length < 1 || !q.hints[0].text) err('no hint');
         if (q.explanation.length < 1) err('no explanation');
+        // Animated explanation: valid actions, and the last one lands on the answer.
+        const why = explanationProblem(q.explanation, q.answer);
+        if (why) err(why);
+        // Hints: the default has an animation; every wrong choice gets an animated hint.
+        if (q.hints[0].for) err('the first hint should be the default (no `for`)');
+        for (const h of q.hints) if (!h.action || !actionValid(h.action)) err(`hint without a valid action: ${JSON.stringify(h)}`);
+        for (const d of q.distractors) if (!pickHint(q, d).action) err(`no animated hint for ${d}`);
         const again = makeQuestion(skill.id, lv.level, seed);
         if (JSON.stringify(again) !== JSON.stringify(q)) err('same seed gave a different question');
         answers.add(String(q.answer));
@@ -160,7 +213,69 @@ const ok = (msg: string) => console.log('✓', msg);
     }
     if (!found) fail('7 + 2 never generated in 5000 seeds');
   }
-  ok(`generators: ${SKILLS.length} skills × every level × 1000 seeds – right answers, unique smart distractors, in range, reproducible`);
+  // Hints follow the kind of mistake.
+  {
+    const want: [Parameters<typeof makeQuestion>[0], string, Action['kind']][] = [
+      ['sub.within10', 'added', 'takeAway'],
+      ['sub.within10', 'count-off-by-one', 'jump'],
+      ['add.within10', 'count-off-by-one', 'jump'],
+      ['add.within10', 'subtracted', 'combine'],
+      ['count.to10', 'count-off-by-one', 'tenFrame'],
+      ['compare.to10', 'reversed-sign', 'compare']
+    ];
+    for (const [id, tag, kind] of want) {
+      let seen = false;
+      for (let seed = 0; seed < 400 && !seen; seed++) {
+        const q = makeQuestion(id, 3, seed);
+        const wrong = Object.keys(q.errorTags).find((d) => q.errorTags[d] === tag);
+        if (wrong === undefined) continue;
+        seen = true;
+        const h = pickHint(q, typeof q.answer === 'number' ? Number(wrong) : (wrong as Answer));
+        if (h.action?.kind !== kind) fail(`${id}: a "${tag}" mistake should get a ${kind} hint, got ${h.action?.kind}`);
+      }
+      if (!seen) fail(`${id}: no "${tag}" mistake to check`);
+    }
+    const q = makeQuestion('add.within10', 3, 1);
+    if (pickHint(q) !== q.hints[0]) fail('pickHint without a mistake should give the default hint');
+  }
+  ok(`generators: ${SKILLS.length} skills × every level × 1000 seeds – right answers, unique smart distractors, in range, reproducible, animated explanations and hints`);
+}
+
+// ---------- Lessons ----------
+{
+  for (const skill of SKILLS) {
+    const l = getLesson(skill.id);
+    if (!l) {
+      fail(`${skill.id}: no lesson`);
+      continue;
+    }
+    if (l.parts.length < 3 || l.parts.length > 5) fail(`${skill.id}: lesson of ${l.parts.length} screens (3–5)`);
+    if (!l.parts.some((p) => p.kind === 'watch') || !l.parts.some((p) => p.kind === 'try')) fail(`${skill.id}: a lesson needs a "watch" and a "try"`);
+    if (l.parts[0].kind !== 'watch') fail(`${skill.id}: a lesson starts by showing`);
+    for (const [i, p] of l.parts.entries()) {
+      if (!p.title) fail(`${skill.id} screen ${i + 1}: no title`);
+      if (p.kind === 'watch') {
+        if (!p.steps.length || !p.steps.some((s) => s.action)) fail(`${skill.id} screen ${i + 1}: nothing animated`);
+        for (const s of p.steps) {
+          if (s.action && !actionValid(s.action)) fail(`${skill.id} screen ${i + 1}: invalid ${JSON.stringify(s.action)}`);
+          // One sentence per step for the youngest (a list of numbers is fine).
+          if ((s.text.match(/[.!?](\s|$)/g) ?? []).length > 2) fail(`${skill.id} screen ${i + 1}: step too long: "${s.text}"`);
+        }
+        // The animation and the exercise in the same screen agree.
+        const math = p.steps.map((s) => s.math).filter(Boolean).at(-1);
+        const last = p.steps.map((s) => s.action).filter((a): a is Action => !!a).at(-1)!;
+        const res = /=\s*(\d+)$/.exec(math ?? '')?.[1] ?? /^(\d+)$/.exec(math ?? '')?.[1];
+        if (res && last.kind !== 'compare' && Number(res) !== actionResult(last)) fail(`${skill.id} screen ${i + 1}: shows ${math} but the animation ends on ${actionResult(last)}`);
+      } else {
+        const q = findQuestion(skill.id, p.level, p.key);
+        if (!q) fail(`${skill.id} screen ${i + 1}: no question with key ${p.key} at level ${p.level}`);
+        else if (q.key !== p.key || q.level !== p.level) fail(`${skill.id}: findQuestion gave ${q.key}`);
+        else if (JSON.stringify(findQuestion(skill.id, p.level, p.key)) !== JSON.stringify(q)) fail(`${skill.id}: findQuestion is not deterministic`);
+      }
+    }
+  }
+  if (LESSONS.length !== SKILLS.length) fail(`${LESSONS.length} lessons for ${SKILLS.length} skills`);
+  ok(`lessons: ${LESSONS.length} lessons of 3–5 screens, animations valid, every "try" question exists`);
 }
 
 // ---------- Rounds ----------

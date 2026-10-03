@@ -1,6 +1,7 @@
 // The profile's home – until the quest map arrives (phase 4): a greeting, the hero of their
-// world (tap: the world's sound and a hop), and the four skills to practise, the ones for the
-// child's age marked "recommended", each with its best stars so far.
+// world (tap: the world's sound and a hop), and the four skills, the ones for the child's age
+// marked "recommended", each with its best stars so far, "practice" and a "lesson" button
+// (✓ once the lesson was watched).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { playSfx, type SfxName } from '../audio/sfx';
 import { Hero } from '../fx/Hero';
@@ -17,9 +18,10 @@ interface Props {
   onSwitch: () => void;
   onSettings: () => void;
   onPlay: (skill: SkillId) => void;
+  onLesson: (skill: SkillId) => void;
 }
 
-export function Home({ profile, onSwitch, onSettings, onPlay }: Props) {
+export function Home({ profile, onSwitch, onSettings, onPlay, onLesson }: Props) {
   const world = useWorld();
   const stage = useRef<HTMLButtonElement>(null);
   const [states, setStates] = useState<Record<string, SkillState>>({});
@@ -107,29 +109,46 @@ export function Home({ profile, onSwitch, onSettings, onPlay }: Props) {
             const st = states[s.id];
             const rec = recommended.includes(s.id);
             return (
-              <button
-                type="button"
-                key={s.id}
-                class={`skill-btn ${rec ? 'is-rec' : ''}`}
-                data-skill={s.id}
-                onClick={() => {
-                  playSfx('tap');
-                  onPlay(s.id);
-                }}
-              >
-                <span class="skill-icon" aria-hidden="true">
-                  {s.icon}
-                </span>
-                <span class="skill-name">{s.title}</span>
-                {rec && <span class="skill-rec">מומלץ</span>}
-                <span class="skill-stars" aria-label={st ? `${st.bestStars} מתוך 3 כוכבים` : 'עוד לא שיחקנו'}>
-                  {[1, 2, 3].map((n) => (
-                    <span key={n} class={st && n <= st.bestStars ? 'is-on' : ''} aria-hidden="true">
-                      ★
-                    </span>
-                  ))}
-                </span>
-              </button>
+              <div class={`skill-card ${rec ? 'is-rec' : ''}`} key={s.id}>
+                <button
+                  type="button"
+                  class={`skill-btn ${rec ? 'is-rec' : ''}`}
+                  data-skill={s.id}
+                  aria-label={`תרגול: ${s.title}`}
+                  onClick={() => {
+                    playSfx('tap');
+                    onPlay(s.id);
+                  }}
+                >
+                  <span class="skill-icon" aria-hidden="true">
+                    {s.icon}
+                  </span>
+                  <span class="skill-name">{s.title}</span>
+                  {rec && <span class="skill-rec">מומלץ</span>}
+                  <span class="skill-stars" aria-label={st ? `${st.bestStars} מתוך 3 כוכבים` : 'עוד לא שיחקנו'}>
+                    {[1, 2, 3].map((n) => (
+                      <span key={n} class={st && n <= st.bestStars ? 'is-on' : ''} aria-hidden="true">
+                        ★
+                      </span>
+                    ))}
+                  </span>
+                  <span class="skill-play" aria-hidden="true">
+                    ▶ תרגול
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class={`lesson-btn ${st?.lessonSeen ? 'is-seen' : ''}`}
+                  data-lesson={s.id}
+                  aria-label={`שיעור: ${s.title}${st?.lessonSeen ? ' (נצפה)' : ''}`}
+                  onClick={() => {
+                    playSfx('tap');
+                    onLesson(s.id);
+                  }}
+                >
+                  📖 שיעור{st?.lessonSeen && <span class="lesson-seen"> ✓</span>}
+                </button>
+              </div>
             );
           })}
         </div>

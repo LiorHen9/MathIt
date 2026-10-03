@@ -73,15 +73,91 @@ export type ErrorTag =
   | 'not-equal' // "=" for different numbers, or a sign for equal ones
   | 'near'; // a nearby number, no known pattern
 
+/**
+ * An animated teaching action (docs/ARCHITECTURE.md §6.1): plain data that says *what* to show;
+ * manipulatives/ turns it into motion and sound. Every action ends on a value (`actionResult`).
+ * - count: `n` items appear one by one, each with its number (from 1).
+ * - tenFrame: a 2×5 frame fills with `n` counters (a full ten is a chord).
+ * - combine: a group of `a` and a group of `b` come together and are counted on from the bigger.
+ * - takeAway: `a` items, `b` of them fly away, what is left is counted.
+ * - jump: on a 0–10 number line, from `from`, `by` hops of one (negative = backwards).
+ * - compare: a group of `a` and a group of `b` line up in pairs; the extra ones stand out.
+ */
+export type Action =
+  | { kind: 'count'; n: number }
+  | { kind: 'tenFrame'; n: number }
+  | { kind: 'combine'; a: number; b: number }
+  | { kind: 'takeAway'; a: number; b: number }
+  | { kind: 'jump'; from: number; by: number }
+  | { kind: 'compare'; a: number; b: number };
+
+export type ActionKind = Action['kind'];
+export const ACTION_KINDS: readonly ActionKind[] = ['count', 'tenFrame', 'combine', 'takeAway', 'jump', 'compare'];
+
+/** The value an action ends on: the count, the sum, what is left, where the hops land, the sign. */
+export function actionResult(a: Action): Answer {
+  switch (a.kind) {
+    case 'count':
+    case 'tenFrame':
+      return a.n;
+    case 'combine':
+      return a.a + a.b;
+    case 'takeAway':
+      return a.a - a.b;
+    case 'jump':
+      return a.from + a.by;
+    case 'compare':
+      return a.a > a.b ? '>' : a.a < a.b ? '<' : '=';
+  }
+}
+
+/** The biggest number the animations can draw (one ten frame, a 0–10 number line). */
+export const ACTION_MAX = 10;
+
+/** Is an action drawable: whole numbers, nothing below 0 or above ten, at least something to show. */
+export function actionValid(a: Action): boolean {
+  const n = (x: number, lo = 0) => Number.isInteger(x) && x >= lo && x <= ACTION_MAX;
+  switch (a.kind) {
+    case 'count':
+    case 'tenFrame':
+      return n(a.n, 1);
+    case 'combine':
+      return n(a.a, 1) && n(a.b, 1) && a.a + a.b <= ACTION_MAX;
+    case 'takeAway':
+      return n(a.a, 1) && n(a.b, 1) && a.b <= a.a;
+    case 'jump':
+      return n(a.from) && Number.isInteger(a.by) && a.by !== 0 && n(a.from + a.by);
+    case 'compare':
+      return n(a.a) && n(a.b) && a.a + a.b > 0;
+  }
+}
+
 export interface Hint {
   /** One sentence (neutral Hebrew). */
   text: string;
+  /** A static picture (the fallback when nothing animates). */
   visual?: Visual;
+  /** The animation that shows the idea (manipulatives/). */
+  action?: Action;
+  /** Show this hint after these kinds of mistakes (`pickHint`); no `for` = the default hint. */
+  for?: ErrorTag[];
 }
 
+/**
+ * One step of an explanation: a sentence the hero says, optionally an exercise, and optionally
+ * an animation that runs while it is said. A step without an action keeps the last one on screen.
+ */
 export interface Step {
   text: string;
   math?: string;
+  visual?: Visual;
+  action?: Action;
+}
+
+/** The hint for a mistake: one made for that kind of mistake, else the default (the first). */
+export function pickHint(q: Pick<Question, 'hints' | 'errorTags'>, wrong?: Answer): Hint {
+  const tag = wrong === undefined ? undefined : q.errorTags[String(wrong)];
+  return (tag && q.hints.find((h) => h.for?.includes(tag))) || q.hints.find((h) => !h.for) || q.hints[0];
 }
 
 export interface Question {
@@ -98,9 +174,9 @@ export interface Question {
   choices: Answer[];
   /** String(wrong answer) → the kind of mistake. */
   errorTags: Record<string, ErrorTag>;
-  /** Graded hints: the first after one mistake, more in phase 3. */
+  /** Hints: the default one first, then ones for particular mistakes (`pickHint`). */
   hints: Hint[];
-  /** Step by step, after the second mistake (animated in phase 3). */
+  /** Step by step, animated, after the second mistake; the last action ends on the answer. */
   explanation: Step[];
   /** The answer can be typed on the number pad (a number, not a sign). */
   numeric: boolean;

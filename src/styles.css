@@ -1257,6 +1257,49 @@ p {
   color: var(--accent);
 }
 
+/* Each skill: practice (the big button) and its lesson underneath. */
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.skill-card .skill-btn {
+  flex: 1;
+}
+
+.skill-play {
+  margin-top: 2px;
+  padding: 0 var(--s2);
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.lesson-btn {
+  min-height: var(--touch);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.lesson-btn:active {
+  transform: scale(0.96);
+}
+
+.lesson-seen {
+  color: var(--good);
+  font-weight: 800;
+}
+
 /* ---------- A practice round (screens/GameHost.tsx, games/Pop.tsx) ---------- */
 
 .game {
@@ -2017,6 +2060,438 @@ p {
   }
 }
 
+/* ---------- Teaching animations (src/manipulatives/) ----------
+   Driven by the Web Animations API (transform and opacity only). Things start hidden here
+   (.m-hide) and the script reveals them; .is-final shows the end state at once (the question was
+   answered or the explanation skipped). No CSS animations here, so reduced motion (data-motion)
+   does not switch them off – the scripts slow down instead (manipulatives/timeline.ts). */
+.manip {
+  --d: clamp(18px, 6.2vw, 30px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s2) 0 var(--s1);
+  /* Things fly off the edge, not off the page (no sideways scroll). */
+  overflow: hidden;
+}
+
+.m-hide {
+  opacity: 0;
+}
+
+.manip.is-final .m-hide {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.manip.is-final .m-move,
+.manip.is-final .m-group {
+  transform: none !important;
+}
+
+.manip.is-final .m-go {
+  opacity: 0 !important;
+}
+
+.m-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), var(--d));
+  gap: 6px 3px;
+  justify-content: center;
+}
+
+.m-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: var(--d);
+}
+
+.m-star {
+  width: var(--d);
+  height: var(--d);
+  overflow: visible;
+}
+
+.m-item.g-1 path {
+  fill: var(--num-2);
+}
+
+.m-item.g-2 path {
+  fill: var(--num-1);
+}
+
+.m-n {
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink);
+  opacity: 0;
+}
+
+.manip.is-final .m-n,
+.manip.is-done .m-n {
+  opacity: 1 !important;
+}
+
+.m-total {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--brand);
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.manip.is-final .m-total {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Ten frame: 2 × 5 cells. */
+.m-frame {
+  display: grid;
+  grid-template-columns: repeat(5, calc(var(--d) + 10px));
+  grid-template-rows: repeat(2, calc(var(--d) + 10px));
+  gap: 3px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+
+.m-cell {
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.m-counter {
+  display: grid;
+  place-items: center;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--num-2);
+  color: var(--brand-ink);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.m-cell:nth-child(n + 6) .m-counter {
+  background: var(--num-1);
+}
+
+/* Combine: two groups with a sign, sliding together onto a tray. */
+.m-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--s3);
+  padding: 1.7em var(--s2) var(--s2);
+}
+
+.m-tray {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+}
+
+.m-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.m-gbadge {
+  position: absolute;
+  bottom: 100%;
+  font-weight: 800;
+  font-size: var(--fs-md);
+  color: var(--ink);
+}
+
+.m-group .m-grid {
+  grid-template-columns: repeat(var(--cols, 5), var(--d));
+}
+
+.m-sign {
+  align-self: flex-start;
+  line-height: var(--d);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.manip.is-final .m-sign {
+  opacity: 0 !important;
+}
+
+/* Take away: a faint ghost stays where an item flew from. */
+.m-slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.m-ghost {
+  position: absolute;
+  top: 0;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  border: 2px dashed var(--ink-soft);
+}
+
+.manip.is-final .m-ghost {
+  opacity: 0.6 !important;
+}
+
+/* Number line, 0–10, left to right. */
+.m-line-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  padding: 64px 14px 0;
+}
+
+.m-arcs {
+  position: absolute;
+  top: 21px;
+  left: 14px;
+  right: 14px;
+  width: calc(100% - 28px);
+  height: 24px;
+  overflow: visible;
+}
+
+.m-arc {
+  fill: none;
+  stroke: var(--num-4);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 3;
+}
+
+.m-line {
+  position: relative;
+  display: block;
+  height: 40px;
+  border-top: 3px solid var(--ink-soft);
+}
+
+.m-tick {
+  position: absolute;
+  top: -9px;
+  left: calc(var(--x) * 100%);
+  width: 3px;
+  height: 15px;
+  margin-left: -1.5px;
+  background: var(--ink-soft);
+  border-radius: 2px;
+}
+
+.m-tick-n {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 24px;
+  margin-left: -12px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.m-tick.is-hit .m-tick-n {
+  color: var(--num-4);
+}
+
+.m-tick.is-lit .m-tick-n,
+.manip.is-final .m-tick.is-to .m-tick-n {
+  color: var(--brand);
+  font-size: 1.15rem;
+}
+
+.m-marker {
+  position: absolute;
+  top: -32px;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+}
+
+.manip.is-final .m-marker {
+  left: calc(var(--to) * 100%);
+}
+
+.m-marker svg {
+  width: 100%;
+  height: 100%;
+}
+
+.m-marker circle {
+  fill: var(--brand);
+}
+
+.m-marker path {
+  fill: var(--brand-ink);
+}
+
+/* Compare: two rows facing each other, pairs linked. */
+.m-crow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.m-cnum {
+  width: 1.6em;
+  text-align: center;
+  font-weight: 800;
+  font-size: var(--fs-md);
+  color: var(--ink);
+}
+
+.m-scatter .m-item {
+  transform: var(--from);
+}
+
+.m-links .m-grid {
+  height: 14px;
+}
+
+.m-link {
+  justify-self: center;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--good);
+}
+
+.m-item.is-extra.is-hit path,
+.manip.is-final .m-item.is-extra path {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  paint-order: stroke;
+}
+
+/* ---------- The hero explains (manipulatives/Explainer.tsx) ---------- */
+.explainer {
+  align-items: center;
+  text-align: center;
+  padding: var(--s3) var(--s4);
+  gap: var(--s2);
+}
+
+.explain-title {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.explain-stage {
+  width: 100%;
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+}
+
+.explain-text {
+  min-height: 2.6em;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.explain-line {
+  display: inline-block;
+  animation: rise-in 300ms var(--ease-out);
+}
+
+.explain-math {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--good);
+}
+
+.explain-dots {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.explain-dots li {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.explain-dots li.is-now {
+  background: var(--brand);
+}
+
+.explain-dots li.is-past {
+  background: var(--good);
+}
+
+/* A lesson (screens/Lesson.tsx). */
+.lesson-count {
+  min-width: var(--touch);
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.round-dot.is-try {
+  border-radius: 4px;
+}
+
+.lesson-turn {
+  text-align: center;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.lesson-turn-sub {
+  color: var(--ink-soft);
+  font-size: var(--fs-md);
+}
+
+/* A hint's animation inside the question card, with its replay button. The result is not
+   shown big: the counting itself is the hint. Neither in an explanation step that writes it. */
+.hint-anim {
+  position: relative;
+  width: 100%;
+}
+
+.hint-anim .m-total,
+.explainer.has-math .m-total {
+  display: none;
+}
+
+.hint-anim .replay-btn {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+}
+
+.explain-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
 /* ---------- Reduced motion ----------
    Set by src/fx/motion.ts from the phone's setting or the profile's choice. Feedback and
    decoration become short fades or stop. Teaching animations (manipulatives/, from phase 3) are
@@ -2026,6 +2501,7 @@ p {
 :root[data-motion='reduced'] .splash-sub,
 :root[data-motion='reduced'] .splash-go,
 :root[data-motion='reduced'] .enter,
+:root[data-motion='reduced'] .explain-line,
 :root[data-motion='reduced'] .feedback-msg {
   animation: fade-in 200ms linear forwards;
 }
@@ -2060,6 +2536,7 @@ p {
 
 :root[data-motion='reduced'] .btn,
 :root[data-motion='reduced'] .skill-btn,
+:root[data-motion='reduced'] .lesson-btn,
 :root[data-motion='reduced'] .numpad-key,
 :root[data-motion='reduced'] .bubble {
   transition: none;

@@ -121,5 +121,66 @@ export function autoSpeak(text: string): void {
 }
 
 export function stopSpeaking(): void {
+  pendingEnd?.();
   synth()?.cancel();
+}
+
+/**
+ * About how long a sentence takes to say (or, without a voice, to look at): a beat plus a bit
+ * per letter, at the slow pace a 5-year-old follows. Pure, for tests.
+ */
+export function readingMs(text: string): number {
+  const clean = cleanForSpeech(text);
+  if (!clean) return 0;
+  return Math.round(Math.min(6500, Math.max(1400, 700 + clean.length * 62)));
+}
+
+let pendingEnd: (() => void) | null = null;
+
+/**
+ * Say a sentence and wait until it has been said – the hero explaining, step by step, in time
+ * with the animation (manipulatives/Explainer.tsx). With narration on and a Hebrew voice it waits
+ * for the voice (with a safety timeout); otherwise it waits the time `readingMs` gives, so the
+ * pace stays the same with or without a voice. `signal` stops the wait (and the voice).
+ */
+export function sayAndWait(text: string, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const ms = readingMs(text);
+    let done = false;
+    let timer = 0;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (pendingEnd === finish) pendingEnd = null;
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    };
+    const onAbort = () => {
+      if (pendingEnd === finish) synth()?.cancel();
+      finish();
+    };
+    signal?.addEventListener('abort', onAbort);
+    const s = synth();
+    const clean = cleanForSpeech(text);
+    if (narration && s && voice && clean) {
+      pendingEnd?.();
+      s.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'he-IL';
+      try {
+        u.voice = voice;
+      } catch {
+        /* lang alone still picks a Hebrew voice */
+      }
+      u.rate = 0.92;
+      u.onend = finish;
+      u.onerror = finish;
+      pendingEnd = finish;
+      s.speak(u);
+      // Voices sometimes never fire "end" (a known Chrome/Android bug): don't hang on them.
+      timer = window.setTimeout(finish, ms * 2.5 + 1500);
+    } else timer = window.setTimeout(finish, ms);
+  });
 }

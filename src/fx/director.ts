@@ -9,7 +9,7 @@
 //
 // Every event is logged to window.__mathitFx (what happened and what the director chose), the
 // way window.__mathitSounds logs sounds.
-import { playSfx, comboPitch, starPitch, hushSfx, type SfxName, type SfxOpts } from '../audio/sfx';
+import { playSfx, comboPitch, countPitch, jumpPitch, starPitch, hushSfx, type SfxName, type SfxOpts } from '../audio/sfx';
 import { setHeroMood, type HeroState } from './Hero';
 import { centerOf, pop, shake, flyTo } from './motion';
 import { burst, clearParticles, confetti, type ParticleKind } from './particles';
@@ -26,10 +26,28 @@ export type FeedbackEvent =
   /** The n-th star of the round appears (1–3). */
   | { type: 'starEarned'; n: number }
   /** The round is over. `skipped` = the child tapped through the celebration. */
-  | { type: 'roundDone'; stars: number; skipped?: boolean };
+  | { type: 'roundDone'; stars: number; skipped?: boolean }
+  // Teaching (manipulatives/): the animation says what it shows, the director makes it heard.
+  /** The n-th item is counted (1, 2, 3…). */
+  | { type: 'count'; n: number }
+  /** A hop on the number line lands on n. */
+  | { type: 'jump'; n: number }
+  /** A ten frame is full. */
+  | { type: 'ten' }
+  /** Something is taken away (flies off). */
+  | { type: 'whoosh' }
+  /** The hero explains step n (1, 2…) of an explanation. */
+  | { type: 'explain'; step: number }
+  /** An explanation is over. */
+  | { type: 'explained' };
 
 export type FeedbackType = FeedbackEvent['type'];
-export const FEEDBACK_TYPES: readonly FeedbackType[] = ['tap', 'correct', 'wrong', 'hint', 'starEarned', 'roundDone'];
+export const FEEDBACK_TYPES: readonly FeedbackType[] = ['tap', 'correct', 'wrong', 'hint', 'starEarned', 'roundDone', 'count', 'jump', 'ten', 'whoosh', 'explain', 'explained'];
+
+/** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
+export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh'];
+/** The hero's explaining moods: no sound of their own (the hero is speaking). */
+export const EXPLAIN_TYPES: readonly FeedbackType[] = ['explain', 'explained'];
 
 /** Examples of every event, for tests and the docs. */
 export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
@@ -42,7 +60,15 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'starEarned', n: 2 },
   { type: 'roundDone', stars: 3 },
   { type: 'roundDone', stars: 0 },
-  { type: 'roundDone', stars: 2, skipped: true }
+  { type: 'roundDone', stars: 2, skipped: true },
+  { type: 'count', n: 1 },
+  { type: 'count', n: 7 },
+  { type: 'jump', n: 0 },
+  { type: 'jump', n: 10 },
+  { type: 'ten' },
+  { type: 'whoosh' },
+  { type: 'explain', step: 1 },
+  { type: 'explained' }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -98,6 +124,18 @@ export function planFeedback(e: FeedbackEvent, worldId: string): FxPlan {
         ? { sound: 'fanfare', hero: 'cheer', particles: { kind: 'confetti', count: 40 + e.stars * 25, at: 'screen' } }
         : // No stars: still warm – a hint-like "let's try again", no fanfare.
           { sound: 'hint', hero: 'happy' };
+    case 'count':
+      return { sound: 'count', soundOpts: { step: e.n }, hero: null };
+    case 'jump':
+      return { sound: 'jump', soundOpts: { step: e.n }, hero: null };
+    case 'ten':
+      return { sound: 'ten', hero: null };
+    case 'whoosh':
+      return { sound: 'whoosh', hero: null };
+    case 'explain':
+      return { sound: null, hero: 'think' };
+    case 'explained':
+      return { sound: null, hero: 'happy' };
   }
 }
 
@@ -147,13 +185,14 @@ export function emit(e: FeedbackEvent, at: FxTargets = {}): FxPlan {
     detail,
     world,
     sound: plan.sound,
-    pitch: e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : undefined,
+    pitch:
+      e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : e.type === 'count' ? countPitch(e.n) : e.type === 'jump' ? jumpPitch(e.n) : undefined,
     hero: plan.hero,
     motion: plan.motion,
     particles,
     t: Math.round(typeof performance !== 'undefined' ? performance.now() : 0)
   });
-  if (fxLog.length > 200) fxLog.shift();
+  if (fxLog.length > 500) fxLog.shift();
   return plan;
 }
 

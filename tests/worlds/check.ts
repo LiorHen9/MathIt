@@ -18,9 +18,9 @@ import { world as ninja } from '../../src/worlds/ninja/index';
 import { world as blocks } from '../../src/worlds/blocks/index';
 import { world as stage } from '../../src/worlds/stage/index';
 import { Hero, HERO_STATES, MOOD_MS } from '../../src/fx/Hero';
-import { SFX_NAMES, comboPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
-import { FEEDBACK_TYPES, SAMPLE_EVENTS, planFeedback } from '../../src/fx/director';
-import { cleanForSpeech } from '../../src/audio/speech';
+import { SFX_NAMES, comboPitch, countPitch, jumpPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
+import { EXPLAIN_TYPES, FEEDBACK_TYPES, SAMPLE_EVENTS, TEACHING_TYPES, planFeedback } from '../../src/fx/director';
+import { cleanForSpeech, readingMs } from '../../src/audio/speech';
 
 const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja, blocks, stage];
 let failures = 0;
@@ -151,8 +151,12 @@ console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/
       if (plan.sound !== null && !SFX_NAMES.includes(plan.sound)) fail(`${what} → unknown sound ${plan.sound}`);
       if (plan.hero !== null && !HERO_STATES.includes(plan.hero)) fail(`${what} → unknown hero mood ${plan.hero}`);
       const skipped = e.type === 'roundDone' && e.skipped;
-      if (!plan.sound && !skipped) fail(`${what} → no sound`);
-      if (e.type !== 'tap' && !plan.hero) fail(`${what} → the hero does not react`);
+      const explaining = EXPLAIN_TYPES.includes(e.type);
+      const teaching = TEACHING_TYPES.includes(e.type);
+      if (!plan.sound && !skipped && !explaining) fail(`${what} → no sound`);
+      if (explaining && plan.sound) fail(`${what} → a sound while the hero speaks`);
+      if (e.type !== 'tap' && !teaching && !plan.hero) fail(`${what} → the hero does not react`);
+      if (teaching && plan.hero) fail(`${what} → a teaching sound should leave the hero's mood alone`);
     }
     // The world colours a right answer.
     const c = planFeedback({ type: 'correct', streak: 2 }, w.id);
@@ -198,9 +202,18 @@ console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/
   if (!(starPitch(1) < starPitch(2) && starPitch(2) < starPitch(3))) fail('star notes should climb');
   const wrong = tonesFor('wrong');
   if (wrong.some((t) => t.wave === 'square' || t.wave === 'sawtooth' || (t.freq ?? 0) > 600)) fail('"wrong" should be soft and low (no buzzer)');
-  const need: SfxName[] = ['click', 'correct', 'wrong', 'hint', 'star', 'fanfare'];
+  // Teaching sounds: counting climbs one note per item, a hop sounds the number it lands on.
+  for (let n = 1; n < 10; n++) if (!(countPitch(n + 1) > countPitch(n))) fail(`count pitch does not climb at ${n + 1}`);
+  for (let n = 0; n < 10; n++) if (!(jumpPitch(n + 1) > jumpPitch(n))) fail(`jump pitch does not climb at ${n + 1}`);
+  const first = (name: SfxName, step: number) => tonesFor(name, { step }).find((t) => t.at === 0 && t.wave !== 'noise')!.freq!;
+  if (!(first('count', 2) > first('count', 1) && first('count', 8) > first('count', 7))) fail('the "count" sound does not climb with step');
+  const landing = (step: number) => tonesFor('jump', { step }).filter((t) => t.at > 0)[0].freq!;
+  if (!(landing(6) > landing(5) && landing(0) < landing(1))) fail('the "jump" sound does not follow the number landed on');
+  if (tonesFor('ten').filter((t) => t.wave !== 'noise').length < 3) fail('"ten" should be a chord');
+  if (!tonesFor('whoosh').some((t) => t.wave === 'noise')) fail('"whoosh" should be air (noise)');
+  const need: SfxName[] = ['click', 'correct', 'wrong', 'hint', 'star', 'fanfare', 'count', 'jump', 'ten', 'whoosh'];
   for (const n of need) if (!SFX_NAMES.includes(n)) fail(`missing sound ${n}`);
-  console.log(`✓ sounds: ${SFX_NAMES.length} sounds build valid voices; world flavours; combo and star pitches climb; soft "wrong"`);
+  console.log(`✓ sounds: ${SFX_NAMES.length} sounds build valid voices; world flavours; combo, star, count and jump pitches climb; ten chord; soft "wrong"`);
 }
 
 // Narration text.
@@ -220,7 +233,10 @@ for (const [input, want] of SPEECH) {
   const got = cleanForSpeech(input);
   if (got !== want) fail(`cleanForSpeech("${input}") = "${got}", expected "${want}"`);
 }
-console.log('✓ narration text');
+// The pace of explanations without a voice: longer sentences take longer, within limits.
+if (!(readingMs('יוצא 6.') >= 1400 && readingMs('יוצא 6.') < readingMs('מתחילים מ-4 וסופרים עוד 2: 5, 6.'))) fail('readingMs should grow with the sentence');
+if (readingMs('א'.repeat(500)) > 6500 || readingMs('⭐') !== 0) fail('readingMs limits');
+console.log('✓ narration text and pace');
 
 if (failures) {
   console.log(`\n${failures} failure(s)`);

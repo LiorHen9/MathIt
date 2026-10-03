@@ -33,14 +33,31 @@ export const compare: Generator = (level, rng) => {
     distractors,
     errorTags,
     hints: [
-      answer === '='
-        ? { text: 'כשבשתי הקבוצות יש אותו מספר, זה שווה.', visual: { ...visual, numbered: true } }
-        : { text: `הצד הפתוח של הסימן פונה אל המספר הגדול, ${big}.`, visual: { ...visual, numbered: true } }
+      {
+        text: 'מסדרים זוגות, אחד מול אחד. למי נשארו בלי זוג?',
+        visual: { ...visual, numbered: true },
+        action: { kind: 'compare', a, b }
+      },
+      {
+        // The opposite sign: which way the open side faces.
+        for: ['reversed-sign'],
+        text: `הצד הפתוח של הסימן פונה אל המספר הגדול, ${big}.`,
+        visual: { ...visual, numbered: true },
+        action: { kind: 'compare', a, b }
+      },
+      {
+        for: ['not-equal'],
+        text: answer === '=' ? 'כשלכולם יש זוג, זה שווה.' : 'אם למישהו אין זוג, זה לא שווה.',
+        visual: { ...visual, numbered: true },
+        action: { kind: 'compare', a, b }
+      }
     ],
-    explanation:
+    explanation: [
+      { text: 'מסדרים זוגות, אחד מול אחד.', action: { kind: 'compare', a, b } },
       answer === '='
-        ? [{ text: `${a} ו-${b} הם אותו מספר.`, math: `${a} = ${b}` }]
-        : [{ text: `${big} גדול יותר.`, math: `${a} ${answer} ${b}` }],
+        ? { text: `לכולם יש זוג: ${a} ו-${b} הם אותו מספר.`, math: `${a} = ${b}` }
+        : { text: `${big} גדול יותר, והצד הפתוח פונה אליו.`, math: `${a} ${answer} ${b}` }
+    ],
     numeric: false,
     key: `${a}?${b}`
   };

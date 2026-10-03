@@ -41,3 +41,15 @@ export function makeRound(skillId: SkillId, level: number, seed: number, n = 8):
   }
   return out;
 }
+
+/**
+ * A question with a fixed exercise (a lesson's "your turn"): the first seed whose question has
+ * this key, so it gets the generator's smart distractors, hints and explanation. Deterministic.
+ */
+export function findQuestion(skillId: SkillId, level: number, key: string, tries = 20000): Question | null {
+  for (let seed = 0; seed < tries; seed++) {
+    const q = makeQuestion(skillId, level, seed);
+    if (q.key === key) return q;
+  }
+  return null;
+}
