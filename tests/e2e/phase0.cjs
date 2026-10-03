@@ -2,8 +2,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // Usage: node tests/e2e/phase0.cjs <screenshots-dir> [url]
 // Runs against a served build at phone size, from empty storage.
 // Checks: the splash and its entrance animation, the first sound only after a tap, the lazy next
-// screen, local storage (schema version, device id), reduced motion, dark mode, touch sizes,
-// no sideways scroll, the manifest (when the build has one) and the first-load size.
+// screen (the first profile, since storage is empty), local storage (schema version, device id),
+// reduced motion, dark mode, touch sizes, no sideways scroll, the manifest (when the build has one)
+// and the first-load size.
 const SHOTS = process.argv[2] || '.';
 const URL = process.argv[3] || 'http://localhost:4173/';
 const BUDGET = 300 * 1024;
@@ -102,13 +103,12 @@ async function phone(browser, opts = {}) {
     await p.waitForTimeout(150);
     must(await p.$('.splash.is-leaving'), 'splash does not animate out');
     await p.screenshot({ path: `${SHOTS}/02-splash-leaving.png` });
-    await p.waitForSelector('.coming-soon');
+    // Empty storage: straight to creating the first profile.
+    await p.waitForSelector('.profile-editor');
     await p.waitForTimeout(500);
     await p.screenshot({ path: `${SHOTS}/03-next.png` });
-    step('tap → start chime, exit animation, lazy next screen');
+    step('tap → start chime, exit animation, lazy next screen (first profile)');
 
-    const version = await p.textContent('.version');
-    must(/0\.1\.0/.test(version), 'version label: ' + version);
     await p.tap('text=חזרה');
     await p.waitForSelector('.splash');
     must((await p.evaluate(() => window.__mathitSounds.join())) === 'start,tap', 'tap sound missing');
@@ -153,7 +153,7 @@ async function phone(browser, opts = {}) {
     const t0 = Date.now();
     // force: the button gently "breathes", so Playwright never sees it as stable.
     await p.tap('.splash-go', { force: true });
-    await p.waitForSelector('.coming-soon');
+    await p.waitForSelector('.profile-editor');
     must(Date.now() - t0 < 450, 'reduced motion: next screen should come without the exit wait');
     await p.screenshot({ path: `${SHOTS}/05-next-dark.png` });
     const scroll = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

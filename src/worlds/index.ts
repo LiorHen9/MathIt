@@ -9,12 +9,23 @@ export type { WorldId, WorldTheme } from './types';
 export { BASE } from './base';
 
 /**
- * Shown in the picker before the world itself is loaded. Order = picker order.
- * Phase 1 adds fairies, football, basketball and ninja here and in LOADERS.
+ * Shown before the world itself is loaded (picker placeholders). Order = picker order.
+ * Adding a world: a folder src/worlds/<id>/ exporting `world`, a line here and one in LOADERS.
  */
-export const WORLD_LIST: { id: WorldId; name: string; icon: string }[] = [];
+export const WORLD_LIST: { id: Exclude<WorldId, 'base'>; name: string; icon: string }[] = [
+  { id: 'fairies', name: 'פיות', icon: '🧚' },
+  { id: 'football', name: 'כדורגל', icon: '⚽' },
+  { id: 'basketball', name: 'כדורסל', icon: '🏀' },
+  { id: 'ninja', name: 'נינג׳ה', icon: '🥷' }
+];
 
-const LOADERS: Partial<Record<WorldId, () => Promise<{ world: WorldTheme }>>> = {};
+// Each world is a separate chunk (not in the first load).
+const LOADERS: Partial<Record<WorldId, () => Promise<{ world: WorldTheme }>>> = {
+  fairies: () => import('./fairies/index'),
+  football: () => import('./football/index'),
+  basketball: () => import('./basketball/index'),
+  ninja: () => import('./ninja/index')
+};
 
 const cache = new Map<string, WorldTheme>([[BASE.id, BASE]]);
 
@@ -32,6 +43,16 @@ export async function loadWorld(id: string): Promise<WorldTheme> {
     console.warn('[world] failed to load', id, e);
     return BASE;
   }
+}
+
+/** All four worlds (for the picker and the profile tiles). */
+export function loadAllWorlds(): Promise<WorldTheme[]> {
+  return Promise.all(WORLD_LIST.map((w) => loadWorld(w.id)));
+}
+
+/** A world already loaded, or undefined (no waiting). */
+export function cachedWorld(id: string): WorldTheme | undefined {
+  return cache.get(id);
 }
 
 function declarations(vars: WorldVars): string {

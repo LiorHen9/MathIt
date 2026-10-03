@@ -25,7 +25,14 @@ export const BASE: WorldTheme = {
     'num-1': '#d6334a',
     'num-2': '#1b72c9',
     'num-3': '#23844a',
-    'num-4': '#c4470c'
+    'num-4': '#c4470c',
+    'hero-skin': '#f2c7a5',
+    'hero-hair': '#5a3a2a',
+    'hero-main': '#4c35b5',
+    'hero-trim': '#ffb627',
+    'hero-prop': '#ffffff',
+    'hero-ink': '#24203a',
+    'hero-light': '#ffffff'
   },
   dark: {
     bg: '#16142a',
@@ -44,6 +51,13 @@ export const BASE: WorldTheme = {
     'num-1': '#ff8095',
     'num-2': '#6cb8ff',
     'num-3': '#6fdc8c',
-    'num-4': '#ffa94d'
+    'num-4': '#ffa94d',
+    'hero-skin': '#f2c7a5',
+    'hero-hair': '#6b4a38',
+    'hero-main': '#7b62e0',
+    'hero-trim': '#ffc94d',
+    'hero-prop': '#ffffff',
+    'hero-ink': '#1b1830',
+    'hero-light': '#ffffff'
   }
 };

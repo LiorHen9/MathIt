@@ -1,7 +1,8 @@
-// A world's look, as plain data: CSS custom properties for light and dark mode.
-// Adapted from ChessIt's themes. Phase 1 adds the four worlds (fairies, football, basketball,
-// ninja) and their hero; later phases add sounds, music, map skin, rewards and feedback mapping
+// A world's look, as plain data: CSS custom properties for light and dark mode, and its hero.
+// Adapted from ChessIt's themes. Each world lives in src/worlds/<id>/ as its own lazy chunk;
+// later phases add sounds, music, map skin, rewards and feedback mapping
 // (the full World interface is in docs/ARCHITECTURE.md §5).
+import type { HeroDef } from '../fx/Hero';
 
 /** CSS custom properties without the leading "--", e.g. { bg: '#fff', brand: '#4c35b5' }. */
 export type WorldVars = Record<string, string>;
@@ -17,6 +18,8 @@ export interface WorldTheme {
   /** Overrides of the variables in :root (src/styles.css). Unset variables keep the default. */
   light: WorldVars;
   dark: WorldVars;
+  /** The world's hero (fx/Hero.tsx). The base look has none. */
+  hero?: HeroDef;
 }
 
 /** Variables every world must set, so text and buttons stay readable (tests/worlds/check.ts). */
@@ -37,5 +40,13 @@ export const REQUIRED_VARS = [
   'num-1',
   'num-2',
   'num-3',
-  'num-4'
+  'num-4',
+  // The hero's colours (fx/Hero.tsx): skin, hair, outfit, trim, prop, outlines and eyes, highlights.
+  'hero-skin',
+  'hero-hair',
+  'hero-main',
+  'hero-trim',
+  'hero-prop',
+  'hero-ink',
+  'hero-light'
 ] as const;

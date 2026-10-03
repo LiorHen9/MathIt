@@ -1,8 +1,9 @@
-// The 🔊 button, reading aloud on new text, and the parents' note on adding a Hebrew voice.
-// Adapted from ChessIt. Phase 1 connects narration to the profile's settings (setNarration) and
-// brings back the one-time "no Hebrew voice" note.
-import { useEffect } from 'preact/hooks';
+// The 🔊 button, reading aloud on new text, and the one-time note for parents when the phone
+// has no Hebrew voice. Adapted from ChessIt. Narration follows the active profile's setting
+// (profiles/settings.ts → setNarration).
+import { useEffect, useState } from 'preact/hooks';
 import { autoSpeak, speak, useHebrewVoice } from '../audio/speech';
+import { updateSettings, useSettings } from '../profiles/settings';
 
 /** 🔊 – hidden when the phone has no Hebrew voice. `text` may be a function (read at tap time). */
 export function SpeakButton({ text, class: cls = '' }: { text: string | (() => string); class?: string }) {
@@ -54,6 +55,30 @@ export function Feedback({ message, idle }: { message: Message | null; idle?: st
         (idle ?? ' ')
       )}
     </p>
+  );
+}
+
+/**
+ * When narration is on but the phone has no Hebrew voice, tell the parent once how to add one.
+ * Waits a moment first: voices often load a little after the page.
+ */
+export function NarrationHelp() {
+  const settings = useSettings();
+  const has = useHebrewVoice();
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setWaited(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  if (!waited || has || !settings?.narration || settings.speechHelpSeen) return null;
+  return (
+    <section class="card narration-help" role="note">
+      <p class="narration-help-title">🔇 אין בטלפון קול עברי להקראה</p>
+      <SpeechInstall />
+      <button type="button" class="btn btn-secondary" onClick={() => void updateSettings({ speechHelpSeen: true })}>
+        הבנתי
+      </button>
+    </section>
   );
 }
 

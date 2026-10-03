@@ -67,6 +67,7 @@ echo "first load ≈ $((FIRST / 1024))KB gzip (budget 300KB)"
 
 echo "== unit checks"
 bun tests/core/check.ts
+bun --tsconfig-override="$S/tsconfig.bun.json" tests/profiles/check.ts 2>&1 | grep -v "directory mismatch"
 bun --tsconfig-override="$S/tsconfig.bun.json" tests/worlds/check.ts 2>&1 | grep -v 'directory mismatch'
 
 if [ "${2:-}" != "--no-e2e" ]; then

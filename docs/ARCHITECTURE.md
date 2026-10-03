@@ -198,7 +198,9 @@ interface World {
 | 🥷 נינג׳ה | שוריקן פוגע במטרה, "שוש" | עשן וקפיצת סלטה | תופי טאיקו וחליל |
 
 - כל הנכסים מקוריים (בלי קבוצות, שחקנים או דמויות אמיתיות).
-- הוספת עולם = תיקייה חדשה ב-`src/worlds/` + רישום. בלי שינוי בקוד הליבה.
+- הוספת עולם = תיקייה חדשה ב-`src/worlds/<id>/index.tsx` שמייצאת `world`, שורה ב-`WORLD_LIST` ובטוען ב-`LOADERS` (`worlds/index.ts`). בלי שינוי בקוד הליבה. `tests/worlds/check.ts` בודק שהתיקיות והרישום תואמים.
+- **מצב היום (שלב 1):** `WorldTheme` = `id, name, icon, blurb, light, dark, hero`. כל עולם הוא chunk עצל. `applyWorld` מחליף משתני CSS על `<html>` בלי טעינה מחדש; `worldStyle(w, dark)` מצמיד את משתני העולם לאלמנט אחד (כרטיסים בבוחר, אריחי פרופילים).
+- **צבעי הגיבור** הם משתני עולם: `--hero-skin/hair/main/trim/prop/ink/light` (חלק מ-`REQUIRED_VARS`, כולל בבסיס וב-`styles.css`).
 - אפשר להחליף עולם בפרופיל בכל זמן; ההתקדמות נשמרת (היא שייכת למיומנויות, לא לעולם). האוסף נשמר לכל עולם בנפרד.
 
 ---
@@ -234,7 +236,9 @@ interface World {
 3. **תנועת מסע** — הגיבור הולך על השביל לתחנה הבאה, תחנה נפתחת בפיצוץ אור, תיבה נפתחת ופרס עף החוצה, מעבר בין מסכים רך.
 
 ### 6.2 גיבור מונפש
-לכל עולם גיבור ב-SVG שבנוי מחלקים (ראש, ידיים, אביזר), עם מצבים קבועים שמונפשים ב-CSS:
+לכל עולם גיבור ב-SVG שבנוי מחלקים (ראש, ידיים, אביזר), עם מצבים קבועים שמונפשים ב-CSS.
+`fx/Hero.tsx` מצייר גוף משותף (רגליים, ידיים, ראש, עיניים) והעולם מגדיר `HeroDef`: `name(gender)` ו-`parts(gender)` (גב, שיער מאחור, רגליים, גוף, שיער/כובע, פנים, אביזר ומיקומו: יד / יד מורמת / רגל). הגיבור לפי מין: חלוץ/חלוצה, שחקן/שחקנית, נינג׳ה צעיר/צעירה, נסיך הפיות/פיית הקסם. קבוצה מונפשת לא מקבלת `transform` כמאפיין (CSS היה דורס אותו). `hop()` ב-`fx/motion.ts` לקפיצה בנגיעה.
+מצבים:
 `idle` (נשימה/מצמוץ) · `think` · `happy` · `cheer` (רצף/סיום) · `oops` (טעות, עדין) · `walk` · `attack` (בוס).
 הגיבור מופיע במפה, בכל משחק ובשיעורים, והוא "המורה" שמדבר בהקראה.
 
@@ -315,25 +319,30 @@ interface SkillState {
 ## 8. פרופילים ואזור הורים
 
 ```ts
-interface Profile {
+interface Profile {              // src/profiles/profiles.ts
   id: string;
   name: string;
-  avatar: AvatarConfig;
-  birthYear?: number; grade?: number;
-  gender?: Gender;           // לפנייה נכונה בעברית (byGender, כמו ב-ChessIt)
-  worldId: WorldId;
-  settings: {
-    readAloud: boolean;      // הקראה אוטומטית
-    timers: boolean;         // משחקי זמן (כבוי כברירת מחדל לקטנים)
-    sfx: boolean;            // אפקטים
-    music: boolean;          // מוזיקת רקע
-    volume: number;          // 0..1
-    reducedMotion: boolean;  // משוב מקוצר (ברירת מחדל: לפי הטלפון)
-    dailyGoalMinutes: number;
+  avatar: string;                // אמוג׳י
+  grade?: number;                // 0 = גן חובה, 1–6 = א׳–ו׳ (או age)
+  age?: number;                  // 4–12
+  gender?: 'boy' | 'girl' | 'other'; // לפנייה נכונה בעברית (byGender) ולגיבור
+  worldId: 'fairies' | 'football' | 'basketball' | 'ninja';
+  pinHash?: string; pinSalt?: string; // PIN אופציונלי: SHA-256 עם salt, אף פעם לא הספרות
+  settings: {                    // נשמרות בתוך רשומת הפרופיל
+    sfx: boolean;                // אפקטים
+    music: boolean;              // מוזיקת רקע (נשמר משלב 1, מתנגן משלב 5)
+    narration: boolean;          // הקראה אוטומטית (ברירת מחדל: עד גיל 7)
+    volume: number;              // 0..1
+    reducedMotion: boolean | null; // null = לפי הטלפון
+    speechHelpSeen: boolean;
+    // timers, dailyGoalMinutes – יתווספו באזור ההורים (שלב 8)
   };
   createdAt: number;
 }
 ```
+- `normalizeProfile` משלים שדות חסרים ומתקן ערכים פגומים בקריאה, כך ששדה חדש עם ברירת מחדל לא דורש מיגרציה (מאגר חדש או מפתח חדש – כן).
+- הפרופיל הפעיל וההגדרות שלו ב-`profiles/settings.ts` (`activateProfile`, `updateSettings`, `useActiveProfile`): הפעלה מחליפה את המודולים האמיתיים (`setSfxEnabled`, `setSfxVolume`, `setNarration`, `setReducedMotion`). במסכים המשותפים (פתיחה, "מי משחק?", PIN) – מראה הבסיס וברירות המחדל.
+- הפרופיל האחרון שמור ב-`meta.lastProfileId` ומסומן במסך "מי משחק?".
 - כמה פרופילים במכשיר, בחירה במסך פתיחה (בלי סיסמה).
 - **אזור הורים** מוגן בשאלת חשבון למבוגרים או PIN: סטטיסטיקות לכל ילד (מה נשלט, איפה קשה, זמן תרגול), איפוס, ייצוא/ייבוא גיבוי (JSON), ניהול פרופילים.
 - רצף ימים (streak) עדין — "הקפאה" אוטומטית, בלי לחץ.
@@ -344,8 +353,8 @@ interface Profile {
 
 ```
 DB: mathit (IndexedDB)
- ├─ meta          { schemaVersion, deviceId }
- ├─ profiles      Profile[]
+ ├─ meta          { schemaVersion, deviceId, lastProfileId, errorLog }
+ ├─ profiles      Profile (כולל settings) לפי id
  ├─ skillStates   key: profileId:skillId
  ├─ nodeProgress  key: profileId:nodeId → { stars, bestScore, completedAt }
  ├─ inventory     key: profileId:worldId → collectibles, coins
@@ -385,11 +394,13 @@ MathIt/
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
 │  ├─ ui/             רכיבים משותפים: NumPad, Button, Stars, Dialog, Speak
 │  ├─ audio/          sfx.ts (סינתזה), music.ts (סקוונסר), speech.ts (הקראה)
-│  ├─ profiles/       פרופילים, הגדרות, PIN, byGender  (מ-ChessIt)
+│  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
+│  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
 │  ├─ storage/        db.ts, backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)
+   ├─ profiles/check.ts byGender, גיל/כיתה, normalizeProfile, PIN (bun)
    ├─ worlds/check.ts   ניגודיות ושלמות כל עולם (צבעים, צלילים, מיפוי אירועים)
    └─ e2e/phaseN.cjs    Playwright לכל שלב + a11y.cjs
 ```

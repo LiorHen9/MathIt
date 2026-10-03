@@ -4,13 +4,21 @@
 // - text contrast is at least 4.5:1 (WCAG AA), big playful numbers at least 3:1;
 // - the base world matches the :root defaults in src/styles.css (light and dark);
 // - text for the voice has no emoji, and math signs are read in Hebrew.
-// Phase 1 adds the four worlds to WORLDS; later phases check sounds and feedback mapping too.
-import { readFileSync } from 'node:fs';
+// - the four worlds are registered, each has a hero that renders for every gender, and a sample sound.
+// Later phases check sound packs and feedback mapping too.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { BASE } from '../../src/worlds/base';
 import { REQUIRED_VARS, type WorldTheme, type WorldVars } from '../../src/worlds/types';
+import { WORLD_LIST, loadWorld } from '../../src/worlds/index';
+import { world as fairies } from '../../src/worlds/fairies/index';
+import { world as football } from '../../src/worlds/football/index';
+import { world as basketball } from '../../src/worlds/basketball/index';
+import { world as ninja } from '../../src/worlds/ninja/index';
+import { Hero } from '../../src/fx/Hero';
+import { SFX_NAMES } from '../../src/audio/sfx';
 import { cleanForSpeech } from '../../src/audio/speech';
 
-const WORLDS: WorldTheme[] = [BASE];
+const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja];
 let failures = 0;
 const fail = (msg: string) => {
   failures++;
@@ -46,7 +54,9 @@ const PAIRS: [string, string, number, string][] = [
   ['num-1', 'bg', 3, 'big number colour 1'],
   ['num-2', 'bg', 3, 'big number colour 2'],
   ['num-3', 'bg', 3, 'big number colour 3'],
-  ['num-4', 'bg', 3, 'big number colour 4']
+  ['num-4', 'bg', 3, 'big number colour 4'],
+  ['hero-ink', 'hero-skin', 3, "the hero's eyes on the face"],
+  ['hero-light', 'hero-ink', 3, "the hero's eye shine"]
 ];
 
 for (const w of WORLDS) {
@@ -60,7 +70,52 @@ for (const w of WORLDS) {
     }
   }
 }
-console.log(`✓ ${WORLDS.length} world(s): variables set, contrast OK`);
+console.log(`✓ ${WORLDS.length} worlds (base + 4) × light/dark: variables set, contrast OK`);
+
+// Registration: every world folder is listed and loads (as its own module), ids match.
+{
+  const dir = new URL('../../src/worlds/', import.meta.url);
+  const folders = readdirSync(dir).filter((f) => statSync(new URL(f, dir)).isDirectory()).sort();
+  const listed = WORLD_LIST.map((w) => w.id).sort();
+  if (folders.join() !== listed.join()) fail(`world folders [${folders}] differ from WORLD_LIST [${listed}]`);
+  for (const meta of WORLD_LIST) {
+    const w = await loadWorld(meta.id);
+    if (w.id !== meta.id) fail(`loadWorld('${meta.id}') gave '${w.id}'`);
+    if (w.name !== meta.name || w.icon !== meta.icon) fail(`${meta.id}: WORLD_LIST name/icon differ from the world's`);
+    if (!w.blurb) fail(`${meta.id}: no blurb`);
+    if (!SFX_NAMES.includes(`world-${meta.id}` as (typeof SFX_NAMES)[number])) fail(`${meta.id}: no sample sound world-${meta.id} in sfx.ts`);
+  }
+  console.log(`✓ ${WORLD_LIST.length} worlds registered, each loads and has a sample sound`);
+}
+
+// Heroes: a hero for every world, a name for every gender, parts that render, colours only from
+// the --hero-* variables (no literal colours in the SVG).
+{
+  for (const w of WORLDS.slice(1)) {
+    if (!w.hero) {
+      fail(`${w.id}: no hero`);
+      continue;
+    }
+    for (const g of ['boy', 'girl', 'other', undefined] as const) {
+      const n = w.hero.name(g);
+      if (!n) fail(`${w.id}: hero has no name for ${g}`);
+      const parts = w.hero.parts(g);
+      if (!parts.torso || !parts.hair || !parts.prop) fail(`${w.id}: hero parts missing for ${g}`);
+      // Build the SVG tree (no DOM here): throws if a part is broken.
+      const tree = Hero({ def: w.hero, gender: g });
+      if (!tree || tree.type !== 'svg') fail(`${w.id}: hero does not render an <svg> for ${g}`);
+    }
+    // A male and a female form ("חלוץ" / "חלוצה", "נסיך הפיות" / "פיית הקסם").
+    if (w.hero.name('boy') === w.hero.name('girl')) fail(`${w.id}: the hero should have different names for a boy and a girl`);
+  }
+  const src = ['fairies', 'football', 'basketball', 'ninja'].map((id) => readFileSync(new URL(`../../src/worlds/${id}/index.tsx`, import.meta.url), 'utf8'));
+  src.push(readFileSync(new URL('../../src/fx/Hero.tsx', import.meta.url), 'utf8'));
+  for (const code of src) {
+    const literal = /(fill|stroke)=["']#[0-9a-f]{3,8}["']/i.exec(code);
+    if (literal) fail(`a hero uses a literal colour (${literal[0]}); use the --hero-* variables`);
+  }
+  console.log('✓ heroes: every world, every gender, colours from variables');
+}
 
 // The :root defaults in styles.css must equal BASE (otherwise the base look and the previews differ).
 {
