@@ -18,8 +18,8 @@ import { world as ninja } from '../../src/worlds/ninja/index';
 import { world as blocks } from '../../src/worlds/blocks/index';
 import { world as stage } from '../../src/worlds/stage/index';
 import { Hero, HERO_STATES, MOOD_MS } from '../../src/fx/Hero';
-import { SFX_NAMES, comboPitch, countPitch, jumpPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
-import { EXPLAIN_TYPES, FEEDBACK_TYPES, SAMPLE_EVENTS, TEACHING_TYPES, planFeedback } from '../../src/fx/director';
+import { SFX_NAMES, comboPitch, countPitch, hitPitch, jumpPitch, starPitch, tonesFor, type SfxName } from '../../src/audio/sfx';
+import { COMPANION_TYPES, EXPLAIN_TYPES, FEEDBACK_TYPES, SAMPLE_EVENTS, TEACHING_TYPES, planFeedback } from '../../src/fx/director';
 import { cleanForSpeech, readingMs } from '../../src/audio/speech';
 
 const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja, blocks, stage];
@@ -153,10 +153,11 @@ console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/
       const skipped = e.type === 'roundDone' && e.skipped;
       const explaining = EXPLAIN_TYPES.includes(e.type);
       const teaching = TEACHING_TYPES.includes(e.type);
+      const companion = COMPANION_TYPES.includes(e.type);
       if (!plan.sound && !skipped && !explaining) fail(`${what} → no sound`);
       if (explaining && plan.sound) fail(`${what} → a sound while the hero speaks`);
-      if (e.type !== 'tap' && !teaching && !plan.hero) fail(`${what} → the hero does not react`);
-      if (teaching && plan.hero) fail(`${what} → a teaching sound should leave the hero's mood alone`);
+      if (e.type !== 'tap' && !teaching && !companion && !plan.hero) fail(`${what} → the hero does not react`);
+      if ((teaching || companion) && plan.hero) fail(`${what} → should leave the hero's mood alone`);
     }
     // The world colours a right answer.
     const c = planFeedback({ type: 'correct', streak: 2 }, w.id);
@@ -169,6 +170,23 @@ console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/
   if (planFeedback({ type: 'roundDone', stars: 2, skipped: true }, 'base').sound !== null) fail('a skipped celebration should be quiet');
   if (planFeedback({ type: 'roundDone', stars: 0 }, 'base').sound === 'fanfare') fail('no fanfare for no stars');
   for (const st of HERO_STATES) if (st !== 'idle' && !(MOOD_MS[st] > 0 && MOOD_MS[st] <= 3000)) fail(`hero mood ${st} lasts ${MOOD_MS[st]}ms`);
+  // The quest map: the hero walks for as long as the walk, a station opens in a burst of light,
+  // the chest rattles then opens with its prize flying out, hits make the hero attack and the
+  // boss tremble (a higher note each time), a dodge is gentle, the win is the biggest party.
+  const walk = planFeedback({ type: 'walk', steps: 5, ms: 2100 }, 'base');
+  if (walk.hero !== 'walk' || walk.heroMs !== 2100) fail('walk: the hero walks for the length of the walk ' + JSON.stringify(walk));
+  const unlock = planFeedback({ type: 'unlock' }, 'base');
+  if (unlock.sound !== 'unlock' || !unlock.particles || unlock.particles.at !== 'el' || unlock.particles.count < 30) fail('unlock: a burst of light at the station ' + JSON.stringify(unlock));
+  if (planFeedback({ type: 'locked' }, 'base').sound === 'wrong') fail('a closed station is not a mistake');
+  if (planFeedback({ type: 'chestShake' }, 'base').motion !== 'wobble') fail('the chest should rattle');
+  if (planFeedback({ type: 'chestOpen', prize: '🌈' }, 'base').fly !== '🌈') fail('the prize should fly out of the chest');
+  const hit = planFeedback({ type: 'bossHit', n: 2, left: 6 }, 'base');
+  if (hit.hero !== 'attack' || hit.motion !== 'tremble' || hit.sound !== 'hit') fail('bossHit: attack + tremble ' + JSON.stringify(hit));
+  const dodge = planFeedback({ type: 'bossDodge' }, 'base');
+  if (dodge.motion !== 'dodge' || dodge.particles) fail('bossDodge: a gentle slip aside');
+  const won = planFeedback({ type: 'bossDefeated', stars: 2 }, 'base');
+  if (won.sound !== 'victory' || won.particles?.at !== 'screen' || (won.particles?.count ?? 0) <= (planFeedback({ type: 'roundDone', stars: 3 }, 'base').particles?.count ?? 0)) fail('bossDefeated should be the biggest celebration');
+  for (let n = 1; n < 8; n++) if (!(hitPitch(n + 1) > hitPitch(n))) fail(`hit pitch does not climb at ${n + 1}`);
   console.log(`✓ feedback: ${FEEDBACK_TYPES.length} events mapped in ${WORLDS.length} worlds, real sounds and hero moods`);
 }
 
@@ -211,7 +229,11 @@ console.log(`✓ ${WORLDS.length} worlds (base + ${WORLDS.length - 1}) × light/
   if (!(landing(6) > landing(5) && landing(0) < landing(1))) fail('the "jump" sound does not follow the number landed on');
   if (tonesFor('ten').filter((t) => t.wave !== 'noise').length < 3) fail('"ten" should be a chord');
   if (!tonesFor('whoosh').some((t) => t.wave === 'noise')) fail('"whoosh" should be air (noise)');
-  const need: SfxName[] = ['click', 'correct', 'wrong', 'hint', 'star', 'fanfare', 'count', 'jump', 'ten', 'whoosh'];
+  const stepL = JSON.stringify(tonesFor('step', { step: 1 }));
+  if (stepL === JSON.stringify(tonesFor('step', { step: 2 }))) fail('left and right footsteps should differ a little');
+  if (tonesFor('locked').some((t) => (t.freq ?? 0) > 600 || t.wave === 'square' || t.wave === 'sawtooth')) fail('"locked" should be soft knocks, no buzzer');
+  if (tonesFor('dodge').some((t) => t.vol > 0.2)) fail('"dodge" should be quiet');
+  const need: SfxName[] = ['click', 'correct', 'wrong', 'hint', 'star', 'fanfare', 'count', 'jump', 'ten', 'whoosh', 'step', 'unlock', 'locked', 'chestShake', 'chestOpen', 'bossAppear', 'hit', 'dodge', 'victory'];
   for (const n of need) if (!SFX_NAMES.includes(n)) fail(`missing sound ${n}`);
   console.log(`✓ sounds: ${SFX_NAMES.length} sounds build valid voices; world flavours; combo, star, count and jump pitches climb; ten chord; soft "wrong"`);
 }

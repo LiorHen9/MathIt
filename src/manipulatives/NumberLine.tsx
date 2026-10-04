@@ -33,7 +33,7 @@ export function NumberLine({ from, by, ...run }: { from: number; by: number } & 
       for (let k = 0; k < hops.length; k++) {
         const a = hops[k];
         const b = a + dir;
-        void tl.anim(arcs[k], FADE_IN, 420);
+        tl.bg(arcs[k], FADE_IN, 420);
         await tl.anim(marker, arcFrames(x(b) - x(a), 0, tl.calm ? 12 : 26).map((f) => ({ ...f, transform: `translateX(${x(a)}px) ${f.transform}` })), 520, {
           easing: 'linear'
         });

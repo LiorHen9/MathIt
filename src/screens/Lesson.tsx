@@ -3,7 +3,8 @@
 // time with it) and "your turn" screens with one question and the full feedback of a round
 // (games/Ask.tsx: animated hint, then a step-by-step explanation). At the end a star, the
 // lesson is saved as seen (skillStates.lessonSeen), and the child can go straight to practice.
-// Loaded lazily, like the game.
+// As a quest station (phase 4) it also gives the station its star, and the end leads back to the
+// map, where the hero walks on. Loaded lazily, like the game.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { findQuestion } from '../core/generators/index';
 import { getLesson } from '../core/lessons/index';
@@ -17,6 +18,7 @@ import { Ask, msg } from '../games/Ask';
 import { Explainer } from '../manipulatives/Explainer';
 import { ageBand, byGender, type Profile } from '../profiles/profiles';
 import { saveLessonSeen } from '../storage/skillStates';
+import { recordNodeStars } from '../storage/questProgress';
 import { useWorld } from '../worlds/index';
 import { playSfx } from '../audio/sfx';
 import { stopSpeaking } from '../audio/speech';
@@ -26,9 +28,11 @@ interface Props {
   skillId: SkillId;
   onHome: () => void;
   onPractice: () => void;
+  /** The quest station this lesson is (its star is saved; the end goes back to the map). */
+  nodeId?: string;
 }
 
-export function Lesson({ profile, skillId, onHome, onPractice }: Props) {
+export function Lesson({ profile, skillId, onHome, onPractice, nodeId }: Props) {
   const lesson = getLesson(skillId)!;
   const skill = getSkill(skillId)!;
   const world = useWorld();
@@ -69,9 +73,10 @@ export function Lesson({ profile, skillId, onHome, onPractice }: Props) {
     }
     setFinished(true);
     void saveLessonSeen(profile.id, skillId, startLevel(skill, ageBand(profile)));
+    if (nodeId) void recordNodeStars(profile.id, nodeId, 1);
   }
 
-  if (finished) return <LessonDone profile={profile} title={lesson.title} onPractice={onPractice} onHome={onHome} />;
+  if (finished) return <LessonDone profile={profile} title={lesson.title} toMap={!!nodeId} onPractice={onPractice} onHome={onHome} />;
 
   const watchIdle = byGender(profile, 'צפה והקשב', 'צפי והקשיבי', 'צפו והקשיבו');
   const pickIdle = byGender(profile, 'בחר תשובה', 'בחרי תשובה', 'בחרו תשובה');
@@ -187,7 +192,7 @@ export function Lesson({ profile, skillId, onHome, onPractice }: Props) {
 }
 
 /** The end of a lesson: one star, a fanfare, and the way to practice. */
-function LessonDone({ profile, title, onPractice, onHome }: { profile: Profile; title: string; onPractice: () => void; onHome: () => void }) {
+function LessonDone({ profile, title, toMap, onPractice, onHome }: { profile: Profile; title: string; toMap: boolean; onPractice: () => void; onHome: () => void }) {
   const world = useWorld();
   const mood = useHeroMood();
   const star = useRef<HTMLSpanElement>(null);
@@ -219,14 +224,22 @@ function LessonDone({ profile, title, onPractice, onHome }: { profile: Profile; 
       <p class="celebrate-sub">
         📖 {title} <SpeakButton text={speech} class="speak-inline" />
       </p>
-      <div class="row celebrate-actions">
-        <button type="button" class="btn btn-primary btn-big" data-testid="lesson-practice" onClick={onPractice}>
-          ▶ {byGender(profile, 'בוא נתרגל', 'בואי נתרגל', 'בואו נתרגל')}
-        </button>
-        <button type="button" class="btn btn-secondary btn-big" data-testid="lesson-to-home" onClick={onHome}>
-          🏠 לבית
-        </button>
-      </div>
+      {toMap ? (
+        <div class="row celebrate-actions">
+          <button type="button" class="btn btn-primary btn-big" data-testid="lesson-to-map" onClick={onHome}>
+            🗺️ ממשיכים במסע
+          </button>
+        </div>
+      ) : (
+        <div class="row celebrate-actions">
+          <button type="button" class="btn btn-primary btn-big" data-testid="lesson-practice" onClick={onPractice}>
+            ▶ {byGender(profile, 'בוא נתרגל', 'בואי נתרגל', 'בואו נתרגל')}
+          </button>
+          <button type="button" class="btn btn-secondary btn-big" data-testid="lesson-to-home" onClick={onHome}>
+            🏠 לבית
+          </button>
+        </div>
+      )}
     </main>
   );
 }

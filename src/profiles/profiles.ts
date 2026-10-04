@@ -168,6 +168,8 @@ export function saveProfile(p: Profile): Promise<void> {
 export async function deleteProfile(id: string): Promise<void> {
   await dbDelete('profiles', id);
   await deleteSkillStates(id);
+  // The way on the quest map (storage/questProgress.ts; one record per profile).
+  await dbDelete('questProgress', id);
   if ((await getLastProfileId()) === id) await dbDelete('meta', 'lastProfileId');
 }
 

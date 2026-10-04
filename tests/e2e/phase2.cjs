@@ -185,12 +185,14 @@ async function stored(p) {
     await p.waitForSelector('.profiles-screen');
     must((await p.$$('.profile-pick')).length === 1, 'the old profile is not listed');
     let db = await stored(p);
-    must(db.v === 2 && db.stores.join() === 'meta,profiles,skillStates', `migration to 2: v=${db.v} stores=${db.stores}`);
+    must(db.v === 3 && db.stores.join() === 'meta,profiles,questProgress,skillStates', `migration to 3: v=${db.v} stores=${db.stores}`);
     must(db.profiles.length === 1 && db.profiles[0].name === 'שירה' && db.profiles[0].worldId === 'fairies', 'the old profile changed: ' + JSON.stringify(db.profiles));
-    step('an old phone (schema 1) is migrated to schema 2: skillStates added, the profile kept');
+    step('an old phone (schema 1) is migrated to schema 3: skillStates and questProgress added, the profile kept');
 
-    // --- Home: four skills, the ones for her age recommended ---
+    // --- Free practice (phase 4: one tap from the map): four skills, the ones for her age recommended ---
     await p.tap('.profile-pick >> nth=0');
+    await p.waitForSelector('.quest-map');
+    await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const skills = await p.$$eval('.skill-btn', (els) => els.map((e) => [e.dataset.skill, e.classList.contains('is-rec')]));
     must(skills.length === 4, 'skills on home: ' + skills.length);
@@ -374,6 +376,8 @@ async function stored(p) {
     await p.tap('[data-gender=boy]');
     await p.tap('[data-world-id=football]');
     await p.tap('[data-testid=save-profile]');
+    await p.waitForSelector('.quest-map');
+    await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const rec = await p.$$eval('.skill-btn.is-rec', (els) => els.map((e) => e.dataset.skill));
     must(rec.join() === 'add.within10,sub.within10', 'recommended at 6: ' + rec);
@@ -436,11 +440,13 @@ async function stored(p) {
     await p.waitForFunction((w) => document.documentElement.dataset.world === w, worldId);
     must((await sounds(p)).at(-1) === `world-${worldId}`, `no sample sound for ${worldId}`);
     await p.tap('[data-testid=save-profile]');
-    await p.waitForSelector('.home .skill-btn');
+    await p.waitForSelector('.quest-map');
     must((await p.textContent('.home-hero-name')).trim() === heroName, `${worldId} hero: ` + (await p.textContent('.home-hero-name')));
     await p.waitForTimeout(500);
-    await p.screenshot({ path: `${SHOTS}/5${worldId === 'stage' ? 0 : 2}-home-${worldId}-${scheme}.png` });
-    await layoutOk(p, `home (${worldId})`);
+    await p.screenshot({ path: `${SHOTS}/5${worldId === 'stage' ? 0 : 2}-map-${worldId}-${scheme}.png` });
+    await layoutOk(p, `map (${worldId})`);
+    await p.tap('[data-testid=open-practice]');
+    await p.waitForSelector('.home .skill-btn');
     await p.tap(`[data-skill="${skill}"]`);
     await p.waitForSelector('.game .pop');
     await answer(p, await solve(p));

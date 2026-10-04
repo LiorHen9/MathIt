@@ -7,6 +7,7 @@ import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/
 import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
 import { LESSONS, getLesson } from '../../src/core/lessons/index';
 import { MAX_WRONG, nextLevel, questionPoints, starsFor } from '../../src/core/round';
+import { JOURNEY, allNodes, chapterMaxStars, chapterStars, emptyProgress, findNode, journeyProblems, lockReason, maxStars, nextNode, nodeStatus, progressFromSkills, withStars, type QuestProgress } from '../../src/core/quest/index';
 import { ACTION_KINDS, actionResult, actionValid, isCorrect, pickHint, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
 
 let failures = 0;
@@ -322,6 +323,101 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   for (const [pts, want] of cases) if (starsFor(pts, 8) !== want) fail(`starsFor(${pts}, 8) = ${starsFor(pts, 8)}, expected ${want}`);
   if (nextLevel(1, 3, 3) !== 2 || nextLevel(3, 3, 3) !== 3 || nextLevel(2, 0, 3) !== 1 || nextLevel(1, 0, 3) !== 1 || nextLevel(2, 2, 3) !== 2) fail('nextLevel');
   ok('skills graph, recommendations by age band, stars and level changes');
+}
+
+// ---------- The quest map ----------
+{
+  const exists = (id: string, level?: number) => {
+    const s = getSkill(id);
+    return !!s && (level === undefined || s.levels.some((l) => l.level === level));
+  };
+  const problems = journeyProblems(JOURNEY, exists);
+  for (const pr of problems) fail(`journey: ${pr}`);
+  const nodes = allNodes();
+  const ch = JOURNEY.chapters[0];
+  if (nodes.length < 14 || nodes.length > 18) fail(`chapter 1 has ${nodes.length} stations (about 15)`);
+  if (nodes[0].kind !== 'lesson' || nodes.at(-1)!.kind !== 'boss') fail('chapter 1 runs from a lesson to the boss');
+  const chestAt = nodes.findIndex((n) => n.kind === 'chest');
+  if (chestAt < 4 || chestAt > nodes.length - 4) fail('the chest should be in the middle');
+  if (ch.sections.map((s) => s.title).join('|') !== 'מספרים עד 10|חיבור וחיסור עד 10') fail('sections: ' + ch.sections.map((s) => s.title));
+  const boss = nodes.at(-1)!;
+  if (boss.kind === 'boss' && !(boss.skillIds.includes('add.within10') && boss.skillIds.includes('sub.within10'))) fail('the boss mixes adding and taking away');
+  // Every skill gets its lesson before its first practice; practice levels rise per skill.
+  const seenLesson = new Set<string>();
+  const lastLevel: Record<string, number> = {};
+  for (const n of nodes) {
+    if (n.kind === 'lesson') seenLesson.add(n.skillId);
+    if (n.kind === 'practice') {
+      if (!seenLesson.has(n.skillId)) fail(`${n.id}: practice before the lesson`);
+      if ((lastLevel[n.skillId] ?? 0) >= n.level) fail(`${n.id}: levels should rise`);
+      lastLevel[n.skillId] = n.level;
+    }
+  }
+
+  // A new profile: only the first station is open.
+  let p = emptyProgress();
+  const st = (q: QuestProgress) => nodes.map((n) => nodeStatus(n, q)[0]).join('');
+  if (st(p) !== 'o' + 'l'.repeat(nodes.length - 1)) fail('new profile: ' + st(p));
+  if (nextNode(p)?.id !== nodes[0].id) fail('the first station is next');
+
+  // Opening only goes forward: play in order with random stars; at every point the stations
+  // after the next one are locked, and later stars never change an earlier station.
+  const rng = createRng(2024);
+  for (let run = 0; run < 200; run++) {
+    p = emptyProgress();
+    for (let k = 0; k < nodes.length; k++) {
+      const n = nodes[k];
+      if (nodeStatus(n, p) !== 'open') {
+        // Only a star gate may stop the way – replaying for more stars opens it.
+        const why = lockReason(n, p);
+        if (!why || why.before || !why.stars) fail(`run ${run}: ${n.id} closed for ${JSON.stringify(why)}`);
+        for (const x of nodes.slice(0, k)) if (x.kind === 'practice') p = withStars(p, x.id, 3);
+        if (nodeStatus(n, p) !== 'open') {
+          fail(`run ${run}: ${n.id} still closed after 3 stars everywhere`);
+          break;
+        }
+      }
+      if (nextNode(p)?.id !== n.id) fail(`run ${run}: next should be ${n.id}, got ${nextNode(p)?.id}`);
+      for (const later of nodes.slice(k + 1)) if (nodeStatus(later, p) !== 'locked') fail(`run ${run}: ${later.id} opened before ${n.id} was done`);
+      const before = nodes.slice(0, k + 1).map((x) => nodeStatus(x, p)).join();
+      // Stars on stations further on (impossible in play) do not change these.
+      const fake = nodes.slice(k + 1).reduce((q, x) => (x.kind === 'chest' || x.needStars ? q : withStars(q, x.id, 3)), p);
+      if (nodes.slice(0, k + 1).map((x) => nodeStatus(x, fake)).join() !== before) fail(`run ${run}: stars further on changed the stations up to ${n.id}`);
+      p = n.kind === 'chest' ? { ...p, chests: { ...p.chests, [n.id]: n.prize.icon } } : withStars(p, n.id, 1 + rng.int(0, maxStars(n) - 1));
+      if (nodeStatus(n, p) !== 'done') fail(`run ${run}: ${n.id} not done after playing it`);
+    }
+    if (nextNode(p) !== null) fail(`run ${run}: everything played but next is ${nextNode(p)?.id}`);
+  }
+
+  // Star gates: one star everywhere is not enough for the chest; it says how many are missing.
+  p = emptyProgress();
+  for (const n of nodes.slice(0, chestAt)) p = withStars(p, n.id, 1);
+  const chest = nodes[chestAt];
+  const why = lockReason(chest, p);
+  if (nodeStatus(chest, p) !== 'locked' || !why?.stars || why.before) fail('chest with one star everywhere: ' + JSON.stringify(why));
+  if (chapterStars(ch, p) !== chestAt) fail(`chapterStars ${chapterStars(ch, p)}, expected ${chestAt}`);
+  p = withStars(p, nodes[1].id, 3);
+  p = withStars(p, nodes[2].id, 3);
+  if (nodeStatus(chest, p) !== 'open') fail('chest should open with enough stars: ' + JSON.stringify(lockReason(chest, p)));
+  // withStars keeps the best and caps at the station's most.
+  if (withStars(withStars(p, nodes[1].id, 1), nodes[1].id, 0).stars[nodes[1].id] !== 3) fail('withStars should keep the best');
+  if (withStars(emptyProgress(), nodes[0].id, 3).stars[nodes[0].id] !== 1) fail('a lesson gives one star');
+  if (chapterMaxStars(ch) !== nodes.reduce((s, n) => s + maxStars(n), 0)) fail('chapterMaxStars');
+
+  // Progress from before the map (schema 2): lessons watched, rounds played.
+  const from = progressFromSkills({
+    'count.to10': { level: 3, bestStars: 3, rounds: 2, lessonSeen: true },
+    'compare.to10': { level: 1, bestStars: 2, rounds: 1, lessonSeen: true },
+    'add.within10': { level: 2, bestStars: 1, rounds: 0, lessonSeen: false }
+  });
+  const want: Record<string, number> = { 'c1-count-lesson': 1, 'c1-count-5': 3, 'c1-count-10': 3, 'c1-compare-lesson': 1, 'c1-compare-5': 2 };
+  if (JSON.stringify(from.stars) !== JSON.stringify(want)) fail('progressFromSkills: ' + JSON.stringify(from.stars));
+  if (nextNode(from)?.id !== 'c1-compare-10') fail('after migration, next: ' + nextNode(from)?.id);
+  if (Object.keys(from.chests).length) fail('chests are never opened by a migration');
+  // A lesson watched out of order shows as done; the stations before it still come first.
+  const odd = progressFromSkills({ 'add.within10': { level: 1, bestStars: 0, rounds: 0, lessonSeen: true } });
+  if (nodeStatus(findNode('c1-add-lesson')!, odd) !== 'done' || nextNode(odd)?.id !== 'c1-count-lesson') fail('out of order: ' + JSON.stringify(odd));
+  ok(`quest: ${nodes.length} stations from a lesson to the boss, ids unique, skills exist, every station reachable, opening only forward, star gates, migration from skills`);
 }
 
 if (failures) {

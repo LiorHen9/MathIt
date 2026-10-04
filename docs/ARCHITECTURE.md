@@ -170,6 +170,10 @@ Journey (לפי טווח גיל)
 - **חזרה** — תחנה שנוצרת דינמית מהמיומנויות שהמנוע מזהה כנשכחות.
 - כל תחנה נותנת 0–3 כוכבים; אפשר לחזור ולשפר.
 
+**מצב היום (שלב 4):** `core/quest/` – נתונים ופונקציות טהורות, בלי UI. `Journey → Chapter → Section → Node`; ה-Section הוא באנר במפה ("מספרים עד 10"). סוגי תחנות: `lesson {skillId}` (כוכב אחד), `practice {skillId, level}` (0–3, רמה קבועה לתחנה), `chest {prize}` (בלי כוכבים, "נעשתה" כשנפתחה), `boss {skillIds, level, hits, bossId}` (1–3). `game`, `puzzle` ו-`review` – בשלבים 6–9. תנאי פתיחה: התחנה הקודמת נעשתה, ועוד `needStars` כוכבים בפרק אם הוגדר (תיבה, בוס). `nodeStatus` (תחנה שנעשתה מוצגת כ-done גם אם הושגה מחוץ לסדר, למשל ממיגרציה), `lockReason`, `nextNode` (הראשונה הפתוחה שלא נעשתה), `chapterStars`, `withStars` (שומר את הטוב ביותר), `progressFromSkills` (המרת `skillStates` מלפני המפה), `journeyProblems` (לבדיקות). פרק 1 – 16 תחנות, ids יציבים (`c1-…`), כי ההתקדמות נשמרת לפיהם.
+- המסך: `screens/QuestMap.tsx` + `screens/quest/layout.ts` (מיקומים ביחידות מפה, רוחב 360, שביל מתפתל לפי סינוס, מקטע SVG לכל מרווח בין תחנות; הגיבור עומד **ליד** התחנה ולא עליה, כדי שאפשר יהיה ללחוץ עליה) + `screens/quest/art.tsx` (תיבה ובוס ב-SVG, צבעים ממשתני העולם בלבד).
+- בכניסה למפה: גלילה לגיבור; אם `at` שונה מהתחנה הבאה – הליכה (WAAPI על `transform` לאורך נקודות מ-`getPointAtLength`, צעד כל 300ms); ואז `unlock` לכל תחנה פתוחה שלא ב-`revealed`. מצב המפה (`at`, `revealed`) נשמר **לפני** האנימציה, כך שיציאה באמצע לא מריצה אותה שוב. תחנה שנפתחה ועוד לא "נחשפה" נראית סגורה עד הפיצוץ.
+
 ---
 
 ## 5. עולמות (Themes)
@@ -253,6 +257,8 @@ interface World {
 `fx/Hero.tsx` מצייר גוף משותף (רגליים, ידיים, ראש, עיניים) והעולם מגדיר `HeroDef`: `name(gender)` ו-`parts(gender)` (גב, שיער מאחור, רגליים, גוף, שיער/כובע, פנים, אביזר ומיקומו: יד / יד מורמת / רגל). הגיבור לפי מין: חלוץ/חלוצה, שחקן/שחקנית, נינג׳ה צעיר/צעירה, נסיך הפיות/פיית הקסם, בנאי/בנאית, זמר לוחם/זמרת לוחמת. `shape: 'blocky'` מחליף את הראש, הידיים וכפות הידיים בקוביות (עולם הקוביות). קבוצה מונפשת לא מקבלת `transform` כמאפיין (CSS היה דורס אותו). `hop()` ב-`fx/motion.ts` לקפיצה בנגיעה.
 מצבים:
 `idle` (נשימה/מצמוץ) · `think` · `happy` · `cheer` (רצף/סיום) · `oops` (טעות, עדין) · `walk` · `attack` (בוס).
+
+**מצב היום (שלב 4):** `walk` (קפיצות צעד ונדנוד, כל עוד ההליכה נמשכת – `setHeroMood('walk', ms)` דרך `heroMs` של ה-director) ו-`attack` (זינוק שמאלה לעבר הבוס והאביזר מונף). בסיסיים ומשותפים לכל העולמות; בשלב 5 כל עולם מקבל את שלו.
 הגיבור מופיע במפה, בכל משחק ובשיעורים, והוא "המורה" שמדבר בהקראה.
 
 **מצב היום (שלב 2):** `idle`, `think`, `happy`, `cheer`, `oops` (CSS על `.h-all`/`.h-head`, אנימציות סופיות). ה-director קורא ל-`setHeroMood(state)`, והגיבור במסך המשחק מצויר עם `useHeroMood()` (מפתח לפי `n`, כך שאותו מצב פעמיים מתנגן מחדש) וחוזר ל-`idle` לבד אחרי `MOOD_MS`. בתנועה מופחתת מצב הופך להבהוב קצר של שקיפות.
@@ -283,6 +289,8 @@ interface WorldFx {
 יתרונות: משחק חדש מקבל משוב מלא בכל העולמות "בחינם"; עולם חדש מגדיר רק מיפוי אירועים; ובבדיקות אפשר לקרוא את יומן האירועים (`window.__mathitFx`, כמו `__chessitSounds`).
 
 **מצב היום (שלב 2):** האירועים `tap{key?}`, `correct{streak}`, `wrong{attempt}`, `hint`, `starEarned{n}`, `roundDone{stars, skipped?}` (`bossHit`, `unlock`, `coin`... יתווספו עם התחנות שלהם). `planFeedback(event, worldId)` היא פונקציה טהורה שמחזירה `FxPlan` (צליל + אפשרויות, מצב גיבור, תנועה, חלקיקים, אסימון שעף), ו-`emit(event, { el, to })` מבצע אותה: `el` הוא האלמנט שבו קרה הדבר (בועה, מקש, כוכב), `to` – לאן הפרס עף (נקודת ההתקדמות). `hushFeedback()` עוצר חגיגה (צלילים, חלקיקים, גיבור). יומן: `window.__mathitFx` עם `type, detail, world, sound, pitch, hero, motion, particles`. `tests/worlds/check.ts` בודק שכל אירוע ממופה בכל עולם לצליל ולמצב גיבור קיימים.
+
+**מצב היום (שלב 4):** אירועי מסע – `walk{steps, ms}` (גיבור הולך), `step{n}`, `unlock` (פיצוץ ניצוצות בתחנה + pop), `locked` (שתי דפיקות רכות ו-shake, לא "טעות"), `chestShake` (`wobble`), `chestOpen{prize}` (הפרס עף מהתיבה ל-`to`), `bossAppear`, `bossHit{n, left}` (`tremble` לבוס, `attack` לגיבור, צליל `hit` עולה – `hitPitch`), `bossDodge` (`dodge`, שקט ליד ה-`wrong` הרך), `bossDefeated{stars}` (`victory` וקונפטי – החגיגה הגדולה ביותר). `COMPANION_TYPES` (`step`, `bossDodge`) לא משנים את מצב הגיבור, כי הם מלווים אירוע אחר. ב-`FxPlan` נוסף `heroMs`; תנועות חדשות ב-`fx/motion.ts`: `wobble`, `tremble`, `dodge`.
 
 **מצב היום (שלב 3):** אירועי הוראה – `count{n}`, `jump{n}`, `ten`, `whoosh` (צליל בלבד; לא משנים את מצב הגיבור, כי הוא באמצע הסבר) – ואירועי הסבר – `explain{step}` (גיבור חושב) ו-`explained` (שמח), בלי צליל כי הגיבור מדבר. `TEACHING_TYPES` ו-`EXPLAIN_TYPES` מסמנים אותם לבדיקה. ביומן `pitch` גם ל-count/jump. היומנים (`__mathitFx`, `__mathitSounds`) שומרים עד 500 רשומות.
 
@@ -382,13 +390,13 @@ interface Profile {              // src/profiles/profiles.ts
 DB: mathit (IndexedDB)
  ├─ meta          { schemaVersion, deviceId, lastProfileId, errorLog }
  ├─ profiles      Profile (כולל settings) לפי id
- ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed)
- ├─ nodeProgress  key: profileId:nodeId → { stars, bestScore, completedAt }
+ ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed, lessonSeen)
+ ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated }  (שלב 4, גרסה 3)
  ├─ inventory     key: profileId:worldId → collectibles, coins
  └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
 ```
 - **Repository layer** אחד — ה-UI לא ניגש ל-IndexedDB ישירות.
-- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`, `deleteSkillStates` עם מחיקת פרופיל). שדות ה-`SkillState` המלא (שלב 6) יתווספו דרך `normalizeSkillState`, בלי מיגרציה נוספת.
+- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 3 (שלב 4) מוסיפה את `questProgress` (רשומה אחת לפרופיל במקום `nodeProgress` לכל תחנה – המפה תמיד קוראת את כולה). ההמרה של מה שהיה לפני המפה קורית בקריאה הראשונה (`storage/questProgress.ts` → `progressFromSkills`), לא בתוך ה-upgrade, כך שהיא עובדת גם מגרסה 1 וגם אחרי שחזור גיבוי. מחיקת פרופיל מוחקת גם את הרשומה. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`, `deleteSkillStates` עם מחיקת פרופיל). שדות ה-`SkillState` המלא (שלב 6) יתווספו דרך `normalizeSkillState`, בלי מיגרציה נוספת.
 - שמירה אחרי כל שאלה (לא רק בסוף משחק) — סגירת אפליקציה לא מוחקת התקדמות.
 - כפתור "ייצוא גיבוי" — כי נתונים מקומיים נמחקים בניקוי דפדפן.
 
@@ -404,7 +412,7 @@ MathIt/
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
 │  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog
-│  ├─ screens/        Profiles, WorldPicker, QuestMap, GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Parent, Rewards
+│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, ובהמשך Parent, Rewards
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
@@ -412,7 +420,7 @@ MathIt/
 │  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
 │  │  ├─ mastery/     מנוע שליטה, חזרה מרווחת
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
-│  │  ├─ quest/       הגדרות מפה, פרקים, תחנות (data)
+│  │  ├─ quest/       types, chapter1 (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates)
 │  │  └─ rng.ts
 │  ├─ games/          Ask (שאלה אחת: רמז והסבר), תבנית לכל מיני-משחק (Pop, Jump, Build, ...)
 │  ├─ puzzles/
@@ -426,7 +434,7 @@ MathIt/
 │  ├─ audio/          sfx.ts (סינתזה), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
-│  ├─ storage/        db.ts, skillStates.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
+│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)

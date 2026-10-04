@@ -106,6 +106,57 @@ export function shake(el: Element | null | undefined): Animation | null {
   );
 }
 
+/** A chest rattling: quick tilts left and right with a little hop. ~600ms. */
+export function wobble(el: Element | null | undefined): Animation | null {
+  if (!canAnimate(el)) return null;
+  if (reducedMotion()) return fade(el);
+  return el.animate(
+    [
+      { transform: 'rotate(0deg) translateY(0)' },
+      { transform: 'rotate(-9deg) translateY(-6px)', offset: 0.15 },
+      { transform: 'rotate(8deg) translateY(0)', offset: 0.32 },
+      { transform: 'rotate(-7deg) translateY(-5px)', offset: 0.5 },
+      { transform: 'rotate(6deg) translateY(0)', offset: 0.68 },
+      { transform: 'rotate(-3deg) translateY(-2px)', offset: 0.84 },
+      { transform: 'rotate(0deg) translateY(0)' }
+    ],
+    { duration: 600, easing: 'ease-in-out' }
+  );
+}
+
+/** Hit: a fast tremble with a squash (the boss takes a hit). ~420ms. */
+export function tremble(el: Element | null | undefined): Animation | null {
+  if (!canAnimate(el)) return null;
+  if (reducedMotion()) return fade(el);
+  return el.animate(
+    [
+      { transform: 'translateX(0) scale(1, 1)' },
+      { transform: 'translateX(10px) scale(1.08, 0.9)', offset: 0.12 },
+      { transform: 'translateX(-9px) scale(0.96, 1.04)', offset: 0.28 },
+      { transform: 'translateX(7px) scale(1.03, 0.97)', offset: 0.44 },
+      { transform: 'translateX(-5px)', offset: 0.6 },
+      { transform: 'translateX(3px)', offset: 0.78 },
+      { transform: 'translateX(0) scale(1, 1)' }
+    ],
+    { duration: 420, easing: 'ease-out' }
+  );
+}
+
+/** Dodge: slip aside and back, gently (a wrong answer against the boss). ~480ms. */
+export function dodge(el: Element | null | undefined): Animation | null {
+  if (!canAnimate(el)) return null;
+  if (reducedMotion()) return fade(el);
+  return el.animate(
+    [
+      { transform: 'translateX(0) rotate(0deg)' },
+      { transform: 'translateX(-34px) rotate(-8deg)', offset: 0.35 },
+      { transform: 'translateX(-30px) rotate(-6deg)', offset: 0.55 },
+      { transform: 'translateX(0) rotate(0deg)' }
+    ],
+    { duration: 480, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)' }
+  );
+}
+
 /**
  * Move an element along a curved path from `from` to `to` (screen points, its centre), rising
  * `lift` px above the straight line on the way – a jump, a throw. The element should be

@@ -13,12 +13,12 @@ export function Counters({ n, ...run }: { n: number } & RunProps) {
       const items = q(el, '.m-item');
       for (let i = 0; i < items.length; i++) {
         emit({ type: 'count', n: i + 1 });
-        void tl.anim(items[i].querySelector('.m-n'), FADE_IN, 260);
+        tl.bg(items[i].querySelector('.m-n'), FADE_IN, 260);
         await tl.anim(items[i], popIn(tl.calm), 380, { easing: 'cubic-bezier(.3,.7,.4,1)' });
         await tl.wait(170);
       }
       await tl.anim(el.querySelector('.m-total'), [...popIn(tl.calm, 6)], 380);
-      void tl.anim(items.at(-1), pulse(tl.calm), 400);
+      tl.bg(items.at(-1), pulse(tl.calm), 400);
       await tl.wait(500);
     },
     run

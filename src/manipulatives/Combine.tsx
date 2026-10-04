@@ -35,14 +35,14 @@ export function Combine({ a, b, ...run }: { a: number; b: number } & RunProps) {
       // The bigger group at once…
       const [first, second] = bigFirst ? [ga, gb] : [gb, ga];
       emit({ type: 'count', n: big });
-      void tl.anim(first.querySelector('.m-gbadge'), popIn(tl.calm, 6), 360);
+      tl.bg(first.querySelector('.m-gbadge'), popIn(tl.calm, 6), 360);
       await Promise.all(q(first, '.m-item').map((it) => tl.anim(it, pulse(tl.calm, 1.18), 420)));
       await tl.wait(250);
       // …then count on, one by one.
       const rest = q(second, '.m-item');
       for (let i = 0; i < rest.length; i++) {
         emit({ type: 'count', n: big + i + 1 });
-        void tl.anim(rest[i].querySelector('.m-n'), FADE_IN, 240);
+        tl.bg(rest[i].querySelector('.m-n'), FADE_IN, 240);
         await tl.anim(rest[i], pulse(tl.calm, 1.35), 420);
         await tl.wait(220);
       }

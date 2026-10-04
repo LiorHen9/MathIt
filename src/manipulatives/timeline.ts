@@ -83,6 +83,15 @@ export class Timeline {
     this.check();
   }
 
+  /**
+   * Start an animation without waiting for it (a label fading in while the script goes on).
+   * Stopping it is not an error (an un-awaited `anim` would reject with Stopped, unhandled).
+   */
+  bg(el: Element | null | undefined, frames: Keyframe[], base: number, opts: { easing?: string; delay?: number } = {}): void {
+    if (this.dead) return;
+    this.anim(el, frames, base, opts).catch(() => {});
+  }
+
   /** Commit an animation's end state and drop it. */
   private settle(a: Animation): void {
     if (!this.anims.delete(a)) return;

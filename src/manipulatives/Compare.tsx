@@ -33,8 +33,8 @@ export function Compare({ a, b, ...run }: { a: number; b: number } & RunProps) {
       // Pairs, one by one.
       for (let i = 0; i < pairs; i++) {
         emit({ type: 'count', n: i + 1 });
-        void tl.anim(rows[0][i], pulse(tl.calm, 1.2), 360);
-        void tl.anim(rows[1][i], pulse(tl.calm, 1.2), 360);
+        tl.bg(rows[0][i], pulse(tl.calm, 1.2), 360);
+        tl.bg(rows[1][i], pulse(tl.calm, 1.2), 360);
         await tl.anim(links[i], [{ opacity: 0, transform: 'scaleY(0)' }, { opacity: 1, transform: 'scaleY(1)' }], 300);
         await tl.wait(160);
       }

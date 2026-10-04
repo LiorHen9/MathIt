@@ -1162,6 +1162,65 @@ p {
   }
 }
 
+/* Walking on the quest map: a bouncing stride with a sway, for as long as the walk lasts
+   (the director sets the mood with the walk's length). */
+.hero.is-walk .h-all,
+.hero.is-attack .h-all {
+  transform-box: view-box;
+  transform-origin: 60px 152px;
+}
+
+.hero.is-walk .h-all {
+  animation: hero-walk 360ms ease-in-out infinite alternate;
+}
+
+.hero.is-walk .h-head {
+  transform-box: view-box;
+  transform-origin: 60px 80px;
+  animation: hero-nod 720ms ease-in-out infinite;
+}
+
+/* Attacking the boss (it stands to the left): a lunge, and the prop swung. */
+.hero.is-attack .h-all {
+  animation: hero-lunge 600ms var(--ease-out);
+}
+
+.hero.is-attack .h-prop {
+  animation: hero-swing 600ms var(--ease-out);
+}
+
+@keyframes hero-walk {
+  from {
+    transform: translateY(0) rotate(-3deg);
+  }
+  to {
+    transform: translateY(-7px) rotate(3deg);
+  }
+}
+
+@keyframes hero-lunge {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  30% {
+    transform: translateX(-26px) rotate(-9deg) scale(1.04);
+  }
+  55% {
+    transform: translateX(-20px) rotate(-6deg);
+  }
+}
+
+@keyframes hero-swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-55deg) scale(1.15);
+  }
+}
+
 @keyframes hero-think {
   0% {
     transform: rotate(0deg);
@@ -2492,6 +2551,627 @@ p {
   flex-wrap: wrap;
 }
 
+/* ---------- The quest map (screens/QuestMap.tsx) ---------- */
+
+.quest-map {
+  /* Room for the dock at the bottom. */
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+}
+
+.map-hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  text-align: center;
+}
+
+.map-hello .home-title {
+  margin: 0;
+}
+
+.map-hello .home-sub,
+.map-with {
+  margin: 0;
+}
+
+.map-with {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.map-with .home-hero-name {
+  font-size: var(--fs-md);
+}
+
+.map-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+
+.map-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: var(--touch);
+  padding: 0 var(--s4);
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  font-weight: 800;
+}
+
+.map-practice {
+  font-size: var(--fs-sm);
+}
+
+.map-chapter {
+  margin: var(--s2) 0 0;
+  text-align: center;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+/* The map itself: map units scaled to the width (aspect-ratio set inline). Everything on it is
+   placed by percentages, so it scales with the screen. */
+.map {
+  position: relative;
+  width: 100%;
+}
+
+.map-path {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.map-road,
+.map-trail {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.map-road {
+  stroke: var(--line);
+  stroke-width: 16;
+  stroke-dasharray: 0.1 22;
+}
+
+/* The way already walked: lit, and it lights up (opacity only) when a station opens. */
+.map-trail {
+  stroke: var(--accent);
+  stroke-width: 12;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+
+.map-trail.is-lit {
+  opacity: 0.85;
+}
+
+.map-section {
+  position: absolute;
+  inset-inline: 0;
+  margin: 0 auto;
+  width: max-content;
+  max-width: 90%;
+  transform: translateY(-50%);
+  padding: var(--s1) var(--s4);
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 800;
+  font-size: var(--fs-md);
+  box-shadow: var(--press);
+  z-index: 1;
+}
+
+.map-spot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+}
+
+.map-node {
+  position: absolute;
+  left: calc(var(--size) / -2);
+  top: calc(var(--size) / -2);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  border: 4px solid var(--line);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: var(--press);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.map-node:active {
+  transform: translateY(3px) scale(0.96);
+}
+
+.map-icon {
+  font-size: calc(var(--size) * 0.46);
+  line-height: 1;
+}
+
+.map-art {
+  width: 86%;
+  height: 86%;
+}
+
+.is-open > .map-node {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.is-done > .map-node {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.is-locked > .map-node {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.is-locked > .map-node > .map-icon,
+.is-locked > .map-node > .map-art {
+  opacity: 0.4;
+}
+
+.map-lock {
+  position: absolute;
+  bottom: -6px;
+  inset-inline-end: -6px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--line);
+}
+
+/* The station to play next: a ring that breathes (still with reduced motion). */
+.is-current::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--size) / -2 - 9px);
+  top: calc(var(--size) / -2 - 9px);
+  width: calc(var(--size) + 18px);
+  height: calc(var(--size) + 18px);
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  animation: ring-breathe 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Just opened: a burst of light (particles from the director) and a "new!" tag. */
+.map-new {
+  position: absolute;
+  left: 0;
+  top: calc(var(--size) / -2 - 16px);
+  transform: translateX(-50%);
+  padding: 0 var(--s2);
+  border-radius: 999px;
+  background: var(--accent);
+  /* --hero-ink is dark in light and dark mode, readable on the yellow tag. */
+  color: var(--hero-ink);
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  animation: new-in 600ms var(--ease-back);
+}
+
+.is-new > .map-node {
+  border-color: var(--accent);
+}
+
+.map-stars-row {
+  position: absolute;
+  left: 0;
+  top: calc(var(--size) / 2 + 1px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1px;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--line);
+  white-space: nowrap;
+}
+
+.map-stars-row .is-on {
+  color: var(--accent);
+}
+
+.map-label {
+  position: absolute;
+  left: 0;
+  top: calc(var(--size) / 2 + 17px);
+  transform: translateX(-50%);
+  width: 118px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.is-locked > .map-label {
+  color: var(--ink-soft);
+}
+
+.k-boss > .map-label {
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.map-hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  z-index: 3;
+}
+
+.map-hero .hero {
+  width: 100%;
+  height: 100%;
+}
+
+.map-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--s3) var(--s4) max(var(--s3), env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.map-bubble {
+  min-height: 56px;
+}
+
+.map-bubble::before {
+  display: none;
+}
+
+.map-go {
+  flex: none;
+  min-height: 56px;
+  font-size: var(--fs-lg);
+}
+
+@keyframes ring-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.45;
+  }
+}
+
+@keyframes new-in {
+  0% {
+    transform: translateX(-50%) scale(0.2);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(-50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* ---------- Chest and boss art (screens/quest/art.tsx) ---------- */
+
+.chest-lid {
+  transform-box: fill-box;
+  /* The hinge: the lid's back-left corner stays on the box. */
+  transform-origin: 0% 100%;
+}
+
+.chest-glow {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+.chest-art.is-open .chest-glow {
+  opacity: 1;
+}
+
+.chest-art.is-open .chest-lid {
+  transform: rotate(-30deg);
+}
+
+.chest-art.is-open .chest-lock {
+  opacity: 0;
+}
+
+.boss-art {
+  overflow: visible;
+}
+
+.boss-body {
+  transform-box: view-box;
+  transform-origin: 60px 110px;
+  animation: boss-float 2.4s ease-in-out infinite alternate;
+}
+
+.boss-swirl {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-spin 5s linear infinite;
+}
+
+.boss-bit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: boss-bit 2.8s ease-in-out infinite alternate;
+}
+
+.boss-bit.b2 {
+  animation-delay: -0.7s;
+}
+
+.boss-bit.b3 {
+  animation-delay: -1.4s;
+}
+
+.boss-bit.b4 {
+  animation-delay: -2.1s;
+}
+
+/* Beaten: it shrinks, spins away and fades. */
+.boss-art.is-beaten {
+  animation: boss-poof 1100ms ease-in forwards;
+}
+
+@keyframes boss-float {
+  from {
+    transform: translateY(0) scale(1, 1);
+  }
+  to {
+    transform: translateY(-5px) scale(0.98, 1.02);
+  }
+}
+
+@keyframes boss-bit {
+  from {
+    transform: translateY(0) rotate(-12deg);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(-6px) rotate(12deg);
+    opacity: 1;
+  }
+}
+
+@keyframes boss-poof {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.15, 0.85) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.1) rotate(200deg);
+    opacity: 0;
+  }
+}
+
+/* ---------- Chest station (screens/Chest.tsx) ---------- */
+
+.chest-screen {
+  align-items: center;
+  text-align: center;
+}
+
+.chest-screen .topbar {
+  width: 100%;
+}
+
+.prize-shelf {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  height: var(--touch);
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--line);
+  background: var(--surface);
+}
+
+.prize-shelf.is-full {
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.prize-slot {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.prize-shelf.is-full .prize-slot {
+  animation: pop-in 420ms var(--ease-back);
+}
+
+.chest-btn {
+  margin-top: var(--s5);
+  padding: 0;
+  border: 0;
+  background: radial-gradient(circle at 50% 55%, var(--brand-soft) 0 48%, transparent 50%);
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.chest-btn:disabled {
+  cursor: default;
+}
+
+.chest-big {
+  display: block;
+  width: min(62vw, 250px);
+  height: auto;
+}
+
+.chest-hint {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.chest-won {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  width: 100%;
+}
+
+.chest-prize {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--brand);
+  margin: 0;
+}
+
+.chest-prize-icon {
+  font-size: 2.2rem;
+}
+
+.chest-hero {
+  width: 90px;
+  height: auto;
+  aspect-ratio: 120 / 160;
+}
+
+/* ---------- Boss station (screens/Boss.tsx) ---------- */
+
+.boss-hp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.boss-hp {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 2px solid var(--line);
+  overflow: hidden;
+}
+
+/* The power bar drops by scaling (transform only); it empties from the left, toward the hero. */
+.boss-hp-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--danger);
+  transform-origin: 0 50%;
+  transition: transform 450ms var(--ease-out);
+}
+
+.boss-hp-text {
+  flex: none;
+  min-width: 3ch;
+  font-weight: 800;
+  color: var(--danger);
+}
+
+.boss-arena {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-inline: var(--s4);
+}
+
+.boss-hero {
+  width: 66px;
+  height: auto;
+  aspect-ratio: 120 / 160;
+  flex: none;
+}
+
+.boss-spot {
+  flex: none;
+}
+
+.boss-big {
+  display: block;
+  width: 104px;
+  height: 104px;
+}
+
+.boss-screen.is-intro .boss-big,
+.boss-screen.is-won .boss-big {
+  width: 136px;
+  height: 136px;
+}
+
+.boss-intro,
+.boss-won {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  text-align: center;
+}
+
+.boss-intro-text {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  margin: 0;
+}
+
+.boss-bubble {
+  min-height: 52px;
+}
+
+.boss-bubble::before {
+  display: none;
+}
+
+.boss-screen.is-won {
+  justify-content: flex-start;
+}
+
 /* ---------- Reduced motion ----------
    Set by src/fx/motion.ts from the phone's setting or the profile's choice. Feedback and
    decoration become short fades or stop. Teaching animations (manipulatives/, from phase 3) are
@@ -2540,6 +3220,36 @@ p {
 :root[data-motion='reduced'] .numpad-key,
 :root[data-motion='reduced'] .bubble {
   transition: none;
+}
+
+/* The quest map and its stations: no breathing ring, no floating boss; openings and the boss's
+   defeat are short fades. What opened stays marked ("חדש!", the lit path). */
+:root[data-motion='reduced'] .is-current::before,
+:root[data-motion='reduced'] .boss-body,
+:root[data-motion='reduced'] .boss-swirl,
+:root[data-motion='reduced'] .boss-bit {
+  animation: none;
+}
+
+:root[data-motion='reduced'] .map-new,
+:root[data-motion='reduced'] .prize-shelf.is-full .prize-slot {
+  animation: fade-in 200ms linear;
+}
+
+:root[data-motion='reduced'] .boss-art.is-beaten {
+  animation: fade-out 250ms linear forwards;
+}
+
+:root[data-motion='reduced'] .map-trail,
+:root[data-motion='reduced'] .boss-hp-fill,
+:root[data-motion='reduced'] .map-node {
+  transition-duration: 150ms;
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0.15;
+  }
 }
 
 /* A hero's mood (happy, oops…) becomes a short dim instead of a jump. */

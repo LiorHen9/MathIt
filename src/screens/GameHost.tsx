@@ -4,6 +4,9 @@
 // and stars at the end that appear one by one (a celebration a tap skips). Loaded lazily, with
 // the generators, the feedback engine and the teaching animations.
 //
+// From the quest map (phase 4) a round is a station: it plays the station's level, its stars are
+// saved for the station too (storage/questProgress.ts), and the end leads back to the map.
+//
 // Every bit of feedback goes through the Feedback Director (fx/director.ts): this screen says
 // *what happened* (correct, wrong, hint, starEarned, roundDone); the director decides how it
 // looks and sounds.
@@ -20,6 +23,7 @@ import type { InputMode } from '../games/Pop';
 import { Ask, msg } from '../games/Ask';
 import { ageBand, approxAge, byGender, type Profile } from '../profiles/profiles';
 import { getSkillState, saveRound } from '../storage/skillStates';
+import { recordNodeStars } from '../storage/questProgress';
 import { useWorld } from '../worlds/index';
 import { playSfx } from '../audio/sfx';
 
@@ -27,6 +31,8 @@ interface Props {
   profile: Profile;
   skillId: SkillId;
   onHome: () => void;
+  /** A station on the quest map: play this level and save the stars for the station. */
+  quest?: { nodeId: string; level: number };
 }
 
 type Result = 'first' | 'second' | 'shown';
@@ -36,10 +42,12 @@ function inputFor(q: Question, i: number): InputMode {
   return q.numeric && i % 3 === 2 ? 'numpad' : 'bubbles';
 }
 
-export function GameHost({ profile, skillId, onHome }: Props) {
+export function GameHost({ profile, skillId, onHome, quest }: Props) {
   const skill = getSkill(skillId)!;
   const world = useWorld();
   const [level, setLevel] = useState<number | null>(null);
+  /** The skill's own level (a station plays its fixed level, and never lowers this one). */
+  const [skillLevel, setSkillLevel] = useState(1);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
   const [game, setGame] = useState(0);
 
@@ -50,7 +58,12 @@ export function GameHost({ profile, skillId, onHome }: Props) {
   // The level: where this skill was left, or a start by age.
   useEffect(() => {
     let alive = true;
-    void getSkillState(profile.id, skillId).then((s) => alive && setLevel(s?.level ?? startLevel(skill, ageBand(profile))));
+    void getSkillState(profile.id, skillId).then((s) => {
+      if (!alive) return;
+      const own = s?.level ?? startLevel(skill, ageBand(profile));
+      setSkillLevel(own);
+      setLevel(quest ? quest.level : own);
+    });
     return () => {
       alive = false;
     };
@@ -66,10 +79,13 @@ export function GameHost({ profile, skillId, onHome }: Props) {
       profile={profile}
       skillId={skillId}
       level={level}
+      skillLevel={skillLevel}
+      quest={quest}
       seed={seed}
       onHome={onHome}
-      onAgain={(next) => {
-        setLevel(next);
+      onAgain={(next, own) => {
+        setSkillLevel(own);
+        setLevel(quest ? quest.level : next);
         setSeed(Math.floor(Math.random() * 0x7fffffff));
         setGame((g) => g + 1);
       }}
@@ -81,12 +97,15 @@ interface RoundProps {
   profile: Profile;
   skillId: SkillId;
   level: number;
+  skillLevel: number;
+  quest?: Props['quest'];
   seed: number;
   onHome: () => void;
-  onAgain: (level: number) => void;
+  /** Play again: the next level of this round, and the skill's own level now. */
+  onAgain: (level: number, skillLevel: number) => void;
 }
 
-function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
+function Round({ profile, skillId, level, skillLevel, quest, seed, onHome, onAgain }: RoundProps) {
   const skill = getSkill(skillId)!;
   const world = useWorld();
   const questions = useMemo(() => makeRound(skillId, level, seed, ROUND_LENGTH), [skillId, level, seed]);
@@ -94,7 +113,7 @@ function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
   const [streak, setStreak] = useState(0);
   const [results, setResults] = useState<Result[]>([]);
   const [message, setMessage] = useState<Message | null>(null);
-  const [end, setEnd] = useState<{ stars: 0 | 1 | 2 | 3; next: number } | null>(null);
+  const [end, setEnd] = useState<{ stars: 0 | 1 | 2 | 3; next: number; own: number } | null>(null);
   const dots = useRef<HTMLOListElement>(null);
   const comboNum = useRef<HTMLSpanElement>(null);
   const prevStreak = useRef(0);
@@ -149,12 +168,26 @@ function Round({ profile, skillId, level, seed, onHome, onAgain }: RoundProps) {
     const points = rs.reduce((sum, x) => sum + (x === 'first' ? questionPoints(0, true) : x === 'second' ? questionPoints(1, true) : 0), 0);
     const stars = starsFor(points, questions.length);
     const nl = nextLevel(level, stars, skill.levels.length);
-    setEnd({ stars, next: nl });
+    // A station's round moves the skill's level only forward (it was played at the station's level).
+    const own = quest ? Math.max(skillLevel, nl) : nl;
+    setEnd({ stars, next: nl, own });
     setMessage(null);
-    void saveRound(profile.id, skillId, stars, nl);
+    void saveRound(profile.id, skillId, stars, own);
+    if (quest) void recordNodeStars(profile.id, quest.nodeId, stars);
   }
 
-  if (end) return <Celebration profile={profile} stars={end.stars} levelUp={end.next > level} young={young} onAgain={() => onAgain(end.next)} onHome={onHome} />;
+  if (end)
+    return (
+      <Celebration
+        profile={profile}
+        stars={end.stars}
+        levelUp={!quest && end.next > level}
+        young={young}
+        toMap={!!quest}
+        onAgain={() => onAgain(end.next, end.own)}
+        onHome={onHome}
+      />
+    );
 
   const mode = inputFor(q, idx);
   return (
@@ -218,6 +251,8 @@ interface CelebrationProps {
   stars: 0 | 1 | 2 | 3;
   levelUp: boolean;
   young: boolean;
+  /** A quest station: the way on is back to the map. */
+  toMap: boolean;
   onAgain: () => void;
   onHome: () => void;
 }
@@ -225,7 +260,7 @@ interface CelebrationProps {
 const TITLES = ['מתאמנים ומשתפרים!', 'יפה מאוד!', 'כל הכבוד!', 'מושלם!'];
 
 /** The end of a round: the stars appear one by one, each a note higher, then the fanfare. */
-function Celebration({ profile, stars, levelUp, young, onAgain, onHome }: CelebrationProps) {
+function Celebration({ profile, stars, levelUp, young, toMap, onAgain, onHome }: CelebrationProps) {
   const world = useWorld();
   const mood = useHeroMood();
   const [shown, setShown] = useState(0);
@@ -283,14 +318,25 @@ function Celebration({ profile, stars, levelUp, young, onAgain, onHome }: Celebr
         {levelUp && <strong class="level-up"> · עולים שלב! ⬆️</strong>} <SpeakButton text={speech} class="speak-inline" />
       </p>
       {over ? (
-        <div class="row celebrate-actions">
-          <button type="button" class="btn btn-primary btn-big" data-testid="again" onClick={onAgain}>
-            🔁 שוב
-          </button>
-          <button type="button" class="btn btn-secondary btn-big" data-testid="home" onClick={onHome}>
-            🏠 לבית
-          </button>
-        </div>
+        toMap ? (
+          <div class="row celebrate-actions">
+            <button type="button" class="btn btn-primary btn-big" data-testid="to-map" onClick={onHome}>
+              {stars > 0 ? '🗺️ ממשיכים במסע' : '🗺️ למפה'}
+            </button>
+            <button type="button" class="btn btn-secondary btn-big" data-testid="again" onClick={onAgain}>
+              🔁 שוב
+            </button>
+          </div>
+        ) : (
+          <div class="row celebrate-actions">
+            <button type="button" class="btn btn-primary btn-big" data-testid="again" onClick={onAgain}>
+              🔁 שוב
+            </button>
+            <button type="button" class="btn btn-secondary btn-big" data-testid="home" onClick={onHome}>
+              🏠 לבית
+            </button>
+          </div>
+        )
       ) : (
         // The whole screen skips on a tap; this button is the visible (and keyboard) way.
         <button type="button" class="btn btn-ghost skip-btn" data-testid="skip">

@@ -1,7 +1,8 @@
 // The whole app is a small state machine: one screen at a time, no router (as in ChessIt).
 // loading → splash → "who is playing?" (or straight to a new profile the first time)
-//   → [PIN] → the profile's home ⇄ settings / editing, home ⇄ a practice round (game),
-//   home ⇄ a lesson → (practice).
+//   → [PIN] → the quest map (the profile's main screen, phase 4) ⇄ settings / editing;
+//   map ⇄ a station (lesson, practice round, chest, boss) – back to the map, where the hero walks on;
+//   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
@@ -13,6 +14,7 @@ import { hasPin } from '../profiles/pin';
 import { deleteProfile, getLastProfileId, listProfiles, saveProfile, setLastProfileId, type Profile } from '../profiles/profiles';
 import { activateProfile, activeProfile, useActiveProfile } from '../profiles/settings';
 import type { SkillId } from '../core/types';
+import type { QuestNode } from '../core/quest/types';
 import { lazy } from './lazy';
 import { logError } from './errorLog';
 
@@ -20,7 +22,12 @@ import { logError } from './errorLog';
 const ProfilePicker = lazy(() => import('../screens/ProfilePicker').then((m) => m.ProfilePicker));
 const ProfileEditor = lazy(() => import('../screens/ProfileEditor').then((m) => m.ProfileEditor));
 const PinScreen = lazy(() => import('../screens/PinScreen').then((m) => m.PinScreen));
+// The quest map, and free practice one tap away from it.
+const QuestMap = lazy(() => import('../screens/QuestMap').then((m) => m.QuestMap));
 const Home = lazy(() => import('../screens/Home').then((m) => m.Home));
+// Map stations of their own.
+const Chest = lazy(() => import('../screens/Chest').then((m) => m.Chest));
+const Boss = lazy(() => import('../screens/Boss').then((m) => m.Boss));
 const SettingsScreen = lazy(() => import('../screens/SettingsScreen').then((m) => m.SettingsScreen));
 // The game brings the generators and the feedback engine with it.
 const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost));
@@ -29,6 +36,8 @@ const Lesson = lazy(() => import('../screens/Lesson').then((m) => m.Lesson));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
+/** Where a round or a lesson goes back to: the map (a station) or free practice. */
+type From = 'map' | 'practice';
 
 type Screen =
   | { name: 'loading' }
@@ -36,10 +45,13 @@ type Screen =
   | { name: 'profiles' }
   | { name: 'edit'; profile?: Profile; from: EditFrom }
   | { name: 'pin'; profile: Profile; then: 'home' | 'edit' }
-  | { name: 'home' }
+  | { name: 'map' }
+  | { name: 'practice' }
   | { name: 'settings' }
-  | { name: 'game'; skillId: SkillId }
-  | { name: 'lesson'; skillId: SkillId };
+  | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number } }
+  | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
+  | { name: 'chest'; nodeId: string }
+  | { name: 'boss'; nodeId: string };
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -78,10 +90,11 @@ export function App() {
     }
   }, [screen.name]);
 
-  // Moving to another screen stops anything still being read aloud; each screen starts at the top.
+  // Moving to another screen stops anything still being read aloud; each screen starts at the top
+  // (the map scrolls itself to where the hero stands).
   useEffect(() => {
     stopSpeaking();
-    window.scrollTo(0, 0);
+    if (screen.name !== 'map') window.scrollTo(0, 0);
   }, [screen.name]);
 
   async function afterSplash() {
@@ -94,7 +107,15 @@ export function App() {
     void setLastProfileId(p.id);
     setLastId(p.id);
     await applyWorld(p.worldId);
-    setScreen({ name: 'home' });
+    setScreen({ name: 'map' });
+  }
+
+  /** A station on the map was tapped. */
+  function openNode(n: QuestNode) {
+    if (n.kind === 'lesson') setScreen({ name: 'lesson', skillId: n.skillId, from: 'map', nodeId: n.id });
+    else if (n.kind === 'practice') setScreen({ name: 'game', skillId: n.skillId, from: 'map', quest: { nodeId: n.id, level: n.level } });
+    else if (n.kind === 'chest') setScreen({ name: 'chest', nodeId: n.id });
+    else setScreen({ name: 'boss', nodeId: n.id });
   }
 
   function openProfile(p: Profile, then: 'home' | 'edit') {
@@ -162,40 +183,66 @@ export function App() {
           }}
         />
       );
-    case 'home':
+    case 'map':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return (
-        <Home
+        <QuestMap
+          key={active.id}
           profile={active}
           onSwitch={() => {
             void refresh();
             setScreen({ name: 'profiles' });
           }}
           onSettings={() => setScreen({ name: 'settings' })}
-          onPlay={(skillId) => setScreen({ name: 'game', skillId })}
-          onLesson={(skillId) => setScreen({ name: 'lesson', skillId })}
+          onPractice={() => setScreen({ name: 'practice' })}
+          onNode={openNode}
+        />
+      );
+    case 'practice':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return (
+        <Home
+          profile={active}
+          onBack={() => setScreen({ name: 'map' })}
+          onPlay={(skillId) => setScreen({ name: 'game', skillId, from: 'practice' })}
+          onLesson={(skillId) => setScreen({ name: 'lesson', skillId, from: 'practice' })}
         />
       );
     case 'game':
       if (!active) return <main class="screen loading" aria-busy="true" />;
-      return <GameHost key={screen.skillId} profile={active} skillId={screen.skillId} onHome={() => setScreen({ name: 'home' })} />;
+      return (
+        <GameHost
+          key={`${screen.skillId}:${screen.quest?.nodeId ?? ''}`}
+          profile={active}
+          skillId={screen.skillId}
+          quest={screen.quest}
+          onHome={() => setScreen(screen.from === 'map' ? { name: 'map' } : { name: 'practice' })}
+        />
+      );
     case 'lesson':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return (
         <Lesson
-          key={screen.skillId}
+          key={`${screen.skillId}:${screen.nodeId ?? ''}`}
           profile={active}
           skillId={screen.skillId}
-          onHome={() => setScreen({ name: 'home' })}
-          onPractice={() => setScreen({ name: 'game', skillId: screen.skillId })}
+          nodeId={screen.nodeId}
+          onHome={() => setScreen(screen.from === 'map' ? { name: 'map' } : { name: 'practice' })}
+          onPractice={() => setScreen({ name: 'game', skillId: screen.skillId, from: screen.from })}
         />
       );
+    case 'chest':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <Chest key={screen.nodeId} profile={active} nodeId={screen.nodeId} onMap={() => setScreen({ name: 'map' })} />;
+    case 'boss':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <Boss key={screen.nodeId} profile={active} nodeId={screen.nodeId} onMap={() => setScreen({ name: 'map' })} />;
     case 'settings':
       return (
         <SettingsScreen
           onBack={() => {
             void refresh();
-            setScreen({ name: 'home' });
+            setScreen({ name: 'map' });
           }}
           onEdit={() => active && setScreen({ name: 'edit', profile: active, from: 'settings' })}
         />

@@ -5,8 +5,9 @@
 //
 // States (CSS in styles.css, transform and opacity only): `idle` (breathing, blinking, a moving
 // prop), `think` (head tilted, a slow sway), `happy` (a hop), `cheer` (jumping for joy), `oops`
-// (a small flinch and head shake – gentle, never scary). A hop on tap is fx/motion.ts.
-// Phase 5 adds walk and attack (docs/ARCHITECTURE.md §6.2).
+// (a small flinch and head shake – gentle, never scary), `walk` (a bouncing stride with a sway,
+// on the quest map), `attack` (a lunge toward the boss with the prop swung). A hop on tap is
+// fx/motion.ts. Phase 5 makes walk and attack each world's own (docs/ARCHITECTURE.md §6.2).
 // The Feedback Director (fx/director.ts) sets the mood with setHeroMood; a hero drawn with
 // useHeroMood follows it and goes back to idle by itself.
 //
@@ -17,11 +18,14 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { Gender } from '../profiles/profiles';
 
-export type HeroState = 'idle' | 'think' | 'happy' | 'cheer' | 'oops';
-export const HERO_STATES: readonly HeroState[] = ['idle', 'think', 'happy', 'cheer', 'oops'];
+export type HeroState = 'idle' | 'think' | 'happy' | 'cheer' | 'oops' | 'walk' | 'attack';
+export const HERO_STATES: readonly HeroState[] = ['idle', 'think', 'happy', 'cheer', 'oops', 'walk', 'attack'];
 
-/** How long each mood lasts before the hero is idle again (ms). */
-export const MOOD_MS: Record<HeroState, number> = { idle: 0, think: 2600, happy: 900, cheer: 1700, oops: 800 };
+/**
+ * How long each mood lasts before the hero is idle again (ms). A walk usually gets its own length
+ * (the time the hero takes along the path – setHeroMood's `ms`).
+ */
+export const MOOD_MS: Record<HeroState, number> = { idle: 0, think: 2600, happy: 900, cheer: 1700, oops: 800, walk: 2400, attack: 650 };
 
 /** The shared mood: one hero on screen at a time follows it. `n` changes on every set, so the
  * same mood twice in a row replays its animation. */

@@ -3,17 +3,18 @@
 // If IndexedDB is unavailable (some private-browsing modes), data lives in memory
 // for the session and the app still works.
 //
-// Stores today: meta (schemaVersion, deviceId, errorLog…), profiles, and skillStates (version 2:
-// a profile's results per skill – level, best stars, rounds; storage/skillStates.ts).
-// Later phases add nodeProgress, inventory and sessions (docs/ARCHITECTURE.md §9): each addition
-// bumps SCHEMA_VERSION and adds a step to MIGRATIONS.
+// Stores today: meta (schemaVersion, deviceId, errorLog…), profiles, skillStates (version 2:
+// a profile's results per skill – level, best stars, rounds; storage/skillStates.ts) and
+// questProgress (version 3: a profile's way on the quest map; storage/questProgress.ts).
+// Later phases add inventory and sessions (docs/ARCHITECTURE.md §9): each addition bumps
+// SCHEMA_VERSION and adds a step to MIGRATIONS.
 
-export type StoreName = 'meta' | 'profiles' | 'skillStates';
+export type StoreName = 'meta' | 'profiles' | 'skillStates' | 'questProgress';
 
 const DB_NAME = 'mathit';
 /** Bump when stores change, and add a migration step below. */
-export const SCHEMA_VERSION = 2;
-const STORES: StoreName[] = ['meta', 'profiles', 'skillStates'];
+export const SCHEMA_VERSION = 3;
+const STORES: StoreName[] = ['meta', 'profiles', 'skillStates', 'questProgress'];
 
 /**
  * Migration steps, by the version they upgrade TO. Each runs inside the upgrade transaction,
@@ -28,6 +29,12 @@ const MIGRATIONS: Record<number, (db: IDBDatabase, tx: IDBTransaction) => void> 
   // Phase 2: results per profile and skill, key `${profileId}:${skillId}`. Nothing to convert.
   2: (db) => {
     if (!db.objectStoreNames.contains('skillStates')) db.createObjectStore('skillStates');
+  },
+  // Phase 4: the quest map, one record per profile (key = profile id). What a profile did before
+  // (skillStates) becomes stations on the map the first time its map is read
+  // (storage/questProgress.ts), so the migration from 1 or 2 only adds the store.
+  3: (db) => {
+    if (!db.objectStoreNames.contains('questProgress')) db.createObjectStore('questProgress');
   }
 };
 

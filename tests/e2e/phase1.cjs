@@ -76,7 +76,7 @@ async function startApp(p) {
   await p.tap('.splash-go', { force: true });
 }
 
-/** Fill the editor (already open) and save; ends on the profile's home. */
+/** Fill the editor (already open) and save; ends on the profile's quest map (phase 4). */
 async function createProfile(p, { name, avatar, grade, age, gender, worldId }) {
   await p.waitForSelector('.profile-editor');
   await p.fill('.profile-editor input[name=name]', name);
@@ -90,7 +90,7 @@ async function createProfile(p, { name, avatar, grade, age, gender, worldId }) {
   await waitWorld(p, worldId);
   must((await lastSound(p)) === `world-${worldId}`, `no sample sound for ${worldId}: ${await sounds(p)}`);
   await p.tap('[data-testid=save-profile]');
-  await p.waitForSelector('.home .hero');
+  await p.waitForSelector('.quest-map .map-hero .hero');
 }
 
 async function goToSettings(p) {
@@ -100,7 +100,7 @@ async function goToSettings(p) {
 
 async function backHome(p) {
   await p.tap('.settings-screen .btn-back');
-  await p.waitForSelector('.home');
+  await p.waitForSelector('.quest-map');
 }
 
 async function switchProfile(p) {
@@ -270,7 +270,7 @@ async function storedProfiles(p) {
     must(await p.$('.pin-screen'), 'a wrong PIN let her in');
     await p.screenshot({ path: `${SHOTS}/17-pin-wrong.png` });
     await typePin(p, '1234');
-    await p.waitForSelector('.home');
+    await p.waitForSelector('.quest-map');
     await waitWorld(p, 'fairies');
     step('PIN: wrong one shakes and stays, right one enters נועה (fairies)');
 
@@ -281,7 +281,7 @@ async function storedProfiles(p) {
     ]) {
       await switchProfile(p);
       await p.tap(`.profile-pick >> nth=${i}`);
-      await p.waitForSelector('.home');
+      await p.waitForSelector('.quest-map');
       await waitWorld(p, id);
       must((await bg(p)) === BG[id], `${id} background after switching`);
     }
@@ -295,26 +295,26 @@ async function storedProfiles(p) {
     must((await p.$$('.profile-pick')).length === 3, 'profiles lost on reload');
     must((await p.textContent('.profile-tile:nth-child(3) .profile-last')) !== null, 'last player not remembered');
     await p.tap('.profile-pick >> nth=1');
-    await p.waitForSelector('.home');
+    await p.waitForSelector('.quest-map');
     await waitWorld(p, 'football');
     must((await motion(p)) === 'reduced', 'איתי\'s reduced motion lost on reload');
     await switchProfile(p);
     await p.tap('.profile-pick >> nth=0');
     await p.waitForSelector('.pin-screen');
     await typePin(p, '1234');
-    await p.waitForSelector('.home');
+    await p.waitForSelector('.quest-map');
     await waitWorld(p, 'fairies');
     await goToSettings(p);
     must((await p.textContent('.volume-value')).includes('50'), 'נועה\'s volume lost on reload');
     must(await p.$('[data-pin=remove]'), 'נועה\'s PIN lost on reload');
     const db = await storedProfiles(p);
-    must(db.v === 2, 'schema version ' + db.v);
+    must(db.v === 3, 'schema version ' + db.v);
     must(db.profiles.length === 3, 'stored profiles: ' + db.profiles.length);
     must(!JSON.stringify(db.profiles).includes('"1234"'), 'PIN digits stored');
     const noa = db.profiles.find((x) => x.name === 'נועה');
     must(noa.grade === 1 && noa.gender === 'girl' && noa.worldId === 'fairies' && noa.settings.volume === 0.5 && noa.pinHash, 'נועה stored: ' + JSON.stringify(noa));
     must(db.last === noa.id, 'lastProfileId');
-    step('reload keeps profiles, worlds, settings, PIN and the last player (IndexedDB, schema 2)');
+    step('reload keeps profiles, worlds, settings, PIN and the last player (IndexedDB, schema 3)');
 
     // --- Editing a profile: the world changes ---
     await p.tap('[data-testid=edit-profile]');
@@ -328,7 +328,7 @@ async function storedProfiles(p) {
     await p.tap('[data-testid=edit-profile]');
     await p.tap('[data-world-id=ninja]');
     await p.tap('[data-testid=save-profile]');
-    await p.waitForSelector('.home');
+    await p.waitForSelector('.quest-map');
     await waitWorld(p, 'ninja');
     must((await p.textContent('.home-hero-name')).trim() === 'נינג׳ה צעירה', 'ninja girl hero');
     await p.waitForTimeout(600);

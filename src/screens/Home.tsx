@@ -1,35 +1,28 @@
-// The profile's home – until the quest map arrives (phase 4): a greeting, the hero of their
-// world (tap: the world's sound and a hop), and the four skills, the ones for the child's age
-// marked "recommended", each with its best stars so far, "practice" and a "lesson" button
-// (✓ once the lesson was watched).
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { playSfx, type SfxName } from '../audio/sfx';
-import { Hero } from '../fx/Hero';
-import { hop } from '../fx/motion';
-import { NarrationHelp, SpeakButton, useAutoSpeak } from '../components/Speak';
+// Free practice (the profile's home before the quest map): every skill with its best stars,
+// "practice" and "lesson" (✓ once watched), the ones for the child's age marked "recommended".
+// Since phase 4 the quest map is the main screen and this is one tap away from it ("תרגול חופשי");
+// rounds and lessons from here do not move the map.
+import { useEffect, useState } from 'preact/hooks';
+import { playSfx } from '../audio/sfx';
+import { SpeakButton, useAutoSpeak } from '../components/Speak';
 import { SKILLS, recommendedSkills } from '../core/skills/index';
 import type { SkillId } from '../core/types';
-import { ageBand, byGender, stageLabel, type Profile } from '../profiles/profiles';
+import { ageBand, type Profile } from '../profiles/profiles';
 import { listSkillStates, type SkillState } from '../storage/skillStates';
-import { useWorld } from '../worlds/index';
 
 interface Props {
   profile: Profile;
-  onSwitch: () => void;
-  onSettings: () => void;
+  /** Back to the quest map. */
+  onBack: () => void;
   onPlay: (skill: SkillId) => void;
   onLesson: (skill: SkillId) => void;
 }
 
-export function Home({ profile, onSwitch, onSettings, onPlay, onLesson }: Props) {
-  const world = useWorld();
-  const stage = useRef<HTMLButtonElement>(null);
+export function Home({ profile, onBack, onPlay, onLesson }: Props) {
   const [states, setStates] = useState<Record<string, SkillState>>({});
-  const heroName = world.hero?.name(profile.gender) ?? '';
-  const greeting = `שלום ${profile.name}!`;
   const ask = 'מה נתרגל היום?';
   // Ages 5–7: one sentence to hear.
-  const speech = `שלום ${profile.name}, מה נתרגל היום?`;
+  const speech = ask;
   useAutoSpeak(speech, profile.id);
   const recommended = recommendedSkills(ageBand(profile));
 
@@ -47,58 +40,17 @@ export function Home({ profile, onSwitch, onSettings, onPlay, onLesson }: Props)
         <button
           type="button"
           class="btn btn-ghost"
-          data-testid="switch-profile"
+          data-testid="practice-back"
           onClick={() => {
             playSfx('tap');
-            onSwitch();
+            onBack();
           }}
         >
-          <span aria-hidden="true">⇄</span> מי משחק?
+          <span aria-hidden="true">→</span> למפה
         </button>
+        <h1 class="topbar-title">🎯 תרגול חופשי</h1>
         <span />
-        <button
-          type="button"
-          class="icon-btn"
-          data-testid="open-settings"
-          aria-label="הגדרות"
-          onClick={() => {
-            playSfx('tap');
-            onSettings();
-          }}
-        >
-          ⚙️
-        </button>
       </header>
-
-      <section class="home-hello enter">
-        <h1 class="home-title">
-          <span class="avatar avatar-md" aria-hidden="true">
-            {profile.avatar}
-          </span>{' '}
-          {greeting}
-        </h1>
-        <p class="home-sub">
-          {world.icon} {world.name} · {stageLabel(profile)}
-        </p>
-      </section>
-
-      {world.hero && (
-        <button
-          ref={stage}
-          type="button"
-          class="home-stage"
-          data-testid="home-hero"
-          aria-label={`${heroName} – לחיצה להגיד שלום`}
-          onClick={() => {
-            playSfx(`world-${world.id}` as SfxName);
-            hop(stage.current?.querySelector('.hero'));
-          }}
-        >
-          <Hero def={world.hero} gender={profile.gender} />
-          <span class="home-hero-name">{heroName}</span>
-          <span class="home-hint">{byGender(profile, 'גע', 'געי', 'געו')} בי כדי להגיד שלום 👋</span>
-        </button>
-      )}
 
       <section class="skills" aria-labelledby="skills-title">
         <h2 class="section-title skills-title" id="skills-title">
@@ -154,7 +106,6 @@ export function Home({ profile, onSwitch, onSettings, onPlay, onLesson }: Props)
         </div>
       </section>
 
-      <NarrationHelp />
     </main>
   );
 }

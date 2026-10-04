@@ -23,6 +23,16 @@ export type SfxName =
   | 'jump'
   | 'ten'
   | 'whoosh'
+  // The quest map (phase 4).
+  | 'step'
+  | 'unlock'
+  | 'locked'
+  | 'chestShake'
+  | 'chestOpen'
+  | 'bossAppear'
+  | 'hit'
+  | 'dodge'
+  | 'victory'
   | 'world-fairies'
   | 'world-football'
   | 'world-basketball'
@@ -34,7 +44,8 @@ export type SfxName =
 export interface SfxOpts {
   /**
    * correct: the streak (the pitch climbs); star: which star (1–3); click: the key (0–9);
-   * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–10).
+   * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–10);
+   * step: which footstep (left/right alternate); hit: which hit on the boss (1, 2, 3…).
    */
   step?: number;
   /** A world id: the shared sounds take its colour. */
@@ -127,6 +138,12 @@ export function countPitch(n: number): number {
 export function jumpPitch(n: number): number {
   const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n)));
   return G4 * 2 ** (SCALE[i] / 12);
+}
+
+/** A hit on the boss: each one a step higher, so the ear hears the boss getting weaker. */
+export function hitPitch(n: number): number {
+  const i = Math.min(COMBO_STEPS.length - 1, Math.max(0, Math.floor(n) - 1));
+  return 261.63 * 2 ** (COMBO_STEPS[i] / 12);
 }
 
 /** The world's touch on a right answer. */
@@ -288,6 +305,110 @@ const SOUNDS: Record<SfxName, Sound> = {
       { wave: 'noise', at: 0, len: 0.32, vol: 0.22, attack: 0.1, filter: { type: 'bandpass', freq: 600, to: 3600, q: 1.6 } },
       { wave: 'sine', freq: 300, to: 900, at: 0.02, len: 0.25, vol: 0.05, attack: 0.05 }
     ]
+  },
+  // A footstep on the map path: a soft padded tap, left and right a little apart.
+  step: {
+    tones: (o) => {
+      const right = (o.step ?? 0) % 2 === 1;
+      return [
+        { wave: 'sine', freq: right ? 210 : 180, to: 90, at: 0, len: 0.09, vol: 0.32, attack: 0.003 },
+        { wave: 'noise', at: 0, len: 0.04, vol: 0.06, attack: 0.002, filter: { type: 'lowpass', freq: right ? 1300 : 1000 } }
+      ];
+    }
+  },
+  // A station opens: a magic sweep up into a bright chord, with sparkle.
+  unlock: {
+    tones: () => [
+      { wave: 'noise', at: 0, len: 0.4, vol: 0.12, attack: 0.25, filter: { type: 'bandpass', freq: 800, to: 6000, q: 1.2 } },
+      { wave: 'sine', freq: 392, to: 784, at: 0, len: 0.32, vol: 0.12, attack: 0.05 },
+      ...[784, 988, 1175, 1568].map((f, i): Tone => ({ wave: 'triangle', freq: f, at: 0.3 + i * 0.06, len: 0.6, vol: 0.12, attack: 0.006, detune: 6 })),
+      ...bell(1568, 0.42, 0.14, 0.8),
+      ...sparkle(0.5, 5, 0.05, 3136)
+    ],
+    echo: { time: 0.14, feedback: 0.3, wet: 0.2 }
+  },
+  // A closed station: two soft knocks on a wooden door. Not an error, just "not yet".
+  locked: {
+    tones: () => [
+      { wave: 'triangle', freq: 240, to: 180, at: 0, len: 0.07, vol: 0.3, attack: 0.002 },
+      { wave: 'noise', at: 0, len: 0.03, vol: 0.08, attack: 0.001, filter: { type: 'bandpass', freq: 1200, q: 2 } },
+      { wave: 'triangle', freq: 220, to: 165, at: 0.13, len: 0.08, vol: 0.28, attack: 0.002 },
+      { wave: 'noise', at: 0.13, len: 0.03, vol: 0.08, attack: 0.001, filter: { type: 'bandpass', freq: 1100, q: 2 } }
+    ]
+  },
+  // The chest rattles: quick wooden knocks and a jingle of what is inside.
+  chestShake: {
+    tones: () => [
+      ...[0, 0.09, 0.18, 0.27].map((at, i): Tone => ({ wave: 'triangle', freq: 200 + (i % 2) * 40, to: 140, at, len: 0.06, vol: 0.28, attack: 0.002 })),
+      ...[0.04, 0.13, 0.22, 0.31].map((at, i): Tone => ({ wave: 'triangle', freq: 2637 + i * 220, at, len: 0.08, vol: 0.05, attack: 0.002 }))
+    ]
+  },
+  // The chest opens: a creaky lid, then a shining chord and a run of sparkle.
+  chestOpen: {
+    tones: () => [
+      { wave: 'sawtooth', freq: 140, to: 260, at: 0, len: 0.28, vol: 0.05, attack: 0.03, vib: { rate: 22, depth: 18 }, filter: { type: 'lowpass', freq: 900 } },
+      ...[523.25, 659.25, 783.99, 1046.5, 1318.5].map((f, i): Tone => ({ wave: 'triangle', freq: f, at: 0.26 + i * 0.05, len: 0.8, vol: 0.12, attack: 0.008, detune: 7 })),
+      ...bell(2093, 0.45, 0.16, 0.9),
+      ...sparkle(0.5, 7, 0.05, 2637)
+    ],
+    echo: { time: 0.15, feedback: 0.32, wet: 0.22 }
+  },
+  // The boss appears: a wobbly, more silly than scary grumble.
+  bossAppear: {
+    tones: () => [
+      { wave: 'sawtooth', freq: 110, to: 82, at: 0, len: 0.55, vol: 0.12, attack: 0.04, vib: { rate: 9, depth: 10 }, filter: { type: 'lowpass', freq: 600 } },
+      { wave: 'sine', freq: 165, to: 123, at: 0.05, len: 0.5, vol: 0.18, attack: 0.04, vib: { rate: 9, depth: 8 } },
+      { wave: 'sine', freq: 330, to: 660, at: 0.55, len: 0.16, vol: 0.12, attack: 0.01 }
+    ]
+  },
+  // A hit on the boss: a punch of air, a thump, and a bright ping a step higher every hit.
+  hit: {
+    tones: (o) => {
+      const f = hitPitch(o.step ?? 1);
+      return [
+        { wave: 'noise', at: 0, len: 0.08, vol: 0.2, attack: 0.002, filter: { type: 'bandpass', freq: 1800, to: 600, q: 1 } },
+        { wave: 'sine', freq: 160, to: 55, at: 0, len: 0.14, vol: 0.45, attack: 0.002 },
+        { wave: 'triangle', freq: f * 2, at: 0.06, len: 0.22, vol: 0.18, attack: 0.004 },
+        { wave: 'sine', freq: f * 4, at: 0.06, len: 0.12, vol: 0.06, attack: 0.004 }
+      ];
+    },
+    echo: { time: 0.09, feedback: 0.2, wet: 0.15 }
+  },
+  // The boss slips aside: a quick, soft swoosh (the "not yet" is the soft wrong sound beside it).
+  dodge: {
+    tones: () => [
+      { wave: 'noise', at: 0, len: 0.2, vol: 0.12, attack: 0.05, filter: { type: 'bandpass', freq: 2400, to: 700, q: 1.4 } },
+      { wave: 'sine', freq: 520, to: 360, at: 0.02, len: 0.16, vol: 0.05, attack: 0.03 }
+    ]
+  },
+  // The boss is beaten: a brass run up, a big held chord, a cymbal and sparkle everywhere.
+  victory: {
+    tones: () => {
+      const brass = (freq: number, at: number, len: number, vol: number): Tone => ({
+        wave: 'sawtooth',
+        freq,
+        at,
+        len,
+        vol,
+        attack: 0.02,
+        detune: 9,
+        filter: { type: 'lowpass', freq: 1000, to: 3000, q: 1 }
+      });
+      return [
+        { wave: 'noise', at: 0, len: 0.5, vol: 0.07, attack: 0.4, filter: { type: 'bandpass', freq: 200, q: 1.5 } },
+        brass(392, 0, 0.12, 0.15),
+        brass(523, 0.11, 0.12, 0.15),
+        brass(659, 0.22, 0.12, 0.15),
+        brass(784, 0.33, 0.12, 0.15),
+        brass(523, 0.48, 1.0, 0.11),
+        brass(659, 0.48, 1.0, 0.1),
+        brass(784, 0.48, 1.0, 0.1),
+        brass(1047, 0.48, 1.1, 0.12),
+        { wave: 'noise', at: 0.48, len: 0.9, vol: 0.08, attack: 0.005, filter: { type: 'highpass', freq: 5000 } },
+        ...sparkle(0.5, 8, 0.05, 2093)
+      ];
+    },
+    echo: { time: 0.17, feedback: 0.32, wet: 0.22 }
   },
   // Fairies: two magic bells and a sparkle running up.
   'world-fairies': {

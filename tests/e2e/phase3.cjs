@@ -112,6 +112,9 @@ async function newProfile(p, { name, age, gender, world }) {
   await p.tap(`[data-gender=${gender}]`);
   await p.tap(`[data-world-id=${world}]`);
   await p.tap('[data-testid=save-profile]');
+  // Phase 4: the map first; the skills are in free practice.
+  await p.waitForSelector('.quest-map');
+  await p.tap('[data-testid=open-practice]');
   await p.waitForSelector('.home .skill-btn');
 }
 
@@ -252,9 +255,9 @@ async function watch(p, where, shot) {
     await layoutOk(p, 'lesson done');
     let db = await stored(p);
     let st = db.states.find((x) => x.skillId === 'add.within10');
-    must(db.v === 2, 'no schema change: ' + db.v);
+    must(db.v === 3, 'schema: ' + db.v);
     must(st && st.lessonSeen === true && st.rounds === 0 && st.level === 1, 'lesson saved: ' + JSON.stringify(st));
-    step('end of the lesson: a star and a fanfare; saved as seen (no round, level 1, schema 2)');
+    step('end of the lesson: a star and a fanfare; saved as seen (no round, level 1)');
 
     // Straight to practice.
     await p.tap('[data-testid=lesson-practice]');

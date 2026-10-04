@@ -23,7 +23,7 @@ export function TakeAway({ a, b, ...run }: { a: number; b: number } & RunProps) 
         const dx = box.right - r.left + 30;
         const dy = -(r.top - box.top) - 50;
         emit({ type: 'whoosh' });
-        void tl.anim(it.parentElement?.querySelector(`.m-ghost[data-i="${left + i}"]`), [{ opacity: 0 }, { opacity: 1 }], 400);
+        tl.bg(it.parentElement?.querySelector(`.m-ghost[data-i="${left + i}"]`), [{ opacity: 0 }, { opacity: 1 }], 400);
         await tl.anim(
           it,
           tl.calm
@@ -42,7 +42,7 @@ export function TakeAway({ a, b, ...run }: { a: number; b: number } & RunProps) 
       const stay = items.slice(0, left);
       for (let i = 0; i < stay.length; i++) {
         emit({ type: 'count', n: i + 1 });
-        void tl.anim(stay[i].querySelector('.m-n'), FADE_IN, 240);
+        tl.bg(stay[i].querySelector('.m-n'), FADE_IN, 240);
         await tl.anim(stay[i], pulse(tl.calm, 1.3), 400);
         await tl.wait(200);
       }
