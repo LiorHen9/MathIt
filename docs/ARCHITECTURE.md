@@ -402,7 +402,12 @@ interface Profile {              // src/profiles/profiles.ts
     volume: number;              // 0..1
     reducedMotion: boolean | null; // null = לפי הטלפון
     speechHelpSeen: boolean;
-    // timers, dailyGoalMinutes – יתווספו באזור ההורים (שלב 8)
+  };
+  parent: {                      // שלב 8 – מה שהורה הגדיר (core/parents/prefs.ts)
+    goal: { kind: 'questions' | 'minutes'; amount: number } | null; // יעד יומי
+    breakAfter: number | null;   // הצעת הפסקה אחרי N דקות
+    blocked: TemplateId[];       // משחקים כבויים (אף פעם לא Pop)
+    lockAhead: boolean;          // תרגול חופשי רק בפרקים שהגיעו אליהם
   };
   createdAt: number;
 }
@@ -411,7 +416,8 @@ interface Profile {              // src/profiles/profiles.ts
 - הפרופיל הפעיל וההגדרות שלו ב-`profiles/settings.ts` (`activateProfile`, `updateSettings`, `useActiveProfile`): הפעלה מחליפה את המודולים האמיתיים (`setSfxEnabled`, `setSfxVolume`, `setNarration`, `setReducedMotion`). במסכים המשותפים (פתיחה, "מי משחק?", PIN) – מראה הבסיס וברירות המחדל.
 - הפרופיל האחרון שמור ב-`meta.lastProfileId` ומסומן במסך "מי משחק?".
 - כמה פרופילים במכשיר, בחירה במסך פתיחה (בלי סיסמה).
-- **אזור הורים** מוגן בשאלת חשבון למבוגרים או PIN: סטטיסטיקות לכל ילד (מה נשלט, איפה קשה, זמן תרגול), איפוס, ייצוא/ייבוא גיבוי (JSON), ניהול פרופילים.
+- **אזור הורים** (שלב 8): "👪 להורים" ב"מי משחק?" ובהגדרות; שער (`ParentGate`) עם תרגיל כפל למבוגרים או קוד הורים נפרד (meta `parentLock`, hash עם salt; "שכחתי" מסיר אותו בתרגיל); לחיצה כפולה מהירה לא נכנסת. `ParentHome` – הילדים, קוד ההורים והגיבוי. `ParentDashboard` לכל ילד – מסע, זמן תרגול (היום / שבוע בעמודות SVG / סך הכול), חזרות, מבחן מיקום, "איפה קשה" בניסוח להורים לפי `ErrorTag` (`PARENT_ERRORS`, זכר/נקבה + טיפ) עם "▶ לתרגל את זה" (סבב מכוון לטעות: `GameHost.focus`, בעולם של הילד, בלי ה-PIN שלו) ו"📖 שיעור", ושליטה לכל מיומנות לפי פרקים; בתחתית `ParentKidSettings`. הכול עצל, במראה הבסיס.
+- **גיבוי** (`storage/backup.ts`, מ-ChessIt): קובץ `mathit-backup-YYYY-MM-DD.json` עם `format`, `version` (1), `schemaVersion`, וכל המאגרים של המשפחה – profiles, skillStates, questProgress, inventory, sessions – ו-`parentLock`; בלי שאר ה-meta (מזהה הטלפון, הפרופיל האחרון, יומן שגיאות). קריאה קפדנית (`parseBackup`: גודל, JSON, פורמט, גרסה עתידית, ChessIt, בעלות של כל רשומה, מיומנות/עולם/יום ידועים, כפילויות) ואז `normalize*` הקיים לכל רשומה, כך שקובץ מטלפון בסכמה 3/4 (בלי inventory/sessions) או בלי שדות חדשים משוחזר עם ברירות מחדל. שחזור (`restoreOps`, טהור; `dbWrite` אחד, הכול או כלום): "להחליף הכול" או "להוסיף" – וילד שקיים בשניהם: להשאיר או לקחת מהגיבוי (הרשומות הישנות שלו נמחקות קודם). שמירה בהורדה או בשיתוף (Web Share עם קבצים, אם יש). `storage/backupState.ts` – "גיבוי אחרון" ב-meta ותזכורת עדינה אחרי 14 יום. בטלפון חדש: "📂 יש לנו גיבוי" במסך הפרופיל הראשון → השער → שחזור. `tests/storage/check.ts` מוודא שכל שדה בכל מאגר נכנס לגיבוי.
 - רצף ימים (streak) עדין — "הקפאה" אוטומטית, בלי לחץ.
 
 ---
@@ -451,7 +457,7 @@ MathIt/
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
 │  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog, clock (שעון מוזרק לבדיקות)
-│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), Placement (מבחן מיקום), ובהמשך Parent
+│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), Placement (מבחן מיקום), ParentGate, ParentHome, ParentDashboard, ParentKidSettings, BackupPanel (אזור ההורים, שלב 8)
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
@@ -459,6 +465,7 @@ MathIt/
 │  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
 │  │  ├─ mastery/     engine (שליטה, חזרה מרווחת), adaptive (רמה בסבב), placement (מבחן מיקום), summary (המלצות, סיכום), pick (בחירת שאלות – עם המשחק)
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
+│  │  ├─ parents/     אזור ההורים, טהור: errors (טעויות בניסוח להורים), days (זמן לפי יום/שבוע), goal (יעד והפסקה), journey (מסע ומיומנויות לפי פרקים), prefs + settings (הגדרות הורים)
 │  │  ├─ quest/       types, chapter1, chapters (2–5) (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates, מיקום)
 │  │  ├─ story.ts     placeholders לבעיות מילוליות (fillText, fillQuestion)
 │  │  └─ rng.ts
@@ -475,11 +482,12 @@ MathIt/
 │  ├─ audio/          sfx.ts (סינתזה), packs.ts (בניית SoundPack), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
-│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, inventory.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
+│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, inventory.ts, sessions.ts, backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)
-   ├─ profiles/check.ts byGender, גיל/כיתה, normalizeProfile, PIN (bun)
+   ├─ profiles/check.ts byGender, גיל/כיתה, normalizeProfile, PIN, הגדרות הורים (bun)
+   ├─ storage/check.ts  גיבוי: כל שדה, קבצים פגומים, הוספה/החלפה, תזכורת (bun)
    ├─ worlds/check.ts   ניגודיות ושלמות כל עולם (צבעים, צלילים, מיפוי אירועים)
    └─ e2e/phaseN.cjs    Playwright לכל שלב + a11y.cjs
 ```

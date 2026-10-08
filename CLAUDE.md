@@ -50,5 +50,5 @@
   - בבנייה המקומית אין manifest ו-Service Worker (‏vite-plugin-pwa רץ רק ב-CI), ו-bun מכניס את כל ה-CSS ל-`main.css`.
   - את ה-e2e אפשר להריץ גם מול האתר החי: `node tests/e2e/phase0.cjs <shots> https://liorhen9.github.io/MathIt/` (אם הרשת מאפשרת). שם נבדקים גם ה-manifest וה-Service Worker.
   - גופני Google ושאר אתרים חסומים בסביבה; הגופן שלנו מקומי, אז זה לא משנה.
-- בדיקות: `tests/core/check.ts` (‏RNG, ובהמשך מחוללים ומנוע שליטה), `tests/profiles/check.ts` (‏byGender, גיל/כיתה, PIN), `tests/worlds/check.ts` (ניגודיות, התאמת `styles.css` לעולם הבסיס, רישום עולמות, גיבורים, צלילי דוגמה, טקסט להקראה), ו-`tests/e2e/phaseN.cjs` (צריך להריץ את כולן בכל שלב). בדיקות צלילים קוראות את `window.__mathitSounds`; משלב 2 בדיקות משוב קוראות גם את `window.__mathitFx`.
+- בדיקות: `tests/core/check.ts` (‏RNG, ובהמשך מחוללים ומנוע שליטה), `tests/profiles/check.ts` (‏byGender, גיל/כיתה, PIN, הגדרות הורים), `tests/storage/check.ts` (גיבוי: כל שדה בכל מאגר, קבצים פגומים, הוספה/החלפה), `tests/worlds/check.ts` (ניגודיות, התאמת `styles.css` לעולם הבסיס, רישום עולמות, גיבורים, צלילי דוגמה, טקסט להקראה), ו-`tests/e2e/phaseN.cjs` (צריך להריץ את כולן בכל שלב). בדיקות צלילים קוראות את `window.__mathitSounds`; משלב 2 בדיקות משוב קוראות גם את `window.__mathitFx`.
 - כפתור "נושם" (אנימציה אינסופית) אף פעם לא "יציב" ל-Playwright: ללחוץ עליו עם `{ force: true }`.

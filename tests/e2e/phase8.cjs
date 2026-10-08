@@ -10,6 +10,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // - a parent's settings for a child: a daily goal (a meter on the map, a celebration once a day via
 //   goalReached), a gentle break after N minutes, a game turned off (never in a round), free
 //   practice kept to the journey, a chapter opened by hand, reading aloud off;
+// - backup: save a file from one phone, restore it on a new phone (from the first-run screen) –
+//   profiles, settings, the journey, coins and collectibles, results and days all come back; a
+//   broken file is refused with a reason; an old phone (schema 4) moves to schema 5;
 // - transform/opacity only, touch targets ≥ 48px, no sideways scroll, light and dark.
 const SHOTS = process.argv[2] || '.';
 const URL = process.argv[3] || 'http://localhost:4173/';
@@ -450,6 +453,156 @@ async function enterParents(p) {
       step('after 10 minutes of play the map offers a break; "a bit more" closes it; no second goal celebration');
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
       await ctx.close();
+    }
+
+    // ================= Backup: one phone → a new phone =================
+    {
+      const A = await phone(b, { colorScheme: 'light', reducedMotion: 'no-preference' });
+      const p = A.p;
+      await newProfile(p, { name: 'רוני', age: 6, gender: 'girl', world: 'stage' });
+      // A real round: coins, results, today.
+      await p.tap('[data-testid=open-practice]');
+      await p.tap('[data-skill="add.within10"]');
+      await p.waitForSelector('.game .pop');
+      for (let i = 0; i < 8; i++) {
+        await answer(p, await solve(p));
+        await waitDot(p, i + 1);
+      }
+      await p.waitForSelector('.celebrate');
+      await p.waitForTimeout(500);
+      // The map: a station done and a chest opened, with its collectible.
+      await idb(p, (db) =>
+        new Promise((res) => {
+          const tx = db.transaction(['profiles', 'questProgress', 'inventory'], 'readwrite');
+          const g = tx.objectStore('profiles').getAll();
+          g.onsuccess = () => {
+            const id = g.result[0].id;
+            tx.objectStore('questProgress').put({ profileId: id, stars: { 'c1-count-lesson': 1, 'c1-count-5': 3 }, chests: {}, at: 'c1-count-5', revealed: ['c1-count-lesson', 'c1-count-5'], last: 'c1-count-5', updated: 1, opened: ['c4'] }, id);
+            const k = `${id}:stage`;
+            const inv = tx.objectStore('inventory').get(k);
+            inv.onsuccess = () => tx.objectStore('inventory').put({ ...inv.result, items: ['s-glasses'] }, k);
+          };
+          tx.oncomplete = () => res(true);
+        })
+      );
+      await toPicker(p);
+      await enterParents(p);
+      await p.tap('[data-testid=parent-home] [data-kid]');
+      await p.tap('[data-goal="questions:20"]');
+      await p.tap('[data-testid=parent-dash-back]');
+      await p.waitForSelector('[data-backup=save]');
+      must((await p.textContent('[data-testid=backup-last]')).includes('עוד לא'), 'no backup yet');
+      const [dl] = await Promise.all([p.waitForEvent('download'), p.tap('[data-backup=save]')]);
+      must(/^mathit-backup-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()), 'file name ' + dl.suggestedFilename());
+      // Kept beside the screenshots: the download goes away with the first phone.
+      const file = `${SHOTS}/p8-${dl.suggestedFilename()}`;
+      await dl.saveAs(file);
+      const text = require('fs').readFileSync(file, 'utf8');
+      const json = JSON.parse(text);
+      must(json.format === 'mathit-backup' && json.schemaVersion === 5 && json.profiles.length === 1 && json.skillStates.length >= 1 && json.questProgress.length === 1 && json.inventory.length === 1 && json.sessions.length === 1, 'the file has every store: ' + Object.keys(json));
+      await p.waitForSelector('[data-testid=backup-last]');
+      must(!(await p.textContent('[data-testid=backup-last]')).includes('עוד לא'), 'last backup shown');
+      await layoutOk(p, 'parents home with backup');
+      await p.screenshot({ path: `${SHOTS}/p8-backup-light.png`, fullPage: true });
+      const before = await idb(p, (db, getAll) => Promise.all(['profiles', 'skillStates', 'questProgress', 'inventory', 'sessions'].map((st) => getAll(db, st))));
+      must(A.errors.length === 0, 'errors: ' + A.errors.join('\n'));
+      await A.ctx.close();
+      step('a backup file from the parents area: every store (profiles, results, journey, coins, days), "last backup" shown');
+
+      // A new phone, dark and calm: restore from the first-run screen.
+      const B = await phone(b, { colorScheme: 'dark', reducedMotion: 'reduce' });
+      const q = B.p;
+      await q.goto(URL);
+      await q.waitForSelector('.splash');
+      await q.tap('.splash-go', { force: true });
+      await q.waitForSelector('.profile-editor');
+      await q.tap('[data-testid=editor-restore]');
+      await q.waitForSelector('[data-testid=parent-gate][data-armed=yes]');
+      await q.fill('.parent-check input', String(await parentAnswer(q)));
+      await q.tap('.parent-check button[type=submit]');
+      await q.waitForSelector('[data-backup=file]', { state: 'attached' });
+      // A broken file first.
+      await q.setInputFiles('[data-backup=file]', { name: 'mathit-backup-x.json', mimeType: 'application/json', buffer: Buffer.from(text.slice(0, 200)) });
+      await q.waitForSelector('[data-testid=backup-error]');
+      must((await q.textContent('[data-testid=backup-error]')).includes('לא קובץ גיבוי'), 'a broken file: ' + (await q.textContent('[data-testid=backup-error]')));
+      step('a cut file is refused with a reason in Hebrew, nothing restored');
+      await q.setInputFiles('[data-backup=file]', file);
+      await q.waitForSelector('[data-testid=backup-preview]');
+      must((await q.textContent('[data-testid=backup-preview]')).includes('רוני') && (await q.textContent('[data-testid=backup-preview]')).includes('🪙 8'), 'the preview: ' + (await q.textContent('[data-testid=backup-preview]')));
+      await q.waitForTimeout(300);
+      await layoutOk(q, 'restore preview, dark');
+      await q.screenshot({ path: `${SHOTS}/p8-restore-dark.png`, fullPage: true });
+      await q.tap('[data-restore=go]');
+      await q.waitForSelector('[data-testid=backup-done]');
+      const after = await idb(q, (db, getAll) => Promise.all(['profiles', 'skillStates', 'questProgress', 'inventory', 'sessions'].map((st) => getAll(db, st))));
+      const names = ['profiles', 'skillStates', 'questProgress', 'inventory', 'sessions'];
+      const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v);
+      for (let i = 0; i < names.length; i++) {
+        const key = (x) => JSON.stringify([x.profileId || x.id, x.skillId || x.worldId || x.day || '']);
+        const a = before[i].map((x) => [key(x), x]).sort();
+        const c = after[i].map((x) => [key(x), x]).sort();
+        must(a.length === c.length, `${names[i]}: ${a.length} → ${c.length}`);
+        // Every field the old phone had comes back with the same value.
+        for (let k = 0; k < a.length; k++)
+          for (const f of Object.keys(a[k][1])) {
+            if (names[i] === 'questProgress' && f === 'updated') continue;
+            must(JSON.stringify(canon(a[k][1][f])) === JSON.stringify(canon(c[k][1][f])), `${names[i]}.${f}: ${JSON.stringify(a[k][1][f])} → ${JSON.stringify(c[k][1][f])}`);
+          }
+      }
+      await q.tap('[data-testid=parent-exit]');
+      await q.waitForSelector('.profile-pick');
+      await q.tap('.profile-pick >> nth=0');
+      await q.waitForSelector('.quest-map .map-node');
+      must((await q.getAttribute('html', 'data-world')) === 'stage', "the child's world");
+      must((await q.getAttribute('.map-node[data-node="c1-count-5"]', 'data-status')) === 'done', 'the journey came back');
+      must(!(await q.getAttribute('[data-testid=chapter-tab-4]', 'class')).includes('is-locked'), 'the chapter opened by hand came back');
+      must((await q.getAttribute('[data-testid=goal-meter]', 'data-target')) === '20', "the parents' goal came back");
+      await q.tap('[data-testid=open-collection]');
+      await q.waitForSelector('[data-testid=collection]');
+      must((await q.textContent('[data-testid=collection]')).includes('8'), 'the coins came back');
+      must((await q.textContent('[data-testid=collection]')).includes('🕶️'), 'the collectible came back');
+      must(B.errors.length === 0, 'errors: ' + B.errors.join('\n'));
+      await B.ctx.close();
+      step('a new phone (dark, reduced motion): "we have a backup" → the door → the file → everything is back: profile and settings, results, the journey (and a chapter opened by hand), coins and the collection, days, the goal');
+    }
+
+    // ================= An old phone: schema 4 → 5 =================
+    {
+      const { ctx, p, errors } = await phone(b, { colorScheme: 'light' });
+      await p.route(URL, (rt) => rt.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>old</title>' }));
+      await p.goto(URL);
+      await p.evaluate(
+        () =>
+          new Promise((resolve, reject) => {
+            const req = indexedDB.open('mathit', 4);
+            req.onupgradeneeded = () => {
+              for (const st of ['meta', 'profiles', 'skillStates', 'questProgress', 'inventory']) req.result.createObjectStore(st);
+            };
+            req.onsuccess = () => {
+              const d = req.result;
+              const tx = d.transaction(['meta', 'profiles', 'inventory'], 'readwrite');
+              tx.objectStore('meta').put(4, 'schemaVersion');
+              tx.objectStore('profiles').put({ id: 'p_four', name: 'יואב', avatar: '🦊', age: 8, gender: 'boy', worldId: 'ninja', settings: { sfx: true, music: true, narration: false, volume: 0.8, reducedMotion: null, speechHelpSeen: true }, createdAt: 1 }, 'p_four');
+              tx.objectStore('inventory').put({ profileId: 'p_four', worldId: 'ninja', coins: 17, items: [], updated: 1 }, 'p_four:ninja');
+              tx.oncomplete = () => {
+                d.close();
+                resolve();
+              };
+              tx.onerror = () => reject(tx.error);
+            };
+          })
+      );
+      await p.unroute(URL);
+      await toPicker(p);
+      await p.tap('.profile-pick >> nth=0');
+      await p.waitForSelector('.quest-map .map-node');
+      const d = await idb(p, (db, getAll) =>
+        Promise.all([new Promise((r) => { const g = db.transaction('meta').objectStore('meta').get('schemaVersion'); g.onsuccess = () => r(g.result); }), [...db.objectStoreNames], getAll(db, 'inventory'), getAll(db, 'profiles')])
+      );
+      must(d[0] === 5 && d[1].includes('sessions') && d[2][0].coins === 17 && d[3][0].name === 'יואב', 'migration 4 → 5: ' + JSON.stringify(d));
+      must(errors.length === 0, 'errors: ' + errors.join('\n'));
+      await ctx.close();
+      step('an old phone (schema 4) moves to 5: sessions added, the profile and its coins kept');
     }
 
     console.log('\nphase 8 e2e passed');

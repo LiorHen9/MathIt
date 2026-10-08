@@ -1,6 +1,6 @@
 // The parents' area (phase 8), its first page after the door (screens/ParentGate.tsx): every child
-// on this phone – tap one for their dashboard and settings – the parents' own PIN, and (part 4)
-// backup and restore. Loaded lazily; the look is the neutral base one (not any child's world).
+// on this phone – tap one for their dashboard and settings – the parents' own PIN, and backup and
+// restore (BackupPanel). Loaded lazily; the look is the neutral base one (not any child's world).
 import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { PinPad } from '../components/PinPad';
@@ -8,6 +8,7 @@ import { stageLabel, type Profile } from '../profiles/profiles';
 import { clearParentPin, getParentLock, setParentPin } from '../profiles/parentLock';
 import type { ParentLock } from '../profiles/pin';
 import { WORLD_LIST } from '../worlds/index';
+import { BackupPanel } from './BackupPanel';
 import './parent.css';
 
 interface Props {
@@ -15,11 +16,13 @@ interface Props {
   exitLabel: string;
   onExit: () => void;
   onChild?: (p: Profile) => void;
+  /** A backup was restored: the family on this phone changed. */
+  onRestored?: () => void;
 }
 
 type PinStep = 'idle' | 'new' | 'confirm' | 'saved' | 'removed';
 
-export function ParentHome({ profiles, exitLabel, onExit, onChild }: Props) {
+export function ParentHome({ profiles, exitLabel, onExit, onChild, onRestored }: Props) {
   const [lock, setLock] = useState<ParentLock | null | undefined>(undefined);
   const [pinStep, setPinStep] = useState<PinStep>('idle');
   const [firstPin, setFirstPin] = useState('');
@@ -169,6 +172,8 @@ export function ParentHome({ profiles, exitLabel, onExit, onChild }: Props) {
           </div>
         )}
       </section>
+
+      <BackupPanel profiles={profiles} onRestored={() => onRestored?.()} />
     </main>
   );
 }

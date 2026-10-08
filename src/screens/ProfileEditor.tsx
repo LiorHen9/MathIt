@@ -28,12 +28,14 @@ interface Props {
   onSave: (p: Profile, placement: boolean) => void;
   onDelete: (p: Profile) => void;
   onCancel: () => void;
+  /** First run (no profiles yet): restore from a backup file instead (through the parents' door). */
+  onRestore?: () => void;
 }
 
 const MAX_NAME = 16;
 type StageMode = 'grade' | 'age';
 
-export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
+export function ProfileEditor({ profile, onSave, onDelete, onCancel, onRestore }: Props) {
   const [name, setName] = useState(profile?.name ?? '');
   const [avatar, setAvatar] = useState(profile?.avatar ?? AVATARS[Math.floor(Math.random() * AVATARS.length)]);
   const [mode, setMode] = useState<StageMode>(profile?.age !== undefined ? 'age' : 'grade');
@@ -252,6 +254,11 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
               מחיקת הפרופיל
             </button>
           ))}
+        {!profile && onRestore && (
+          <button type="button" class="btn btn-ghost" data-testid="editor-restore" onClick={onRestore}>
+            📂 יש לנו גיבוי – לשחזר ממנו
+          </button>
+        )}
       </form>
     </main>
   );

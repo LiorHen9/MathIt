@@ -54,8 +54,8 @@ type EditFrom = 'profiles' | 'settings' | 'first';
 /** Where a round or a lesson goes back to: the map (a station) or free practice. */
 type From = 'map' | 'practice';
 /** Where the parents' area was opened from, and where "exit" goes back to. */
-type ParentFrom = 'profiles' | 'settings';
-const PARENT_EXIT: Record<ParentFrom, string> = { profiles: 'למי משחק?', settings: 'להגדרות' };
+type ParentFrom = 'profiles' | 'settings' | 'first';
+const PARENT_EXIT: Record<ParentFrom, string> = { profiles: 'למי משחק?', settings: 'להגדרות', first: 'חזרה' };
 
 type Screen =
   | { name: 'loading' }
@@ -185,8 +185,8 @@ export function App() {
       void applyWorld(p.worldId);
       setScreen({ name: 'settings' });
     } else {
-      void refresh();
-      setScreen({ name: 'profiles' });
+      // From the first run (a restore, perhaps): to "who is playing?" if there is anyone now.
+      void refresh().then((list) => setScreen(list.length ? { name: 'profiles' } : { name: 'edit', from: 'first' }));
     }
   }
 
@@ -232,6 +232,7 @@ export function App() {
           onSave={(p, placement) => void handleSave(p, placement)}
           onDelete={(p) => void handleDelete(p)}
           onCancel={() => leaveEditor(screen.from)}
+          onRestore={screen.from === 'first' ? () => setScreen({ name: 'parentGate', from: 'first' }) : undefined}
         />
       );
     case 'pin':
@@ -332,6 +333,11 @@ export function App() {
           exitLabel={PARENT_EXIT[screen.from]}
           onExit={() => leaveParents(screen.from)}
           onChild={(p) => setScreen({ name: 'parentKid', from: screen.from, profileId: p.id })}
+          onRestored={() => {
+            // The open profile may be gone or changed: everyone picks again on the way out.
+            activateProfile(null);
+            void refresh();
+          }}
         />
       );
     case 'parentKid': {
