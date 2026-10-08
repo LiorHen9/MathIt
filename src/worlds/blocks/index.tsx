@@ -91,7 +91,7 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'block' } },
+  templateSkins: { pop: { look: 'block' }, jump: { look: 'pillars' }, build: { look: 'brick' }, match: { look: 'crate', deco: '📦' }, clock: { look: 'pixel' }, shop: { look: 'mine', icons: ['⛏️', '🔦', '💎'] } },
   story: { chapters: ['בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!'] },
   vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'], thing: ['מכוש', 'פנס', 'יהלום'] },
   coin: { icon: '💠', name: 'אבני חן' },
@@ -129,7 +129,10 @@ export const world: WorldTheme = {
     'hero-ink': '#1d1a17',
     'hero-light': '#ffffff',
     'map-bg': '#e4edd8',
-    'map-deco': '#cbdbb7'
+    'map-deco': '#cbdbb7',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#151a12',
@@ -157,6 +160,9 @@ export const world: WorldTheme = {
     'hero-ink': '#1d1a17',
     'hero-light': '#ffffff',
     'map-bg': '#181e14',
-    'map-deco': '#273220'
+    'map-deco': '#273220',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

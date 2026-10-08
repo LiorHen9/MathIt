@@ -40,7 +40,8 @@ export const SKILLS: readonly Skill[] = [
     band: '6-7',
     prerequisites: ['count.to10'],
     generatorId: 'add',
-    templates: ['pop', 'jump'],
+    // Chapter 1 stays as it was: Pop (the new games start with chapter 2).
+    templates: ['pop'],
     levels: [
       { level: 1, label: 'עד 5', min: 0, max: 5 },
       { level: 2, label: 'עד 7', min: 0, max: 7 },
@@ -54,7 +55,7 @@ export const SKILLS: readonly Skill[] = [
     band: '6-7',
     prerequisites: ['add.within10'],
     generatorId: 'sub',
-    templates: ['pop', 'jump'],
+    templates: ['pop'],
     levels: [
       { level: 1, label: 'עד 5', min: 0, max: 5 },
       { level: 2, label: 'עד 7', min: 0, max: 7 },
@@ -250,14 +251,15 @@ export function isSkillId(id: string): id is SkillId {
 }
 
 /**
- * Skills to suggest for an age band: those of the band itself; for older children, the skills of
- * the highest band below theirs (until their own band has skills).
+ * Skills to suggest for an age band: the first few of the band itself (where the band starts – a
+ * new grade-1 child is not handed a dozen skills at once); for older children, those of the
+ * highest band below theirs that has skills.
  */
-export function recommendedSkills(band: AgeBand): SkillId[] {
+export function recommendedSkills(band: AgeBand, max = 3): SkillId[] {
   const at = AGE_BANDS.indexOf(band);
   for (let i = at; i >= 0; i--) {
     const here = SKILLS.filter((s) => s.band === AGE_BANDS[i]);
-    if (here.length) return here.map((s) => s.id);
+    if (here.length) return here.slice(0, max).map((s) => s.id);
   }
   return SKILLS.filter((s) => s.band === AGE_BANDS[0]).map((s) => s.id);
 }

@@ -76,7 +76,7 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'target' } },
+  templateSkins: { pop: { look: 'target' }, jump: { look: 'roofs' }, build: { look: 'bamboo' }, match: { look: 'scroll', deco: '📜' }, clock: { look: 'gong' }, shop: { look: 'market', icons: ['✴️', '📜', '🏮'] } },
   story: { chapters: ['בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!'] },
   vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'], thing: ['כוכב נינג׳ה', 'מגילה', 'פנס נייר'] },
   coin: { icon: '🍙', name: 'כדורי אורז' },
@@ -114,7 +114,10 @@ export const world: WorldTheme = {
     'hero-ink': '#111118',
     'hero-light': '#ffffff',
     'map-bg': '#ece8de',
-    'map-deco': '#d9d1bf'
+    'map-deco': '#d9d1bf',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#121219',
@@ -142,6 +145,9 @@ export const world: WorldTheme = {
     'hero-ink': '#0b0b10',
     'hero-light': '#ffffff',
     'map-bg': '#15161f',
-    'map-deco': '#252737'
+    'map-deco': '#252737',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

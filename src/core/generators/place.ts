@@ -46,7 +46,8 @@ export const place: Generator = (level, rng) => {
         { text: `יוצא ${n}.`, math: `${t * 10} + ${o} = ${n}` }
       ],
       numeric: true,
-      key: `pv:${kind}:${n}`
+      key: `pv:${kind}:${n}`,
+      prompts: { build: make ? { text: `בונים ${text.split(':')[0]}.`, speech: `בונים ${text.split(':')[0]}.` } : { text: 'בונים את המספר:', math: `${t * 10} + ${o}`, speech: `בונים את המספר ${t * 10} ועוד ${o}.` } }
     };
   }
 

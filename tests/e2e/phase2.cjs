@@ -195,12 +195,14 @@ async function stored(p) {
     await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const skills = await p.$$eval('.skill-btn', (els) => els.map((e) => [e.dataset.skill, e.classList.contains('is-rec')]));
-    must(skills.length === 5, 'skills on home: ' + skills.length);
-    must(JSON.stringify(skills) === JSON.stringify([['count.to10', true], ['compare.to10', true], ['add.within10', false], ['sub.within10', false], ['story.within10', false]]), 'recommended for גן חובה: ' + JSON.stringify(skills));
+    // Phase 7: 17 skills (grades 1–2 joined); the first five as before.
+    must(skills.length === 17, 'skills on home: ' + skills.length);
+    must(JSON.stringify(skills.slice(0, 5)) === JSON.stringify([['count.to10', true], ['compare.to10', true], ['add.within10', false], ['sub.within10', false], ['story.within10', false]]), 'recommended for גן חובה: ' + JSON.stringify(skills));
+    must(skills.slice(5).every(([, rec]) => !rec), 'nothing of grades 1–2 recommended for a kindergartner');
     await p.waitForTimeout(500);
     await p.screenshot({ path: `${SHOTS}/30-home-skills.png`, fullPage: true });
     await layoutOk(p, 'home');
-    step('home: five skills, counting and comparing recommended for a kindergartner');
+    step('home: all 17 skills, counting and comparing recommended for a kindergartner');
 
     // --- An addition round ---
     await p.tap('[data-skill="add.within10"]');

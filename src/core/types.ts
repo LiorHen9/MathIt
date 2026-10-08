@@ -403,7 +403,7 @@ export function promptFor(q: Question, t: TemplateId): Question {
 }
 
 /** Can this template play this question? (Pop plays everything.) */
-export function templateFits(t: TemplateId, q: Pick<Question, 'answer' | 'unit' | 'prompt' | 'numeric'>): boolean {
+export function templateFits(t: TemplateId, q: Pick<Question, 'answer' | 'unit' | 'prompt' | 'numeric' | 'prompts'>): boolean {
   const a = q.answer;
   switch (t) {
     case 'pop':
@@ -412,14 +412,14 @@ export function templateFits(t: TemplateId, q: Pick<Question, 'answer' | 'unit' 
       // A number on a number line.
       return typeof a === 'number' && Number.isInteger(a) && a >= 0 && a <= 100 && q.unit === undefined;
     case 'build':
-      // Built from rods and cubes, or from coins.
-      return typeof a === 'number' && a > 0 && a <= 100 && (q.unit === '₪' || Number.isInteger(a));
+      // Built from rods and cubes, or from coins – asked its own way ("בונים את המספר 47").
+      return typeof a === 'number' && a > 0 && a <= 100 && (q.unit === '₪' || Number.isInteger(a)) && !!q.prompts?.build;
     case 'match':
       // An exercise card and its result card.
       return typeof a === 'number' && !!q.prompt.math && q.unit === undefined;
     case 'clock':
       return isTime(a);
     case 'shop':
-      return q.unit === '₪' && typeof a === 'number' && a > 0;
+      return q.unit === '₪' && typeof a === 'number' && a > 0 && !!q.prompts?.shop;
   }
 }

@@ -43,12 +43,22 @@ export interface MapSkin {
   sectionIcons: string[];
 }
 
-/** The Pop template's answers in a world's dress (CSS `.skin-<look>` on the bubbles). */
+/**
+ * A game template in a world's dress (CSS `.skin-<look>` on the template): Pop's answers (magic
+ * bubbles, balls, hoops…), Jump's platforms, Build's pieces, Match's card backs (`deco` on the
+ * back), the Clock's face, the Shop's stall (`icons` for the world's things for sale, in the
+ * order of World.vocabulary.thing). Every look is the world's own (tests/worlds/check.ts).
+ */
 export interface TemplateSkin {
-  look: 'magic' | 'ball' | 'hoop' | 'target' | 'block' | 'spot';
+  look: string;
+  /** An emoji drawn on it (a card's back). */
+  deco?: string;
+  /** Shop: an icon for each of the world's things for sale (vocabulary.thing). */
+  icons?: string[];
 }
 
-export type TemplateId = 'pop';
+export type { TemplateId } from '../core/types';
+import type { TemplateId } from '../core/types';
 
 /** Something to collect in a world (chests, beaten bosses); kept per world. */
 export interface Collectible {
@@ -122,5 +132,9 @@ export const REQUIRED_VARS = [
   'hero-light',
   // The quest map (phase 5): its ground, and the scenery drawn on it.
   'map-bg',
-  'map-deco'
+  'map-deco',
+  // Coins (phase 7): the metals and the value written on them.
+  'coin-gold',
+  'coin-silver',
+  'coin-ink'
 ] as const;

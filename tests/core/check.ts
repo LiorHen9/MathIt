@@ -469,7 +469,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     s.levels.forEach((l, i) => l.level !== i + 1 && fail(`${s.id}: levels not numbered 1..n`));
   }
   if (recommendedSkills('4-5').join() !== 'count.to10,compare.to10') fail('recommended 4-5: ' + recommendedSkills('4-5'));
-  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10,add.within20,sub.within20,add.bridge10,sub.bridge10,story.within20,numbers.to100,place.value,pattern,money,clock') fail('recommended 6-7: ' + recommendedSkills('6-7'));
+  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 6-7: ' + recommendedSkills('6-7'));
   if (recommendedSkills('10-12').join() !== 'add.within100,sub.within100') fail('recommended 10-12: ' + recommendedSkills('10-12'));
   if (startLevel(getSkill('add.within10')!, '4-5') !== 1 || startLevel(getSkill('count.to10')!, '6-7') !== 3) fail('startLevel');
   if (MAX_WRONG !== 2) fail('two mistakes before the answer is shown');

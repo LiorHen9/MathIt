@@ -12,7 +12,7 @@
 //
 // Every event is logged to window.__mathitFx (what happened and what the director chose), the
 // way window.__mathitSounds logs sounds.
-import { playSfx, comboPitch, countPitch, hitPitch, jumpPitch, starPitch, hushSfx, soundSource, type SfxName, type SfxOpts } from '../audio/sfx';
+import { playSfx, comboPitch, countPitch, hitPitch, jumpPitch, leapPitch, tickPitch, starPitch, hushSfx, soundSource, type SfxName, type SfxOpts } from '../audio/sfx';
 import { cachedWorld, type WorldTheme } from '../worlds/index';
 import { setHeroMood, type HeroState } from './Hero';
 import { centerOf, dodge, pop, popWord, shake, flyTo, tremble, wobble } from './motion';
@@ -40,6 +40,13 @@ export type FeedbackEvent =
   | { type: 'ten' }
   /** Something is taken away (flies off). */
   | { type: 'whoosh' }
+  // Teaching, phase 7.
+  /** A hop of ten on the number line lands on n (and ten rods are counted by tens). */
+  | { type: 'leap'; n: number }
+  /** A clock hand moved five minutes (n = how many fives so far, 1–12). */
+  | { type: 'tick'; n: number }
+  /** A coin lands on the stack (n = which coin). */
+  | { type: 'clink'; n: number }
   /** The hero explains step n (1, 2…) of an explanation. */
   | { type: 'explain'; step: number }
   /** An explanation is over. */
@@ -84,6 +91,9 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'jump',
   'ten',
   'whoosh',
+  'leap',
+  'tick',
+  'clink',
   'explain',
   'explained',
   'walk',
@@ -101,7 +111,7 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
-export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh'];
+export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink'];
 /** The hero's explaining moods: no sound of their own (the hero is speaking). */
 export const EXPLAIN_TYPES: readonly FeedbackType[] = ['explain', 'explained'];
 /** Sounds that go along with another event, which already set the hero's mood (walk, wrong, correct). */
@@ -125,6 +135,13 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'jump', n: 10 },
   { type: 'ten' },
   { type: 'whoosh' },
+  { type: 'jump', n: 47 },
+  { type: 'leap', n: 30 },
+  { type: 'leap', n: 100 },
+  { type: 'tick', n: 1 },
+  { type: 'tick', n: 12 },
+  { type: 'clink', n: 1 },
+  { type: 'clink', n: 6 },
   { type: 'explain', step: 1 },
   { type: 'explained' },
   { type: 'walk', steps: 6, ms: 1800 },
@@ -224,6 +241,12 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
       return { sound: 'ten', hero: null };
     case 'whoosh':
       return { sound: 'whoosh', hero: null };
+    case 'leap':
+      return { sound: 'leap', soundOpts: { step: e.n }, hero: null };
+    case 'tick':
+      return { sound: 'tick', soundOpts: { step: e.n }, hero: null };
+    case 'clink':
+      return { sound: 'clink', soundOpts: { step: e.n }, hero: null };
     case 'explain':
       return { sound: null, hero: 'think' };
     case 'explained':
@@ -311,7 +334,7 @@ export function emit(e: FeedbackEvent, at: FxTargets = {}): FxPlan {
     world,
     sound: plan.sound,
     pitch:
-      e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : e.type === 'count' ? countPitch(e.n) : e.type === 'jump' ? jumpPitch(e.n) : e.type === 'bossHit' ? hitPitch(e.n) : undefined,
+      e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : e.type === 'count' ? countPitch(e.n) : e.type === 'jump' ? jumpPitch(e.n) : e.type === 'leap' ? leapPitch(e.n) : e.type === 'tick' ? tickPitch(e.n) : e.type === 'bossHit' ? hitPitch(e.n) : undefined,
     hero: plan.hero,
     motion: plan.motion,
     particles,

@@ -97,7 +97,7 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'spot' } },
+  templateSkins: { pop: { look: 'spot' }, jump: { look: 'lights' }, build: { look: 'neon' }, match: { look: 'ticket', deco: '🎟️' }, clock: { look: 'disco' }, shop: { look: 'merch', icons: ['🎤', '🎸', '🎩'] } },
   story: { chapters: ['שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!'] },
   vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'], thing: ['מיקרופון', 'גיטרה', 'כובע נוצץ'] },
   coin: { icon: '🎟️', name: 'כרטיסים' },
@@ -135,7 +135,10 @@ export const world: WorldTheme = {
     'hero-ink': '#1c1530',
     'hero-light': '#ffffff',
     'map-bg': '#f1e6fd',
-    'map-deco': '#dfc9f7'
+    'map-deco': '#dfc9f7',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#120c20',
@@ -163,6 +166,9 @@ export const world: WorldTheme = {
     'hero-ink': '#1c1530',
     'hero-light': '#ffffff',
     'map-bg': '#170f27',
-    'map-deco': '#2c1f47'
+    'map-deco': '#2c1f47',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

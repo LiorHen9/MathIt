@@ -23,12 +23,15 @@ import { world as ninja } from '../../src/worlds/ninja/index';
 import { world as blocks } from '../../src/worlds/blocks/index';
 import { world as stage } from '../../src/worlds/stage/index';
 import { ATTACK_STYLES, Hero, HERO_STATES, MOOD_MS, WALK_STYLES } from '../../src/fx/Hero';
-import { PACK_REQUIRED, SFX_NAMES, TEACHING_SOUNDS, comboPitch, countPitch, hitPitch, jumpPitch, sharedTones, starPitch, tonesFor, type SfxName, type Tone } from '../../src/audio/sfx';
+import { PACK_REQUIRED, SFX_NAMES, TEACHING_SOUNDS, comboPitch, countPitch, hitPitch, jumpPitch, leapPitch, tickPitch, sharedTones, starPitch, tonesFor, type SfxName, type Tone } from '../../src/audio/sfx';
 import { COMPANION_TYPES, EXPLAIN_TYPES, FEEDBACK_TYPES, SAMPLE_EVENTS, TEACHING_TYPES, planFor } from '../../src/fx/director';
 import { PARTICLE_KINDS } from '../../src/fx/particles';
 import { cleanForSpeech, readingMs } from '../../src/audio/speech';
 import { drumTones, noteMidi, partTokens, voiceTones } from '../../src/audio/music';
 import { makeQuestion } from '../../src/core/generators/index';
+import { TEMPLATE_IDS, type TemplateId } from '../../src/core/types';
+const templateLooks: Partial<Record<TemplateId, Set<string>>> = {};
+const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 import { fillQuestion, hasPlaceholders } from '../../src/core/story';
 import { storyWords } from '../../src/worlds/index';
 
@@ -75,7 +78,10 @@ const PAIRS: [string, string, number, string][] = [
   // "חדש!" tag are --brand-ink on --brand, checked above).
   ['ink', 'map-bg', 4.5, 'station labels on the map'],
   ['ink-soft', 'map-bg', 4.5, 'closed station labels and the story on the map'],
-  ['brand', 'map-bg', 4.5, "the boss's name on the map"]
+  ['brand', 'map-bg', 4.5, "the boss's name on the map"],
+  // Phase 7: the value on a coin, and a coin standing out on a card.
+  ['coin-ink', 'coin-gold', 4.5, 'the value on a gold coin'],
+  ['coin-ink', 'coin-silver', 4.5, 'the value on a silver coin']
 ];
 
 for (const w of WORLDS) {
@@ -88,6 +94,9 @@ for (const w of WORLDS) {
       if (c < min) fail(`${w.id}/${mode}: ${what} (--${fg} on --${bg}) is ${c.toFixed(2)}:1, needs ${min}:1`);
     }
     // Scenery stays in the background: a gentle step from the ground, never louder than text.
+    // A coin stands out on a card: by its dark edge (light mode) or its bright metal (dark mode).
+    const coin = Math.max(contrast(vars['coin-ink'], vars.surface), Math.min(contrast(vars['coin-silver'], vars.surface), contrast(vars['coin-gold'], vars.surface)));
+    if (coin < 3) fail(`${w.id}/${mode}: a coin on a card is ${coin.toFixed(2)}:1, needs 3:1`);
     const deco = contrast(vars['map-deco'], vars['map-bg']);
     if (deco > 1.6) fail(`${w.id}/${mode}: map scenery (--map-deco on --map-bg) is ${deco.toFixed(2)}:1 – too loud for a background`);
   }
@@ -256,6 +265,11 @@ function badVoice(tones: Tone[]): Tone | null {
   // Teaching sounds: counting climbs one note per item, a hop sounds the number it lands on.
   for (let n = 1; n < 10; n++) if (!(countPitch(n + 1) > countPitch(n))) fail(`count pitch does not climb at ${n + 1}`);
   for (let n = 0; n < 10; n++) if (!(jumpPitch(n + 1) > jumpPitch(n))) fail(`jump pitch does not climb at ${n + 1}`);
+  // Phase 7: inside a ten on a long line the hops of one climb; tens leap higher and higher; the clock ticks climb.
+  for (const t of [10, 30, 90]) for (let n = t + 1; n < t + 10; n++) if (!(jumpPitch(n + 1) > jumpPitch(n))) fail(`jump pitch does not climb at ${n + 1}`);
+  for (let n = 10; n < 100; n += 10) if (!(leapPitch(n + 10) > leapPitch(n))) fail(`leap pitch does not climb at ${n + 10}`);
+  for (let n = 1; n < 11; n++) if (!(tickPitch(n + 1) > tickPitch(n))) fail(`tick pitch does not climb at ${n + 1}`);
+  for (const n of ['leap', 'tick', 'clink'] as const) if (!TEACHING_SOUNDS.includes(n)) fail(`${n} is a teaching sound`);
   const first = (name: SfxName, step: number) => tonesFor(name, { step }).find((t) => t.at === 0 && t.wave !== 'noise')!.freq!;
   if (!(first('count', 2) > first('count', 1) && first('count', 8) > first('count', 7))) fail('the "count" sound does not climb with step');
   const landing = (step: number) => tonesFor('jump', { step }).filter((t) => t.at > 0)[0].freq!;
@@ -369,6 +383,20 @@ function badVoice(tones: Tone[]): Tone | null {
     const look = w.templateSkins?.pop.look;
     if (!look) fail(where('no Pop skin'));
     else looks.add(look);
+    // Phase 7: every game template in the world's dress (its own look), and its shop's things.
+    for (const t of TEMPLATE_IDS) {
+      const sk = w.templateSkins?.[t];
+      if (!sk?.look) fail(where(`no ${t} skin`));
+      else {
+        templateLooks[t] ??= new Set();
+        if (templateLooks[t].has(sk.look)) fail(where(`the ${t} look "${sk.look}" is another world's`));
+        templateLooks[t].add(sk.look);
+        if (sk.look !== 'magic' && !css.includes(`.skin-${sk.look}`)) fail(where(`no CSS for the ${t} look .skin-${sk.look}`));
+      }
+    }
+    if (!w.templateSkins?.match?.deco) fail(where('no picture on the Match card backs'));
+    const things = w.vocabulary?.thing ?? [];
+    if (things.length < 2 || w.templateSkins?.shop?.icons?.length !== things.length) fail(where('the shop needs an icon for every thing for sale'));
     // The story, the words, the coin, the rewards.
     for (const t of w.story?.chapters ?? []) if (!oneSentence(t)) fail(where(`the chapter story should be one sentence: "${t}"`));
     if (!w.story?.chapters.length) fail(where('no chapter story'));

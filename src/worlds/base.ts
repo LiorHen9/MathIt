@@ -34,7 +34,10 @@ export const BASE: WorldTheme = {
     'hero-ink': '#24203a',
     'hero-light': '#ffffff',
     'map-bg': '#f7ecd8',
-    'map-deco': '#eddcbf'
+    'map-deco': '#eddcbf',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#16142a',
@@ -62,6 +65,9 @@ export const BASE: WorldTheme = {
     'hero-ink': '#1b1830',
     'hero-light': '#ffffff',
     'map-bg': '#1d1a35',
-    'map-deco': '#2d2852'
+    'map-deco': '#2d2852',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

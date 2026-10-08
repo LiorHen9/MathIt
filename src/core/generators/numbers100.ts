@@ -58,7 +58,8 @@ function countBlocks(n: number, level: Parameters<Generator>[0], rng: Parameters
       { text: `יש ${n}.`, math: `${t * 10} + ${o} = ${n}` }
     ],
     numeric: true,
-    key: `n100:count:${n}`
+    key: `n100:count:${n}`,
+    prompts: { build: { text: `בונים את המספר ${n} ממוטות וקוביות.`, speech: `בונים את המספר ${n} ממוטות וקוביות.` } }
   };
 }
 
@@ -96,7 +97,8 @@ function nextTo(n: number, dir: 1 | -1, level: Parameters<Generator>[0], rng: Pa
       { text: after ? `אחרי ${n} בא ${answer}.` : `לפני ${n} בא ${answer}.`, math: after ? `${n}, ${answer}` : `${answer}, ${n}` }
     ],
     numeric: true,
-    key: `n100:${after ? 'after' : 'before'}:${n}`
+    key: `n100:${after ? 'after' : 'before'}:${n}`,
+    prompts: { build: { text: after ? `בונים את המספר שבא אחרי ${n}.` : `בונים את המספר שבא לפני ${n}.`, speech: after ? `בונים את המספר שבא אחרי ${n}.` : `בונים את המספר שבא לפני ${n}.` } }
   };
 }
 

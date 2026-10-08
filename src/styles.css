@@ -30,6 +30,10 @@
   --hero-light: #ffffff;
   --map-bg: #f7ecd8;
   --map-deco: #eddcbf;
+  /* Coins (phase 7, ui/art.tsx): gold, silver, and the value written on them. */
+  --coin-gold: #e3b23c;
+  --coin-silver: #c9ced6;
+  --coin-ink: #2a2418;
 
   /* Shape and depth */
   --radius: 22px;
@@ -95,6 +99,9 @@
     --hero-light: #ffffff;
     --map-bg: #1d1a35;
     --map-deco: #2d2852;
+    --coin-gold: #d9a93a;
+    --coin-silver: #aab2bd;
+    --coin-ink: #1c1810;
     --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
     --press: 0 5px 0 rgba(0, 0, 0, 0.45);
   }
@@ -3931,4 +3938,901 @@ p {
   to {
     opacity: 1;
   }
+}
+
+/* ---------- Phase 7: rods and cubes, coins, the clock (ui/art.tsx, ui/Picture.tsx) ---------- */
+
+/* A ones cube and a tens rod (ten cubes stuck together). --u is the cube's side. */
+.blk-cube,
+.blk-cell {
+  display: block;
+  width: var(--u, 12px);
+  height: var(--u, 12px);
+  border-radius: 3px;
+  background: var(--num-2);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.blk-rod {
+  display: grid;
+  grid-template-rows: repeat(10, var(--u, 12px));
+  gap: 1px;
+  padding: 1px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+.blk-rod .blk-cell {
+  border-radius: 1px;
+  background: var(--num-1);
+  box-shadow: none;
+}
+
+/* Coins: SVG, the metals and the value from --coin-*. */
+.coin {
+  width: var(--coin, 48px);
+  height: var(--coin, 48px);
+  overflow: visible;
+}
+
+.coin-gold {
+  fill: var(--coin-gold);
+  stroke: var(--coin-ink);
+  stroke-width: 3;
+}
+
+.coin-silver {
+  fill: var(--coin-silver);
+  stroke: var(--coin-ink);
+  stroke-width: 3;
+}
+
+.coin-rim {
+  fill: none;
+  stroke: var(--coin-ink);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+  opacity: 0.5;
+}
+
+.coin-num {
+  fill: var(--coin-ink);
+  font: 800 34px var(--font);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.coin-0_5 .coin-num {
+  font-size: 30px;
+}
+
+.coin-unit {
+  fill: var(--coin-ink);
+  font: 700 16px var(--font);
+  text-anchor: middle;
+}
+
+/* The clock face. The hands turn around the centre (transform only). */
+.clock-face {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.clock-rim {
+  fill: var(--brand);
+}
+
+.clock-dial {
+  fill: var(--surface);
+}
+
+.clock-tick {
+  stroke: var(--ink-soft);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+
+.clock-tick.is-big {
+  stroke: var(--ink);
+  stroke-width: 1.8;
+}
+
+.clock-num {
+  fill: var(--ink);
+  font: 800 9px var(--font);
+  text-anchor: middle;
+}
+
+.clock-hand {
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+}
+
+.clock-hand line {
+  stroke-linecap: round;
+}
+
+.hand-hour line {
+  stroke: var(--ink);
+  stroke-width: 5;
+}
+
+.hand-minute line {
+  stroke: var(--num-1);
+  stroke-width: 3;
+}
+
+.clock-pin {
+  fill: var(--ink);
+}
+
+/* A question's picture: rods and cubes, coins, a clock. */
+.pic-blocks {
+  --u: 13px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--s4);
+  min-height: 60px;
+}
+
+.pic-rods {
+  display: flex;
+  gap: 4px;
+}
+
+.pic-cubes {
+  display: grid;
+  grid-template-columns: repeat(5, var(--u));
+  gap: 3px;
+  direction: ltr;
+}
+
+.pic-coins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.pic-clock {
+  width: min(46vw, 170px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.pic-blocks.is-hint,
+.pic-coins.is-hint,
+.pic-clock.is-hint {
+  animation: rise-in 300ms var(--ease-out);
+}
+
+/* ---------- Phase 7 teaching animations (manipulatives/) ---------- */
+
+.manip.is-loading {
+  min-height: 120px;
+}
+
+/* Rods and cubes: rods on the left, cubes beside them, five to a row. */
+.tb-board {
+  --u: 11px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--s4);
+  min-height: 140px;
+  max-width: 100%;
+}
+
+.tb-rods {
+  display: flex;
+  gap: 3px;
+}
+
+.tb-rod {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.tb-rod .m-n {
+  font-size: 0.68rem;
+}
+
+.tb-cubes {
+  display: grid;
+  grid-template-columns: repeat(5, var(--u));
+  gap: 3px;
+  align-content: end;
+}
+
+.tb-cube[data-phase='add'] .blk-cube,
+.tb-rod[data-phase='add'] .blk-cell {
+  background: var(--num-3);
+}
+
+.tb-cube[data-phase='break'] .blk-cube {
+  background: var(--num-1);
+}
+
+/* Two ten frames, side by side (smaller cells so both fit at 360px). */
+.m-doubleFrame {
+  --d: clamp(16px, 4.6vw, 22px);
+}
+
+.df-frames {
+  display: flex;
+  gap: var(--s2);
+  justify-content: center;
+}
+
+.df-frame {
+  grid-template-columns: repeat(5, calc(var(--d) + 6px));
+  grid-template-rows: repeat(2, calc(var(--d) + 6px));
+}
+
+.df-frame .m-cell:nth-child(n + 6) .m-counter {
+  background: var(--num-2);
+}
+
+.df-frame .m-counter.g-2,
+.df-frame .m-cell:nth-child(n + 6) .m-counter.g-2 {
+  background: var(--num-1);
+}
+
+/* The long number line: landings written above the line. */
+.ll-wrap {
+  padding-top: 70px;
+}
+
+.m-tick.is-minor {
+  top: -5px;
+  height: 8px;
+  width: 2px;
+  margin-left: -1px;
+  opacity: 0.6;
+}
+
+.ll-wrap .m-tick-n {
+  font-size: 0.8rem;
+  width: 30px;
+  margin-left: -15px;
+}
+
+.ll-stop {
+  position: absolute;
+  top: -58px;
+  left: calc(var(--x) * 100%);
+  width: 30px;
+  margin-left: -15px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--num-4);
+}
+
+.ll-stop.is-to {
+  color: var(--brand);
+  font-size: 1.05rem;
+}
+
+.m-arc.is-big {
+  stroke: var(--num-1);
+  stroke-width: 3;
+}
+
+/* The clock. In the end state the hands stand at the time (the script turns them before). */
+.ca-clock {
+  width: min(44vw, 160px);
+  aspect-ratio: 1;
+}
+
+.manip.is-final .ca-clock .hand-hour {
+  transform: rotate(var(--hour)) !important;
+}
+
+.manip.is-final .ca-clock .hand-minute {
+  transform: rotate(var(--minute)) !important;
+}
+
+/* Coins on a tray, the running total under them. */
+.cs-tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 64px;
+  max-width: 320px;
+  padding: var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.cs-run {
+  min-height: 1.4em;
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: var(--ink);
+}
+
+.hint-anim .cs-run {
+  display: block;
+}
+
+/* Comparing to 100: two rows of rods and cubes. */
+.ct-row {
+  --u: 7px;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s3);
+  width: 100%;
+  max-width: 330px;
+}
+
+.ct-num {
+  min-width: 2.2em;
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: var(--ink);
+}
+
+.ct-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.ll-stop.is-low {
+  top: -40px;
+}
+
+/* ---------- Phase 7 game templates (games/) ---------- */
+
+.template-loading {
+  min-height: 160px;
+}
+
+.jump,
+.build,
+.match,
+.clockset,
+.shop {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+}
+
+/* Jump: platforms on a number line, the hero hops between them. */
+.jp-track {
+  position: relative;
+  padding: 70px 0 0;
+}
+
+.jp-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.jp-start {
+  width: 18px;
+  height: 22px;
+  align-self: flex-end;
+  border-radius: 6px 6px 0 0;
+  background: var(--line);
+}
+
+.jp-plat {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 56px;
+  min-width: 48px;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px 12px 6px 6px;
+  background: var(--surface);
+  box-shadow: inset 0 -6px 0 var(--line), var(--shadow);
+  color: var(--ink);
+  font: 800 1.25rem var(--font);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-med) var(--ease-out),
+    opacity var(--t-med) var(--ease-out);
+}
+
+.jp-plat.is-wrong {
+  opacity: 0.4;
+  transform: translateY(8px);
+}
+
+.jp-plat.is-off {
+  opacity: 0.45;
+}
+
+.jp-plat.is-right {
+  background: var(--good);
+  color: var(--surface);
+  transform: translateY(-4px);
+}
+
+.jp-hero {
+  position: absolute;
+  bottom: 54px;
+  left: 0;
+  width: 44px;
+  height: 58px;
+  margin-left: -22px;
+  pointer-events: none;
+}
+
+.jp-hero .hero {
+  width: 100%;
+  height: 100%;
+}
+
+.jp-ground {
+  height: 10px;
+  margin-top: 2px;
+  border-radius: 5px;
+  background: var(--map-deco);
+}
+
+/* The worlds' platforms. */
+.skin-clouds .jp-plat {
+  border-radius: 28px 28px 20px 20px;
+  box-shadow: inset 0 -6px 0 var(--brand-soft), 0 6px 14px color-mix(in srgb, var(--brand) 25%, transparent);
+}
+.skin-cones .jp-plat {
+  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+  box-shadow: inset 0 -12px 0 var(--num-4);
+}
+.skin-hoops .jp-plat {
+  border-radius: 50% 50% 8px 8px;
+  box-shadow: inset 0 0 0 4px var(--brand), inset 0 -6px 0 var(--line);
+}
+.skin-roofs .jp-plat {
+  clip-path: polygon(0 22%, 50% 0, 100% 22%, 100% 100%, 0 100%);
+  padding-top: 10px;
+  background: var(--surface-2);
+}
+.skin-pillars .jp-plat {
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 3px var(--line), inset 0 -8px 0 var(--accent);
+}
+.skin-lights .jp-plat {
+  border-radius: 50% 50% 4px 4px;
+  box-shadow: 0 -10px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 -6px 0 var(--line);
+}
+.jp-plat.is-right {
+  background: var(--good);
+  color: var(--surface);
+}
+
+/* Build: the board, the value, the controls. */
+.bd-blocks,
+.bd-money {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.bd-board {
+  --u: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--s4);
+  width: 100%;
+  min-height: 150px;
+  padding: var(--s3);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.bd-rods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: 190px;
+}
+
+.bd-cubes {
+  display: grid;
+  grid-template-columns: repeat(5, var(--u));
+  gap: 3px;
+}
+
+.bd-empty {
+  align-self: center;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.bd-value {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--brand);
+}
+
+.bd-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s2);
+  width: 100%;
+}
+
+.bd-btn {
+  min-height: var(--touch);
+  padding: 0 var(--s2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 1.2rem;
+}
+
+.bd-icon.blk-rod {
+  --u: 3px;
+}
+
+.bd-icon.blk-cube {
+  --u: 12px;
+}
+
+.bd-check {
+  min-height: var(--touch);
+  min-width: 160px;
+  align-self: center;
+}
+
+.skin-crystal .blk-cube,
+.skin-crystal .blk-cell {
+  border-radius: 50% 10% 50% 10%;
+}
+.skin-turf .bd-board {
+  background: repeating-linear-gradient(90deg, var(--surface-2) 0 18px, var(--map-deco) 18px 36px);
+}
+.skin-court .bd-board {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+.skin-bamboo .blk-rod {
+  border-radius: 8px;
+}
+.skin-brick .blk-cube,
+.skin-brick .blk-cell {
+  border-radius: 0;
+}
+.skin-neon .blk-cube,
+.skin-neon .blk-cell {
+  box-shadow: 0 0 6px var(--num-2);
+}
+
+/* Coins onto a tray (Build with money, Shop). */
+.coin-tray-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.coin-tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--s2);
+  border: 3px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.coin-tray-empty {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.tray-coin,
+.coin-btn {
+  display: grid;
+  place-items: center;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coin-btn .coin {
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.coin-btn:active .coin {
+  transform: scale(0.9);
+}
+
+.coin-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+.coin-total {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* Shop: the stall, the thing for sale and its price tag. */
+.sh-stall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.sh-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+}
+
+.sh-item {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.sh-tag {
+  padding: 4px 12px;
+  border-radius: 8px 20px 20px 8px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  transform: rotate(-6deg);
+}
+
+.sh-paid {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.skin-stall .sh-counter {
+  border-radius: 40px 40px var(--radius-sm) var(--radius-sm);
+}
+.skin-kiosk .sh-counter {
+  box-shadow: inset 0 -6px 0 var(--num-3);
+}
+.skin-store .sh-counter {
+  box-shadow: inset 0 0 0 3px var(--brand);
+}
+.skin-market .sh-counter {
+  background: repeating-linear-gradient(90deg, var(--brand-soft) 0 16px, var(--surface-2) 16px 32px);
+}
+.skin-mine .sh-counter {
+  border-radius: 4px;
+  box-shadow: inset 0 -8px 0 var(--map-deco);
+}
+.skin-merch .sh-counter {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* Match: the board of pairs found, the exercise card, the cards that turn over. */
+.mt-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-slot {
+  min-height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.mt-slot.is-full {
+  background: var(--brand-soft);
+  animation: rise-in 300ms var(--ease-out);
+}
+
+.mt-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.mt-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s2);
+  width: 100%;
+}
+
+.mt-card {
+  position: relative;
+  min-height: 84px;
+  min-width: var(--touch);
+  padding: 0;
+  border: 0;
+  background: none;
+  perspective: 600px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mt-exercise {
+  width: 132px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.mt-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 300ms var(--ease-out);
+}
+
+.mt-card.is-up .mt-inner {
+  transform: rotateY(180deg);
+}
+
+.mt-back,
+.mt-card .mt-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  backface-visibility: hidden;
+  font-weight: 800;
+}
+
+.mt-back {
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 1.6rem;
+}
+
+.mt-card .mt-face {
+  transform: rotateY(180deg);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-lg);
+  box-shadow: inset 0 0 0 3px var(--line);
+}
+
+.mt-exercise .mt-face {
+  position: static;
+  transform: none;
+}
+
+.mt-card.is-wrong {
+  opacity: 0.45;
+}
+
+.mt-card.is-right .mt-face {
+  box-shadow: inset 0 0 0 4px var(--good);
+  color: var(--good);
+}
+
+.skin-wand .mt-back {
+  border-radius: 18px 4px 18px 4px;
+}
+.skin-shirt .mt-back {
+  background: repeating-linear-gradient(90deg, var(--brand) 0 10px, var(--num-1) 10px 20px);
+}
+.skin-jersey .mt-back {
+  box-shadow: inset 0 0 0 4px var(--accent);
+}
+.skin-scroll .mt-back {
+  border-radius: 6px 22px 6px 22px;
+  background: var(--brand-soft);
+  color: var(--ink);
+}
+.skin-crate .mt-back {
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 4px var(--line);
+}
+.skin-ticket .mt-back {
+  border-radius: 4px;
+  background: radial-gradient(circle at 0 50%, transparent 8px, var(--brand) 9px);
+}
+
+/* Clock: a big face with hands to drag, buttons under it. */
+.cs-face {
+  width: min(66vw, 240px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.cs-controls {
+  display: flex;
+  justify-content: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.cs-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cs-btn {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  font-size: 1.6rem;
+}
+
+.cs-label {
+  min-width: 3em;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.skin-flower .clock-rim {
+  fill: var(--num-1);
+}
+.skin-scoreboard .clock-dial {
+  fill: var(--surface-2);
+}
+.skin-shotclock .clock-rim {
+  fill: var(--accent);
+}
+.skin-gong .clock-rim {
+  fill: var(--hero-trim);
+}
+.skin-pixel .clock-rim {
+  fill: var(--num-3);
+}
+.skin-disco .clock-rim {
+  fill: var(--num-2);
 }

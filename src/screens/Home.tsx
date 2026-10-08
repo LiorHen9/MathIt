@@ -63,8 +63,7 @@ export function Home({ profile, onBack, onPlay, onLesson }: Props) {
           {ask} <SpeakButton text={speech} class="speak-inline" />
         </h2>
         <div class="skill-grid">
-          {/* TEMP(phase 7): the new skills join once their animations and games are in. */}
-          {SKILLS.slice(0, 5).map((s) => {
+          {SKILLS.map((s) => {
             const st = states?.[s.id];
             const rec = recommended.includes(s.id);
             const crown = isMastered(st);

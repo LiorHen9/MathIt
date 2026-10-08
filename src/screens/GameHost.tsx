@@ -27,7 +27,7 @@ import { createRng } from '../core/rng';
 import { fillQuestion } from '../core/story';
 import { ROUND_LENGTH, nextLevel, questionPoints, starsFor } from '../core/round';
 import { getSkill, startLevel } from '../core/skills/index';
-import type { ErrorTag, Question, SkillId } from '../core/types';
+import { TEMPLATE_IDS, answerKey, promptFor, templateFits, type ErrorTag, type Question, type SkillId, type TemplateId } from '../core/types';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
 import { Hero, setHeroMood, useHeroMood } from '../fx/Hero';
 import { countUp, reducedMotion } from '../fx/motion';
@@ -46,8 +46,8 @@ interface Props {
   /** The skill of a practice round (free practice or a station). */
   skillId?: SkillId;
   onHome: () => void;
-  /** A station on the quest map: play this level and save the stars for the station. */
-  quest?: { nodeId: string; level: number };
+  /** A station on the quest map: play this level (in this game) and save the stars for the station. */
+  quest?: { nodeId: string; level: number; template?: TemplateId };
   /** A review station: these skills mixed, each at its own level. */
   review?: { skillIds: SkillId[]; count: number };
 }
@@ -68,6 +68,26 @@ function inputFor(q: Question, i: number): InputMode {
 interface SkillSetup {
   level: number;
   common?: ErrorTag;
+  /** Rounds played so far (free practice takes turns between the skill's games). */
+  rounds: number;
+}
+
+/** A game asked for in the address (`?template=jump`) – for trying a game out, and for tests. */
+function askedTemplate(): TemplateId | null {
+  const t = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('template') : null;
+  return t && (TEMPLATE_IDS as readonly string[]).includes(t) ? (t as TemplateId) : null;
+}
+
+/**
+ * The game of a round (phase 7): a station's own; else one asked for in the address; else, in free
+ * practice, the skill's games in turn (Pop first). A review is always Pop. Questions the game
+ * cannot play (a sign in Jump) fall back to Pop.
+ */
+export function roundTemplate(templates: readonly TemplateId[], rounds: number, station?: TemplateId, asked?: TemplateId | null, review = false): TemplateId {
+  if (review) return 'pop';
+  if (station) return station;
+  if (asked && templates.includes(asked)) return asked;
+  return templates[rounds % templates.length] ?? 'pop';
 }
 
 export function GameHost({ profile, skillId, onHome, quest, review }: Props) {
@@ -89,7 +109,7 @@ export function GameHost({ profile, skillId, onHome, quest, review }: Props) {
       const out: Record<string, SkillSetup> = {};
       for (const id of skills) {
         const s: SkillState | undefined = all[id];
-        out[id] = { level: s?.level ?? startLevel(getSkill(id)!, ageBand(profile)), common: commonError(s?.errorCounts) };
+        out[id] = { level: s?.level ?? startLevel(getSkill(id)!, ageBand(profile)), common: commonError(s?.errorCounts), rounds: s?.rounds ?? 0 };
       }
       setSetup(out);
     });
@@ -113,7 +133,7 @@ export function GameHost({ profile, skillId, onHome, quest, review }: Props) {
       seed={seed}
       onHome={onHome}
       onAgain={(own) => {
-        if (skillId) setSetup({ ...setup, [skillId]: { ...setup[skillId], level: own } });
+        if (skillId) setSetup({ ...setup, [skillId]: { ...setup[skillId], level: own, rounds: setup[skillId].rounds + 1 } });
         setSeed(Math.floor(Math.random() * 0x7fffffff));
         setGame((g) => g + 1);
       }}
@@ -147,6 +167,8 @@ interface Plan {
   repeats: { q: Question; at: number }[];
   seen: Set<string>;
   results: Result[];
+  /** Match: the pairs found (the round's board). */
+  board: { math: string; answer: string }[];
 }
 
 function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }: RoundProps) {
@@ -161,7 +183,7 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
   const fixed = !!quest || !!review;
   const plan = useRef<Plan | null>(null);
   if (!plan.current) {
-    const p: Plan = { items: [], total: base, lv: startLevelState(quest ? quest.level : startLv), repeats: [], seen: new Set(), results: [] };
+    const p: Plan = { items: [], total: base, lv: startLevelState(quest ? quest.level : startLv), repeats: [], seen: new Set(), results: [], board: [] };
     plan.current = p;
     p.items.push(make(p, 0));
   }
@@ -181,7 +203,10 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
 
   const P = plan.current;
   const item = P.items[idx];
-  const q = item.q;
+  const tpl = useMemo(() => roundTemplate(skill.templates, setup[skills[0]].rounds, quest?.template, askedTemplate(), !!review), []);
+  /** This question's game: the round's, if it can play it. */
+  const game: TemplateId = templateFits(tpl, item.q) ? tpl : 'pop';
+  const q = useMemo(() => promptFor(item.q, game), [item.q, game]);
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms));
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -216,6 +241,7 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
     const s = streak + 1;
     setStreak(s);
     P.results[idx] = wrongBefore === 0 ? 'first' : 'second';
+    if (game === 'match') P.board.push({ math: (q.prompt.math ?? '').replace(/\s*=\s*\?$/, ''), answer: String(q.answer) });
     setMessage(msg(praise(s), 'good', s >= 3 ? `${praise(s).split('!')[0]}!` : undefined));
     emit({ type: 'correct', streak: s }, { el: from, to });
     purse.earn(1, from);
@@ -292,7 +318,7 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
       />
     );
 
-  const mode = inputFor(q, idx);
+  const mode = game === 'pop' ? inputFor(q, idx) : 'bubbles';
   const title = review ? (
     <>
       <span aria-hidden="true">🔁</span> חזרה
@@ -314,6 +340,8 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
       data-repeat={item.repeat ? 'yes' : 'no'}
       data-early={P.lv.earlyHint ? 'yes' : 'no'}
       data-total={P.total}
+      data-template={game}
+      data-answer={answerKey(q.answer)}
     >
       <header class="topbar game-top">
         <button
@@ -360,17 +388,38 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
         onResult={result}
         common={setup[q.skillId]?.common}
         hintAfterMs={P.lv.earlyHint ? EARLY_HINT_MS : undefined}
+        template={game}
+        board={game === 'match' ? P.board : undefined}
         nextLabel={idx + 1 < P.total ? 'הבא ←' : 'לסיום ←'}
       />
 
       <div class="game-hero-row">
         <Hero def={world.hero!} gender={profile.gender} state={mood.state} key={mood.n} class="game-hero" />
         <div class="speech-bubble">
-          <Feedback message={message} idle={mode === 'numpad' ? byGender(profile, 'הקלד ולחץ בדוק', 'הקלידי ולחצי בדוק', 'הקלידו ולחצו בדוק') : byGender(profile, 'בחר תשובה', 'בחרי תשובה', 'בחרו תשובה')} />
+          <Feedback message={message} idle={idleText(game, mode, profile)} />
         </div>
       </div>
     </main>
   );
+}
+
+/** What the hero says while waiting, by game. */
+function idleText(game: TemplateId, mode: InputMode, profile: Profile): string {
+  const g = (m: string, f: string, n: string) => byGender(profile, m, f, n);
+  switch (game) {
+    case 'jump':
+      return g('קפוץ למספר הנכון', 'קפצי למספר הנכון', 'קפצו למספר הנכון');
+    case 'build':
+      return g('בנה ולחץ בדוק', 'בני ולחצי בדוק', 'בנו ולחצו בדוק');
+    case 'match':
+      return g('מצא את הקלף של התוצאה', 'מצאי את הקלף של התוצאה', 'מצאו את הקלף של התוצאה');
+    case 'clock':
+      return g('הזז את המחוגים', 'הזיזי את המחוגים', 'הזיזו את המחוגים');
+    case 'shop':
+      return g('שים מטבעות בקופה', 'שימי מטבעות בקופה', 'שימו מטבעות בקופה');
+    default:
+      return mode === 'numpad' ? g('הקלד ולחץ בדוק', 'הקלידי ולחצי בדוק', 'הקלידו ולחצו בדוק') : g('בחר תשובה', 'בחרי תשובה', 'בחרו תשובה');
+  }
 }
 
 interface CelebrationProps {

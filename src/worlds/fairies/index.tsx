@@ -82,7 +82,7 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'magic' } },
+  templateSkins: { pop: { look: 'magic' }, jump: { look: 'clouds' }, build: { look: 'crystal' }, match: { look: 'wand', deco: '🪄' }, clock: { look: 'flower' }, shop: { look: 'stall', icons: ['🪄', '👑', '🧪'] } },
   story: { chapters: ['מכשפת הערפל כיסתה את הגינה הקסומה – כל תשובה נכונה מחזירה לה צבע!'] },
   vocabulary: { items: ['אבני קסם', 'פרחים', 'פרפרים'], place: ['בגינה הקסומה', 'על ענן הפיות'], thing: ['שרביט קסם', 'כתר פרחים', 'שיקוי נצנצים'] },
   coin: { icon: '💎', name: 'אבני קסם' },
@@ -120,7 +120,10 @@ export const world: WorldTheme = {
     'hero-ink': '#3a1f3f',
     'hero-light': '#ffffff',
     'map-bg': '#fbe8f4',
-    'map-deco': '#f2cbe4'
+    'map-deco': '#f2cbe4',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#1f1226',
@@ -148,6 +151,9 @@ export const world: WorldTheme = {
     'hero-ink': '#3a1f3f',
     'hero-light': '#ffffff',
     'map-bg': '#28172f',
-    'map-deco': '#3d2649'
+    'map-deco': '#3d2649',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

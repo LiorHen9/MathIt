@@ -70,7 +70,7 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'hoop' } },
+  templateSkins: { pop: { look: 'hoop' }, jump: { look: 'hoops' }, build: { look: 'court' }, match: { look: 'jersey', deco: '🏀' }, clock: { look: 'shotclock' }, shop: { look: 'store', icons: ['🏀', '🎽', '🥤'] } },
   story: { chapters: ['בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!'] },
   vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'], thing: ['כדור סל', 'סרט ראש', 'בקבוק מים'] },
   coin: { icon: '🏅', name: 'מדליות' },
@@ -108,7 +108,10 @@ export const world: WorldTheme = {
     'hero-ink': '#24160f',
     'hero-light': '#ffffff',
     'map-bg': '#f7e4cb',
-    'map-deco': '#ebcda6'
+    'map-deco': '#ebcda6',
+    'coin-gold': '#e3b23c',
+    'coin-silver': '#c9ced6',
+    'coin-ink': '#2a2418'
   },
   dark: {
     bg: '#1c130c',
@@ -136,6 +139,9 @@ export const world: WorldTheme = {
     'hero-ink': '#24160f',
     'hero-light': '#ffffff',
     'map-bg': '#241811',
-    'map-deco': '#3a281a'
+    'map-deco': '#3a281a',
+    'coin-gold': '#d9a93a',
+    'coin-silver': '#aab2bd',
+    'coin-ink': '#1c1810'
   }
 };

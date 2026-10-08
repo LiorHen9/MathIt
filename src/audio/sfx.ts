@@ -25,6 +25,10 @@ export type SfxName =
   | 'jump'
   | 'ten'
   | 'whoosh'
+  // Teaching, phase 7: a hop of ten, a clock tick, a coin on the stack.
+  | 'leap'
+  | 'tick'
+  | 'clink'
   // The quest map (phase 4).
   | 'step'
   | 'unlock'
@@ -48,7 +52,8 @@ export type SfxName =
 export interface SfxOpts {
   /**
    * correct: the streak (the pitch climbs); star: which star (1–3); click: the key (0–9);
-   * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–10);
+   * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–100);
+   * leap: the number a hop of ten lands on; tick: fives of minutes (1–12); clink: which coin;
    * step: which footstep (left/right alternate); hit: which hit on the boss (1, 2, 3…);
    * coin: the coin count (a little higher every few coins).
    */
@@ -137,10 +142,27 @@ export function countPitch(n: number): number {
   return G4 * 2 ** (SCALE[i] / 12);
 }
 
-/** The note of a number on the number line (0–10). */
+/**
+ * The note of a number on the number line: 0–10 climb the scale; above ten (lines to 20 and 100)
+ * the note of its ones (…8, 9, then the top note on the ten) – hops of one inside a ten climb or
+ * fall the same way, and the tens have their own sound (`leapPitch`).
+ */
 export function jumpPitch(n: number): number {
-  const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n)));
+  const k = Math.max(0, Math.floor(n));
+  const i = k <= 10 ? k : k % 10 === 0 ? 10 : k % 10;
   return G4 * 2 ** (SCALE[i] / 12);
+}
+
+/** A hop of ten landing on n: a lower, bigger note that climbs with the tens (10 → 100). */
+export function leapPitch(n: number): number {
+  const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n / 10)));
+  return (G4 / 2) * 2 ** (SCALE[i] / 12);
+}
+
+/** A clock tick for five minutes (n = 1…12): climbing as the hand goes round. */
+export function tickPitch(n: number): number {
+  const i = Math.min(SCALE.length - 1, Math.max(0, Math.floor(n) - 1));
+  return 880 * 2 ** (SCALE[i] / 12);
 }
 
 /** A hit on the boss: each one a step higher, so the ear hears the boss getting weaker. */
@@ -265,6 +287,39 @@ const SOUNDS: Record<SfxName, Sound> = {
       ...bell(2093, 0.2, 0.12, 0.7)
     ],
     echo: { time: 0.13, feedback: 0.25, wet: 0.18 }
+  },
+  // A hop of ten on the number line: a big rubbery "boing" up to the note of the tens.
+  leap: {
+    tones: (o) => {
+      const f = leapPitch(o.step ?? 10);
+      return [
+        { wave: 'sine', freq: f * 0.5, to: f * 1.5, at: 0, len: 0.22, vol: 0.14, attack: 0.01, vib: { rate: 18, depth: 12 } },
+        { wave: 'triangle', freq: f, at: 0.22, len: 0.34, vol: 0.26, attack: 0.004, detune: 5 },
+        { wave: 'sine', freq: f * 2, at: 0.22, len: 0.2, vol: 0.08, attack: 0.004 }
+      ];
+    }
+  },
+  // A clock hand moving five minutes: a wooden tick, a little higher each time.
+  tick: {
+    tones: (o) => {
+      const f = tickPitch(o.step ?? 1);
+      return [
+        { wave: 'triangle', freq: f, to: f * 0.8, at: 0, len: 0.05, vol: 0.22, attack: 0.002 },
+        { wave: 'noise', at: 0, len: 0.025, vol: 0.12, attack: 0.001, filter: { type: 'bandpass', freq: 2600, q: 3 } }
+      ];
+    }
+  },
+  // A coin landing on the stack: a bright metal clink (two inharmonic partials).
+  clink: {
+    tones: (o) => {
+      const f = 2200 + Math.min(12, o.step ?? 1) * 60;
+      return [
+        { wave: 'sine', freq: f, at: 0, len: 0.16, vol: 0.12, attack: 0.002 },
+        { wave: 'sine', freq: f * 1.53, at: 0, len: 0.12, vol: 0.07, attack: 0.002 },
+        { wave: 'sine', freq: f * 0.5, at: 0.06, len: 0.1, vol: 0.06, attack: 0.002 }
+      ];
+    },
+    echo: { time: 0.07, feedback: 0.2, wet: 0.12 }
   },
   // Something flying away: a soft rush of air, rising.
   whoosh: {
@@ -441,10 +496,10 @@ const SOUNDS: Record<SfxName, Sound> = {
 export const SFX_NAMES = Object.keys(SOUNDS) as SfxName[];
 
 /** Teaching sounds: the content itself, the same in every world – never from a pack. */
-export const TEACHING_SOUNDS: readonly SfxName[] = ['count', 'jump', 'ten', 'whoosh'];
+export const TEACHING_SOUNDS: readonly SfxName[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink'];
 
 /** A world's sounds: any shared sound but the teaching ones and the world samples. */
-export type PackSound = Exclude<SfxName, 'count' | 'jump' | 'ten' | 'whoosh' | `world-${string}`>;
+export type PackSound = Exclude<SfxName, 'count' | 'jump' | 'ten' | 'whoosh' | 'leap' | 'tick' | 'clink' | `world-${string}`>;
 export type SoundPack = Partial<Record<PackSound, Sound>>;
 
 /** What every world's pack must have (tests/worlds/check.ts). "wrong" may stay shared: it is soft. */

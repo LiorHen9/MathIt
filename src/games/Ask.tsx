@@ -5,7 +5,8 @@
 //   (core pickHint), animated in the question card (manipulatives/), calm, with a replay button;
 // - second mistake → the hero explains step by step, animated and read aloud (Explainer); the
 //   answer appears at the end, and only then "next" (or "skip" during the explanation).
-// The template (games/Pop.tsx) only shows the question and reports answers.
+// The template (games/Pop.tsx and, phase 7, Jump, Build, Match, Clock, Shop) only shows the
+// question and reports answers; hints, the explanation and the engine work the same in all.
 // Phase 6: every question ends in one `onResult` for the mastery engine (right or shown, mistakes
 // before, time, the kinds of mistakes); the hint also fits the child's most common mistake
 // (`common`), and a child who is struggling gets it early, before any mistake (`hintAfterMs`).
@@ -19,7 +20,43 @@ import { byGender, type Profile } from '../profiles/profiles';
 import type { Message } from '../components/Speak';
 import { stopSpeaking } from '../audio/speech';
 import { playSfx } from '../audio/sfx';
+import type { ComponentType } from 'preact';
+import type { TemplateId } from '../core/types';
 import { Pop, type InputMode } from './Pop';
+import type { TemplateProps } from './PromptCard';
+
+/** A template in its own chunk (phase 7): a quiet placeholder until it arrives. */
+function lazyTemplate(load: () => Promise<ComponentType<TemplateProps>>): ComponentType<TemplateProps> {
+  let Loaded: ComponentType<TemplateProps> | null = null;
+  let pending: Promise<void> | null = null;
+  return function Template(props: TemplateProps) {
+    const [, setReady] = useState(!!Loaded);
+    useEffect(() => {
+      if (Loaded) return;
+      let alive = true;
+      pending ??= load().then((c) => void (Loaded = c));
+      pending.then(
+        () => alive && setReady(true),
+        (e) => {
+          pending = null;
+          console.error('[template] failed to load', e);
+        }
+      );
+      return () => void (alive = false);
+    }, []);
+    return Loaded ? <Loaded {...props} /> : <div class="template-loading" aria-busy="true" />;
+  };
+}
+
+/** Every game template (docs/ARCHITECTURE.md §4.3). Pop is in the game chunk; the others load when first played. */
+export const TEMPLATES: Record<TemplateId, ComponentType<TemplateProps>> = {
+  pop: Pop,
+  jump: lazyTemplate(() => import('./Jump').then((m) => m.Jump)),
+  build: lazyTemplate(() => import('./Build').then((m) => m.Build)),
+  match: lazyTemplate(() => import('./Match').then((m) => m.Match)),
+  clock: lazyTemplate(() => import('./ClockSet').then((m) => m.ClockSet)),
+  shop: lazyTemplate(() => import('./Shop').then((m) => m.Shop))
+};
 
 export type AskStatus = 'asking' | 'solved' | 'explaining' | 'shown';
 
@@ -47,9 +84,14 @@ interface Props {
   common?: ErrorTag;
   /** Show the hint this long after the question appears, before any mistake. */
   hintAfterMs?: number;
+  /** The game template (phase 7; Pop by default). The question should already be asked its way (promptFor). */
+  template?: TemplateId;
+  /** Match: the pairs found so far in the round. */
+  board?: TemplateProps['board'];
 }
 
-export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, onShown, onNext, nextLabel, onResult, common, hintAfterMs }: Props) {
+export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, onShown, onNext, nextLabel, onResult, common, hintAfterMs, template = 'pop', board }: Props) {
+  const View = TEMPLATES[template] ?? Pop;
   const [tried, setTried] = useState<Answer[]>([]);
   const [status, setStatus] = useState<AskStatus>('asking');
   const [hint, setHint] = useState<Hint | null>(null);
@@ -128,7 +170,7 @@ export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, o
   const explaining = status === 'explaining' || status === 'shown';
   return (
     <>
-      <Pop
+      <View
         question={q}
         mode={mode}
         done={status === 'solved'}
@@ -138,6 +180,8 @@ export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, o
         hint={hint && !explaining ? hint : null}
         earlyHint={early}
         onAnswer={answer}
+        gender={profile.gender}
+        board={board}
       />
       {explaining && (
         <>
