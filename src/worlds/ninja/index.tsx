@@ -78,7 +78,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'target' } },
   story: { chapters: ['בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!'] },
-  vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'] },
+  vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'], thing: ['כוכב נינג׳ה', 'מגילה', 'פנס נייר'] },
   coin: { icon: '🍙', name: 'כדורי אורז' },
   rewards: [
     { id: 'n-belt-yellow', icon: '🟨', name: 'חגורה צהובה' },

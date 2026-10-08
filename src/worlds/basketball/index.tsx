@@ -72,7 +72,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'hoop' } },
   story: { chapters: ['בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!'] },
-  vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'] },
+  vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'], thing: ['כדור סל', 'סרט ראש', 'בקבוק מים'] },
   coin: { icon: '🏅', name: 'מדליות' },
   rewards: [
     { id: 'bb-shoes', icon: '👟', name: 'נעלי קפיצה' },

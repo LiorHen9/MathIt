@@ -10,7 +10,7 @@
 // Loaded with the game (it needs the generators).
 import { makeQuestion } from '../generators/index';
 import { createRng, type Rng } from '../rng';
-import type { ErrorTag, Question, SkillId } from '../types';
+import { answerKey, type ErrorTag, type Question, type SkillId } from '../types';
 
 /** The share of questions picked to invite the child's common mistake. */
 export const INVITE_SHARE = 0.5;
@@ -52,7 +52,7 @@ export function pickQuestion(skillId: SkillId, level: number, rng: Rng, avoid: R
   let fallback: Question | null = null;
   for (let t = 0; t < TRIES; t++) {
     const q = makeQuestion(skillId, level, rng.int(0, 0x7fffffff));
-    const fresh = !avoid.has(q.key) && opts.last?.answer !== q.answer;
+    const fresh = !avoid.has(q.key) && (!opts.last || answerKey(opts.last.answer) !== answerKey(q.answer));
     if (fresh && (!want || invites(q, want))) return q;
     if (fresh && !fallback) fallback = q;
   }

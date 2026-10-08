@@ -11,7 +11,7 @@
 // (`common`), and a child who is struggling gets it early, before any mistake (`hintAfterMs`).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { MAX_WRONG } from '../core/round';
-import { isCorrect, pickHint, type Answer, type ErrorTag, type Hint, type Question } from '../core/types';
+import { answerKey, answerText, isCorrect, isTime, pickHint, type Answer, type ErrorTag, type Hint, type Question } from '../core/types';
 import type { AnswerResult } from '../core/mastery/engine';
 import { emit } from '../fx/director';
 import { Explainer } from '../manipulatives/Explainer';
@@ -76,7 +76,7 @@ export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, o
     return () => clearTimeout(t);
   }, []);
 
-  const tags = (list: Answer[]) => list.map((x) => q.errorTags[String(x)] ?? 'near');
+  const tags = (list: Answer[]) => list.map((x) => q.errorTags[answerKey(x)] ?? 'near');
   const elapsed = () => Math.round(performance.now() - started.current);
 
   function answer(a: Answer, from: Element) {
@@ -120,7 +120,7 @@ export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, o
       setSkipped(true);
     }
     setStatus('shown');
-    const shown = typeof q.answer === 'number' ? `התשובה היא ${q.answer}.` : `הסימן הנכון הוא ${q.answer}`;
+    const shown = isTime(q.answer) ? `השעה היא ${answerKey(q.answer)}.` : typeof q.answer === 'number' ? `התשובה היא ${answerText(q.answer, q.unit)}.` : `הסימן הנכון הוא ${q.answer}`;
     onMessage(msg(shown, 'info'));
     onShown?.();
   }

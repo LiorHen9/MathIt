@@ -80,7 +80,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'ball' } },
   story: { chapters: ['הליגה השכונתית מתחילה, וכל תשובה נכונה מקרבת אותנו לגביע!'] },
-  vocabulary: { items: ['כדורים', 'דגלים', 'קונוסים'], place: ['על המגרש', 'בחדר ההלבשה'] },
+  vocabulary: { items: ['כדורים', 'דגלים', 'קונוסים'], place: ['על המגרש', 'בחדר ההלבשה'], thing: ['כדור', 'משרוקית', 'צעיף אוהדים'] },
   coin: { icon: '🪙', name: 'מטבעות' },
   rewards: [
     { id: 'fb-boots', icon: '👟', name: 'נעלי כדורגל' },

@@ -5,9 +5,9 @@
 // Every world dresses the answers its own way (World.templateSkins.pop, CSS `.skin-<look>`):
 // magic bubbles, balls, hoops, targets, blocks, spotlights.
 import { useRef, useState } from 'preact/hooks';
-import type { Answer, Hint, Question, Sign } from '../core/types';
+import { answerKey, answerText, isCorrect, type Answer, type Hint, type Question, type Sign } from '../core/types';
 import { SpeakButton } from '../components/Speak';
-import { Dots } from '../ui/Dots';
+import { Picture } from '../ui/Picture';
 import { NumPad } from '../ui/NumPad';
 import { Manipulative } from '../manipulatives/index';
 import { playSfx } from '../audio/sfx';
@@ -37,8 +37,8 @@ interface Props {
 
 const SIGN_NAME: Record<Sign, string> = { '<': 'קטן מ', '>': 'גדול מ', '=': 'שווה' };
 
-function say(a: Answer): string {
-  return typeof a === 'number' ? String(a) : SIGN_NAME[a];
+function say(a: Answer, unit?: string): string {
+  return typeof a === 'string' ? SIGN_NAME[a] : answerText(a, unit);
 }
 
 export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = false, explaining = false, onAnswer }: Props) {
@@ -47,7 +47,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = 
   const [replay, setReplay] = useState(0);
   const slot = useRef<HTMLSpanElement>(null);
   const showAnswer = done || reveal;
-  const slotText = showAnswer ? String(q.answer) : mode === 'numpad' && typed ? typed : '?';
+  const slotText = showAnswer ? answerText(q.answer, q.unit) : mode === 'numpad' && typed ? typed : '?';
   const visual = hint?.visual ?? q.prompt.visual;
   const parts = (q.prompt.math ?? '?').split('?');
 
@@ -56,7 +56,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = 
     const n = Number(typed);
     onAnswer(n, slot.current);
     // A wrong number is cleared so the child can try again.
-    if (n !== q.answer) setTyped('');
+    if (!isCorrect(q, n)) setTyped('');
   }
 
   return (
@@ -84,7 +84,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = 
             )}
           </div>
         ) : (
-          visual && !explaining && <Dots visual={visual} key={hint ? 'hint' : 'q'} class={hint ? 'is-hint' : ''} />
+          visual && !explaining && <Picture visual={visual} key={hint ? 'hint' : 'q'} class={hint ? 'is-hint' : ''} />
         )}
         <p class={`prompt-math math ${q.prompt.math ? '' : 'is-solo'}`} dir="ltr" data-testid="prompt-math">
           {parts.map((part, i) => [
@@ -110,20 +110,21 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = 
       {explaining ? null : mode === 'bubbles' ? (
         <div class={`bubbles n-${q.choices.length} skin-${look}`} data-skin={look} dir="ltr" role="group" aria-label="תשובות">
           {q.choices.map((c, i) => {
-            const wrong = tried.includes(c);
-            const right = showAnswer && c === q.answer;
+            const k = answerKey(c);
+            const wrong = tried.some((t) => answerKey(t) === k);
+            const right = showAnswer && isCorrect(q, c);
             return (
               <button
                 type="button"
-                key={String(c)}
+                key={k}
                 class={`bubble c-${(i % 4) + 1} ${wrong ? 'is-wrong' : ''} ${right ? 'is-right' : ''} ${showAnswer && !right ? 'is-off' : ''}`}
                 style={`--i:${i}`}
-                data-answer={String(c)}
-                aria-label={say(c)}
+                data-answer={k}
+                aria-label={say(c, q.unit)}
                 disabled={done || wrong || reveal}
                 onClick={(e) => onAnswer(c, e.currentTarget)}
               >
-                <span class="bubble-face">{String(c)}</span>
+                <span class="bubble-face">{answerText(c, q.unit)}</span>
               </button>
             );
           })}

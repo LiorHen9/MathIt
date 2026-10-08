@@ -6,15 +6,16 @@
 //
 // The stories are written so no verb agrees with the child or with the noun: impersonal plural
 // ("מוסיפים", "לוקחים"), "יש"/"היו", and past plural ("נשארו"), which Hebrew does not mark for gender.
-import type { Question } from './types';
+import type { PromptParts, Question } from './types';
 
 /** The placeholders a story may use. */
-export const PLACEHOLDERS = ['hero', 'items', 'place'] as const;
+export const PLACEHOLDERS = ['hero', 'items', 'place', 'thing'] as const;
 export type Placeholder = (typeof PLACEHOLDERS)[number];
 
 /**
  * A world's words for stories. `items`: a plural noun of countable things ("אבני קסם", "כדורים");
- * `place`: where, with its preposition ("בגינה הקסומה", "על המגרש"). Several of each: a question
+ * `place`: where, with its preposition ("בגינה הקסומה", "על המגרש"); `thing`: one thing for sale
+ * in the world's shop, singular ("שרביט קסם", "כדור"; phase 7, money). Several of each: a question
  * picks one by its seed, so the same question always reads the same.
  */
 export type Vocabulary = Record<Exclude<Placeholder, 'hero'>, string[]>;
@@ -25,7 +26,7 @@ export interface StoryWords extends Vocabulary {
 }
 
 /** Used when no world gives words (tests, the base look). */
-export const DEFAULT_WORDS: StoryWords = { hero: 'ינשוף החשבון', items: ['כוכבים', 'בלונים'], place: ['בכיתה', 'בחצר'] };
+export const DEFAULT_WORDS: StoryWords = { hero: 'ינשוף החשבון', items: ['כוכבים', 'בלונים'], place: ['בכיתה', 'בחצר'], thing: ['מחברת', 'כדור'] };
 
 const MARK = /\{([a-z]+)\}/g;
 
@@ -43,8 +44,12 @@ export function fillText(text: string, words: StoryWords, pick = 0): string {
   });
 }
 
+const fillPrompt = (p: PromptParts, words: StoryWords, pick: number): PromptParts => ({ ...p, text: fillText(p.text, words, pick), speech: fillText(p.speech, words, pick) });
+
 /** A question with its story filled in (a question without placeholders comes back as it is). */
 export function fillQuestion(q: Question, words: StoryWords): Question {
-  if (!hasPlaceholders(q.prompt.text) && !hasPlaceholders(q.prompt.speech)) return q;
-  return { ...q, prompt: { ...q.prompt, text: fillText(q.prompt.text, words, q.seed), speech: fillText(q.prompt.speech, words, q.seed) } };
+  const all = [q.prompt, ...Object.values(q.prompts ?? {})];
+  if (!all.some((p) => p && (hasPlaceholders(p.text) || hasPlaceholders(p.speech)))) return q;
+  const prompts = q.prompts && Object.fromEntries(Object.entries(q.prompts).map(([k, p]) => [k, fillPrompt(p!, words, q.seed)]));
+  return { ...q, prompt: fillPrompt(q.prompt, words, q.seed), ...(prompts ? { prompts } : {}) };
 }

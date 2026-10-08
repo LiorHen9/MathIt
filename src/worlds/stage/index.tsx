@@ -99,7 +99,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'spot' } },
   story: { chapters: ['שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!'] },
-  vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'] },
+  vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'], thing: ['מיקרופון', 'גיטרה', 'כובע נוצץ'] },
   coin: { icon: '🎟️', name: 'כרטיסים' },
   rewards: [
     { id: 's-glasses', icon: '🕶️', name: 'משקפי כוכבים' },

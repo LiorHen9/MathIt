@@ -84,7 +84,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'magic' } },
   story: { chapters: ['מכשפת הערפל כיסתה את הגינה הקסומה – כל תשובה נכונה מחזירה לה צבע!'] },
-  vocabulary: { items: ['אבני קסם', 'פרחים', 'פרפרים'], place: ['בגינה הקסומה', 'על ענן הפיות'] },
+  vocabulary: { items: ['אבני קסם', 'פרחים', 'פרפרים'], place: ['בגינה הקסומה', 'על ענן הפיות'], thing: ['שרביט קסם', 'כתר פרחים', 'שיקוי נצנצים'] },
   coin: { icon: '💎', name: 'אבני קסם' },
   rewards: [
     { id: 'f-flower', icon: '🌷', name: 'פרח קסום' },

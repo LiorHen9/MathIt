@@ -40,7 +40,10 @@ import {
 import { invites, makeAdaptiveRound, pickQuestion, sisterOf } from '../../src/core/mastery/pick';
 import { REVIEW_ID, progressFromPlacement, reviewNode, reviewSkills } from '../../src/core/quest/index';
 import type { AgeBand, ErrorTag, SkillId } from '../../src/core/types';
-import { ACTION_KINDS, actionResult, actionValid, isCorrect, pickHint, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
+import { ACTION_KINDS, COIN_VALUES, ERROR_TAGS, TEMPLATE_IDS, actionResult, actionValid, answerKey, isCorrect, isTime, pickHint, promptFor, sameAnswer, templateFits, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
+import { hopsFor } from '../../src/core/generators/common';
+import { coinsFor } from '../../src/core/generators/money';
+import { handsSwapped, timeWords } from '../../src/core/generators/clock';
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -109,7 +112,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     if (s.action && !actionValid(s.action)) return `invalid action ${JSON.stringify(s.action)}`;
   }
   const end = actionResult(actions.at(-1)!);
-  if (end !== answer) return `the explanation ends on ${end}, the answer is ${answer}`;
+  if (!sameAnswer(end, answer)) return `the explanation ends on ${answerKey(end)}, the answer is ${answerKey(answer)}`;
   return '';
 }
 
@@ -124,10 +127,25 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     [{ kind: 'jump', from: 7, by: -3 }, 4],
     [{ kind: 'compare', a: 2, b: 5 }, '<'],
     [{ kind: 'compare', a: 6, b: 1 }, '>'],
-    [{ kind: 'compare', a: 3, b: 3 }, '=']
+    [{ kind: 'compare', a: 3, b: 3 }, '='],
+    [{ kind: 'compare', a: 47, b: 74 }, '<'],
+    // Phase 7.
+    [{ kind: 'tens', tens: 4, ones: 7 }, 47],
+    [{ kind: 'tens', tens: 2, ones: 13 }, 33],
+    [{ kind: 'tens', tens: 3, ones: 8, add: 25 }, 63],
+    [{ kind: 'tens', tens: 5, ones: 2, take: 17 }, 35],
+    [{ kind: 'tens', tens: 4, ones: 7, ask: 'tens' }, 4],
+    [{ kind: 'tens', tens: 4, ones: 7, ask: 'ones' }, 7],
+    [{ kind: 'tens', tens: 10, ones: 0 }, 100],
+    [{ kind: 'doubleFrame', a: 8, b: 5 }, 13],
+    [{ kind: 'doubleFrame', a: 13, b: -5 }, 8],
+    [{ kind: 'line', from: 38, hops: [10, 10, 2, 3], max: 100 }, 63],
+    [{ kind: 'line', from: 13, hops: [-3, -2], max: 20 }, 8],
+    [{ kind: 'clock', h: 3, m: 30 }, { h: 3, m: 30 }],
+    [{ kind: 'coins', coins: [10, 5, 2, 0.5] }, 17.5]
   ];
   for (const [a, want] of cases) {
-    if (actionResult(a) !== want) fail(`actionResult(${JSON.stringify(a)}) = ${actionResult(a)}, expected ${want}`);
+    if (!sameAnswer(actionResult(a), want)) fail(`actionResult(${JSON.stringify(a)}) = ${answerKey(actionResult(a))}, expected ${answerKey(want)}`);
     if (!actionValid(a)) fail(`${JSON.stringify(a)} should be valid`);
   }
   if (new Set(cases.map(([a]) => a.kind)).size !== ACTION_KINDS.length) fail('not every action kind is checked');
@@ -139,10 +157,41 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     { kind: 'jump', from: 8, by: 3 },
     { kind: 'jump', from: 2, by: -3 },
     { kind: 'jump', from: 2, by: 0 },
-    { kind: 'tenFrame', n: 2.5 }
+    { kind: 'tenFrame', n: 2.5 },
+    { kind: 'compare', a: 101, b: 3 },
+    { kind: 'tens', tens: 11, ones: 0 },
+    { kind: 'tens', tens: 9, ones: 5, add: 10 },
+    { kind: 'tens', tens: 1, ones: 2, take: 13 },
+    { kind: 'tens', tens: 1, ones: 2, add: 3, take: 1 },
+    { kind: 'tens', tens: 0, ones: 0 },
+    { kind: 'doubleFrame', a: 11, b: 3 },
+    { kind: 'doubleFrame', a: 15, b: 6 },
+    { kind: 'doubleFrame', a: 5, b: -6 },
+    { kind: 'line', from: 18, hops: [3], max: 20 },
+    { kind: 'line', from: 5, hops: [11], max: 100 },
+    { kind: 'line', from: 5, hops: [], max: 100 },
+    { kind: 'line', from: 5, hops: Array(13).fill(1), max: 100 },
+    { kind: 'clock', h: 0, m: 0 },
+    { kind: 'clock', h: 3, m: 7 },
+    { kind: 'coins', coins: [3] },
+    { kind: 'coins', coins: [] },
+    { kind: 'coins', coins: Array(11).fill(1) }
   ];
   for (const a of bad) if (actionValid(a)) fail(`${JSON.stringify(a)} should be invalid`);
-  ok('actions: results and limits (0–10)');
+  // The number line hops by tens, then by ones split at the next ten.
+  const hopCases: [number, number, number[]][] = [
+    [38, 25, [10, 10, 2, 3]],
+    [8, 5, [2, 3]],
+    [13, -5, [-3, -2]],
+    [52, -17, [-10, -2, -5]],
+    [40, -3, [-3]],
+    [3, 4, [4]]
+  ];
+  for (const [from, by, want] of hopCases) if (hopsFor(from, by).join() !== want.join()) fail(`hopsFor(${from}, ${by}) = ${hopsFor(from, by)}, expected ${want}`);
+  if (coinsFor(17.5).join() !== '10,5,2,0.5' || coinsFor(3).join() !== '2,1') fail(`coinsFor: ${coinsFor(17.5)} / ${coinsFor(3)}`);
+  if (answerKey(handsSwapped({ h: 3, m: 0 })) !== '12:15' || answerKey(handsSwapped({ h: 3, m: 30 })) !== '6:15') fail('handsSwapped');
+  if (timeWords({ h: 3, m: 45 }) !== 'רבע לארבע' || timeWords({ h: 12, m: 30 }) !== 'שתים-עשרה וחצי') fail('timeWords');
+  ok('actions: results and limits per action (to 10, two frames to 20, tens/line/compare to 100, clock, coins); hops, coins, clock words');
 }
 
 // ---------- Generators: 1,000 seeds per skill and level ----------
@@ -151,6 +200,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   /** The value an exercise stands for, computed independently of the generator. */
   function solve(q: Question): Answer {
     const m = q.prompt.math ?? '';
+    const t = q.prompt.text;
     let r: RegExpExecArray | null;
     if ((r = /^(\d+) \+ (\d+) = \?$/.exec(m))) return Number(r[1]) + Number(r[2]);
     if ((r = /^(\d+) − (\d+) = \?$/.exec(m))) return Number(r[1]) - Number(r[2]);
@@ -158,13 +208,41 @@ function explanationProblem(steps: Step[], answer: Answer): string {
       const [a, b] = [Number(r[1]), Number(r[2])];
       return a > b ? '>' : a < b ? '<' : '=';
     }
-    if (!m && q.prompt.visual) return q.prompt.visual.groups[0];
-    throw new Error(`cannot read exercise "${m}"`);
+    // A sequence with one missing number: "2, 4, ?, 8"; two numbers – what comes after / before.
+    if (/^[\d?]+(, [\d?]+)+$/.test(m)) {
+      const xs = m.split(', ');
+      const gap = xs.indexOf('?');
+      if (xs.length === 2) return gap === 1 ? Number(xs[0]) + 1 : Number(xs[1]) - 1;
+      const known = xs.map((x, i) => [i, Number(x)] as const).filter(([i]) => i !== gap);
+      const [[i0, v0], [i1, v1]] = known;
+      const step = (v1 - v0) / (i1 - i0);
+      return v0 + step * (gap - i0);
+    }
+    if ((r = /כמה עשרות יש במספר (\d+)/.exec(t))) return Math.floor(Number(r[1]) / 10);
+    if ((r = /כמה אחדות יש במספר (\d+)/.exec(t))) return Number(r[1]) % 10;
+    if ((r = /כמה שווה הספרה (\d) במספר (\d+)/.exec(t))) return Number(r[1]) * (String(r[2]).indexOf(r[1]) === 0 ? 10 : 1);
+    const v = q.prompt.visual;
+    if (!m && v?.kind === 'dots') return v.groups[0];
+    if (!m && v?.kind === 'blocks') return v.tens * 10 + v.ones;
+    if (!m && v?.kind === 'coins') return v.coins.reduce((a, c) => a + c, 0);
+    if (!m && v?.kind === 'clock') return { h: v.h, m: v.m };
+    throw new Error(`cannot read exercise "${m}" / "${t}"`);
   }
-  function visualOk(v: Visual | undefined, q: Question): boolean {
+  function visualOk(v: Visual | undefined): boolean {
     if (!v) return true;
-    return v.groups.every((g) => Number.isInteger(g) && g >= 0 && g <= 10) && (v.crossed ?? 0) <= v.groups.at(-1)!;
+    switch (v.kind) {
+      case 'dots':
+        return v.groups.every((g) => Number.isInteger(g) && g >= 0 && g <= 10) && (v.crossed ?? 0) <= v.groups.at(-1)!;
+      case 'blocks':
+        return Number.isInteger(v.tens) && v.tens >= 0 && v.tens <= 10 && Number.isInteger(v.ones) && v.ones >= 0 && v.ones <= 9 && v.tens + v.ones > 0;
+      case 'coins':
+        return v.coins.length > 0 && v.coins.length <= 10 && v.coins.every((c) => COIN_VALUES.includes(c));
+      case 'clock':
+        return actionValid({ kind: 'clock', h: v.h, m: v.m });
+    }
   }
+  /** Skills of phase 7: every kind of mistake they offer has its own hint. */
+  const PHASE7 = new Set(SKILLS.slice(5).map((s) => s.id));
   for (const skill of SKILLS) {
     if (!GENERATORS[skill.generatorId]) fail(`${skill.id}: no generator "${skill.generatorId}"`);
     for (const lv of skill.levels) {
@@ -177,24 +255,39 @@ function explanationProblem(steps: Step[], answer: Answer): string {
           bad++;
           fail(`${where}: ${msg}`);
         };
-        const want = skill.generatorId === 'compare' ? 2 : 3;
-        if (q.answer !== solve(q)) err(`answer ${q.answer}, exercise says ${solve(q)}`);
+        const sign = typeof q.answer === 'string';
+        const want = sign ? 2 : 3;
+        if (!sameAnswer(q.answer, solve(q))) err(`answer ${answerKey(q.answer)}, exercise says ${answerKey(solve(q))}`);
         if (!isCorrect(q, q.answer)) err('isCorrect(answer) is false');
         if (q.distractors.length !== want) err(`${q.distractors.length} distractors, expected ${want}`);
-        if (new Set(q.distractors.map(String)).size !== q.distractors.length) err(`repeated distractors ${q.distractors}`);
-        if (q.distractors.some((d) => d === q.answer)) err('a distractor equals the answer');
+        const keys = q.distractors.map(answerKey);
+        if (new Set(keys).size !== q.distractors.length) err(`repeated distractors ${keys}`);
         if (q.distractors.some((d) => isCorrect(q, d))) err('a distractor counts as correct');
-        if (q.choices.length !== want + 1 || !q.choices.includes(q.answer) || q.distractors.some((d) => !q.choices.includes(d))) err(`choices ${q.choices}`);
-        for (const d of q.distractors) if (!q.errorTags[String(d)]) err(`no error tag for ${d}`);
-        const nums = [q.answer, ...q.distractors].filter((x): x is number => typeof x === 'number');
-        if (q.numeric) {
-          if (typeof q.answer !== 'number') err('numeric question with a non-number answer');
-          for (const n of nums) if (!Number.isInteger(n) || n < 0 || n < lv.min || n > lv.max) err(`${n} outside ${lv.min}..${lv.max} or negative`);
-        } else if ([q.answer, ...q.distractors].some((x) => !SIGNS.includes(String(x)))) err('comparison choices must be signs');
+        const choiceKeys = q.choices.map(answerKey);
+        if (q.choices.length !== want + 1 || !choiceKeys.includes(answerKey(q.answer)) || keys.some((d) => !choiceKeys.includes(d))) err(`choices ${choiceKeys}`);
+        for (const d of keys) if (!q.errorTags[d]) err(`no error tag for ${d}`);
+        for (const tag of Object.values(q.errorTags)) if (!ERROR_TAGS.includes(tag)) err(`unknown error tag ${tag}`);
+        const all = [q.answer, ...q.distractors];
+        const nums = all.filter((x): x is number => typeof x === 'number');
+        if (q.numeric && typeof q.answer !== 'number') err('numeric question with a non-number answer');
+        if (q.numeric && nums.some((n) => !Number.isInteger(n))) err('a typed answer must be a whole number');
+        if (nums.length) {
+          if (nums.length !== all.length) err('mixed kinds of choices');
+          for (const n of nums) if (n < 0 || n < lv.min || n > lv.max || !Number.isInteger(n * 2)) err(`${n} outside ${lv.min}..${lv.max} or negative`);
+        } else if (sign) {
+          if (all.some((x) => !SIGNS.includes(String(x)))) err('comparison choices must be signs');
+        } else if (all.every(isTime)) {
+          for (const x of all) if (!isTime(x) || !actionValid({ kind: 'clock', h: x.h, m: x.m })) err(`not a clock time: ${answerKey(x)}`);
+        } else err('unknown kind of answer');
         const inMath = (q.prompt.math ?? '').match(/\d+/g)?.map(Number) ?? [];
         for (const n of inMath) if (n < lv.min || n > lv.max || n < 0) err(`exercise number ${n} outside ${lv.min}..${lv.max}`);
-        if (!visualOk(q.prompt.visual, q)) err('bad visual');
-        if (!q.prompt.text || !q.prompt.speech || /[^\s]\.\s+\S.*[.?!]$/.test(q.prompt.speech)) err(`prompt should be one sentence: "${q.prompt.speech}"`);
+        if (!visualOk(q.prompt.visual)) err('bad visual');
+        for (const p of [q.prompt, ...Object.values(q.prompts ?? {})]) if (!p || !p.text || !p.speech || /[^\s]\.\s+\S.*[.?!]$/.test(p.speech)) err(`prompt should be one sentence: "${p?.speech}"`);
+        // Every template of the skill that fits the question can play it; Pop always fits.
+        if (!templateFits('pop', q)) err('Pop must fit every question');
+        for (const t of skill.templates) if (!TEMPLATE_IDS.includes(t)) err(`unknown template ${t}`);
+        if (q.unit === '₪' && !templateFits('shop', q)) err('a money question must fit the shop');
+        if (isTime(q.answer) && (!templateFits('clock', q) || promptFor(q, 'clock').prompt === q.prompt)) err('a clock question must fit the clock template with its own prompt');
         if (q.hints.length < 1 || !q.hints[0].text) err('no hint');
         if (q.explanation.length < 1) err('no explanation');
         // Animated explanation: valid actions, and the last one lands on the answer.
@@ -203,10 +296,11 @@ function explanationProblem(steps: Step[], answer: Answer): string {
         // Hints: the default has an animation; every wrong choice gets an animated hint.
         if (q.hints[0].for) err('the first hint should be the default (no `for`)');
         for (const h of q.hints) if (!h.action || !actionValid(h.action)) err(`hint without a valid action: ${JSON.stringify(h)}`);
-        for (const d of q.distractors) if (!pickHint(q, d).action) err(`no animated hint for ${d}`);
+        for (const d of q.distractors) if (!pickHint(q, d).action) err(`no animated hint for ${answerKey(d)}`);
+        if (PHASE7.has(skill.id)) for (const tag of new Set(Object.values(q.errorTags))) if (!q.hints.some((h) => h.for?.includes(tag))) err(`no hint for "${tag}"`);
         const again = makeQuestion(skill.id, lv.level, seed);
         if (JSON.stringify(again) !== JSON.stringify(q)) err('same seed gave a different question');
-        answers.add(String(q.answer));
+        answers.add(answerKey(q.answer));
       }
       // Variety: every possible answer shows up across the seeds.
       const span = skill.generatorId === 'compare' ? 3 : skill.generatorId === 'count' ? lv.max - lv.min + 1 : 0;
@@ -223,7 +317,28 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     ['add.within10', 3, ['count-off-by-one', 'subtracted']],
     ['sub.within10', 3, ['count-off-by-one', 'added', 'one-part']],
     ['compare.to10', 2, ['reversed-sign', 'not-equal']],
-    ['count.to10', 3, ['count-off-by-one']]
+    ['count.to10', 3, ['count-off-by-one']],
+    // Phase 7: the new kinds of mistakes are on offer where they belong.
+    ['add.within20', 1, ['count-off-by-one', 'one-part']],
+    ['add.within20', 2, ['no-bridge']],
+    ['sub.within20', 2, ['no-bridge', 'added']],
+    ['add.bridge10', 1, ['no-bridge', 'count-off-by-one']],
+    ['sub.bridge10', 2, ['no-bridge', 'added']],
+    ['story.within20', 2, ['no-bridge']],
+    ['numbers.to100', 3, ['swapped-digits', 'tens-as-ones', 'reversed-sign', 'count-off-by-one']],
+    ['place.value', 1, ['tens-as-ones']],
+    ['place.value', 2, ['swapped-digits', 'one-part']],
+    ['place.value', 3, ['swapped-digits', 'tens-as-ones']],
+    ['add.within100', 1, ['tens-as-ones']],
+    ['add.within100', 2, ['swapped-digits']],
+    ['add.within100', 3, ['no-carry']],
+    ['sub.within100', 1, ['tens-as-ones', 'added']],
+    ['sub.within100', 3, ['no-borrow']],
+    ['pattern', 1, ['wrong-step']],
+    ['money', 1, ['one-part', 'count-off-by-one']],
+    ['money', 3, ['added']],
+    ['clock', 1, ['hands-swapped', 'near']],
+    ['clock', 3, ['hands-swapped']]
   ];
   for (const [id, lv, want] of need) {
     const got = tags(id, lv);
@@ -254,16 +369,28 @@ function explanationProblem(steps: Step[], answer: Answer): string {
       ['add.within10', 'count-off-by-one', 'jump'],
       ['add.within10', 'subtracted', 'combine'],
       ['count.to10', 'count-off-by-one', 'tenFrame'],
-      ['compare.to10', 'reversed-sign', 'compare']
+      ['compare.to10', 'reversed-sign', 'compare'],
+      ['add.bridge10', 'no-bridge', 'doubleFrame'],
+      ['add.bridge10', 'count-off-by-one', 'line'],
+      ['sub.bridge10', 'no-bridge', 'doubleFrame'],
+      ['add.within100', 'no-carry', 'tens'],
+      ['add.within100', 'count-off-by-one', 'line'],
+      ['sub.within100', 'no-borrow', 'tens'],
+      ['place.value', 'swapped-digits', 'tens'],
+      ['pattern', 'wrong-step', 'line'],
+      ['money', 'added', 'line'],
+      ['clock', 'hands-swapped', 'clock'],
+      ['numbers.to100', 'reversed-sign', 'compare']
     ];
     for (const [id, tag, kind] of want) {
       let seen = false;
+      const top = getSkill(id)!.levels.length;
       for (let seed = 0; seed < 400 && !seen; seed++) {
-        const q = makeQuestion(id, 3, seed);
-        const wrong = Object.keys(q.errorTags).find((d) => q.errorTags[d] === tag);
+        const q = makeQuestion(id, top, seed);
+        const wrong = q.choices.find((d) => q.errorTags[answerKey(d)] === tag);
         if (wrong === undefined) continue;
         seen = true;
-        const h = pickHint(q, typeof q.answer === 'number' ? Number(wrong) : (wrong as Answer));
+        const h = pickHint(q, wrong);
         if (h.action?.kind !== kind) fail(`${id}: a "${tag}" mistake should get a ${kind} hint, got ${h.action?.kind}`);
       }
       if (!seen) fail(`${id}: no "${tag}" mistake to check`);
@@ -321,7 +448,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
       const keys = new Set(r.map((q) => q.key));
       const possible = skill.generatorId === 'count' ? lv.max - lv.min + 1 : 8;
       if (keys.size < Math.min(8, possible)) fail(`${skill.id} L${lv.level}: repeated exercises in a round (${[...keys]})`);
-      for (let i = 1; i < r.length; i++) if (r[i].answer === r[i - 1].answer && possible > 2) fail(`${skill.id} L${lv.level}: same answer twice in a row`);
+      for (let i = 1; i < r.length; i++) if (sameAnswer(r[i].answer, r[i - 1].answer) && possible > 2) fail(`${skill.id} L${lv.level}: same answer twice in a row`);
     }
   }
   ok('rounds: 8 questions, reproducible, no repeated exercise or answer twice in a row');
@@ -330,15 +457,20 @@ function explanationProblem(steps: Step[], answer: Answer): string {
 // ---------- Skills, recommendations, scoring ----------
 {
   const ids = SKILLS.map((s) => s.id);
-  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10,story.within10') fail('skills: ' + ids);
+  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10,story.within10,add.within20,sub.within20,add.bridge10,sub.bridge10,story.within20,numbers.to100,place.value,pattern,money,clock,add.within100,sub.within100') fail('skills: ' + ids);
+  // Prerequisites come earlier in the list (the graph has no cycles), every skill plays in Pop.
+  SKILLS.forEach((s, i) => {
+    for (const p of s.prerequisites) if (SKILLS.findIndex((x) => x.id === p) >= i) fail(`${s.id}: prerequisite ${p} comes later`);
+    if (s.templates[0] !== 'pop') fail(`${s.id}: Pop first`);
+  });
   for (const s of SKILLS) {
     for (const p of s.prerequisites) if (!getSkill(p)) fail(`${s.id}: unknown prerequisite ${p}`);
     if (s.levels.length < 2 || s.levels.length > 3) fail(`${s.id}: ${s.levels.length} levels (2–3 wanted)`);
     s.levels.forEach((l, i) => l.level !== i + 1 && fail(`${s.id}: levels not numbered 1..n`));
   }
   if (recommendedSkills('4-5').join() !== 'count.to10,compare.to10') fail('recommended 4-5: ' + recommendedSkills('4-5'));
-  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 6-7: ' + recommendedSkills('6-7'));
-  if (recommendedSkills('10-12').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 10-12: ' + recommendedSkills('10-12'));
+  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10,add.within20,sub.within20,add.bridge10,sub.bridge10,story.within20,numbers.to100,place.value,pattern,money,clock') fail('recommended 6-7: ' + recommendedSkills('6-7'));
+  if (recommendedSkills('10-12').join() !== 'add.within100,sub.within100') fail('recommended 10-12: ' + recommendedSkills('10-12'));
   if (startLevel(getSkill('add.within10')!, '4-5') !== 1 || startLevel(getSkill('count.to10')!, '6-7') !== 3) fail('startLevel');
   if (MAX_WRONG !== 2) fail('two mistakes before the answer is shown');
   if (questionPoints(0, true) !== 1 || questionPoints(1, true) !== 0.5 || questionPoints(2, false) !== 0) fail('questionPoints');
@@ -462,10 +594,10 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   const used = new Set<string>();
   let plus = 0;
   let minus = 0;
-  for (const lv of getSkill('story.within10')!.levels) {
+  for (const [sid, lv] of [...getSkill('story.within10')!.levels.map((l) => ['story.within10', l] as const), ...getSkill('story.within20')!.levels.map((l) => ['story.within20', l] as const)]) {
     for (let seed = 0; seed < 1000; seed++) {
-      const q = makeQuestion('story.within10', lv.level, seed);
-      const where = `story L${lv.level} seed ${seed}`;
+      const q = makeQuestion(sid, lv.level, seed);
+      const where = `${sid} L${lv.level} seed ${seed}`;
       for (const m of q.prompt.text.matchAll(/\{([a-z]+)\}/g)) {
         used.add(m[1]);
         if (!(PLACEHOLDERS as readonly string[]).includes(m[1])) fail(`${where}: unknown placeholder {${m[1]}}`);
@@ -478,12 +610,21 @@ function explanationProblem(steps: Step[], answer: Answer): string {
       if (/(תמצא|מצאת|תיקח|לקחת|לך |שלך)/.test(q.prompt.text)) fail(`${where}: speaks to the child by gender: ${q.prompt.text}`);
       const filled = fillQuestion(q, DEFAULT_WORDS);
       if (hasPlaceholders(filled.prompt.text) || hasPlaceholders(filled.prompt.speech)) fail(`${where}: placeholders left: ${filled.prompt.text}`);
-      if (filled.answer !== q.answer || filled.prompt.math !== q.prompt.math || filled.key !== q.key) fail(`${where}: filling changed the math`);
+      if (!sameAnswer(filled.answer, q.answer) || filled.prompt.math !== q.prompt.math || filled.key !== q.key) fail(`${where}: filling changed the math`);
       if (fillQuestion(q, DEFAULT_WORDS).prompt.text !== filled.prompt.text) fail(`${where}: filling is not reproducible`);
       if (q.prompt.math?.includes('+')) plus++;
       else minus++;
     }
   }
+  // Money: the shop's {thing}, in every prompt, filled the same way.
+  for (const lv of getSkill('money')!.levels)
+    for (let seed = 0; seed < 300; seed++) {
+      const q = makeQuestion('money', lv.level, seed);
+      for (const p of [q.prompt, ...Object.values(q.prompts ?? {})]) for (const m of p!.text.matchAll(/\{([a-z]+)\}/g)) used.add(m[1]);
+      const f = fillQuestion(q, DEFAULT_WORDS);
+      for (const p of [f.prompt, ...Object.values(f.prompts ?? {})]) if (hasPlaceholders(p!.text) || hasPlaceholders(p!.speech)) fail(`money seed ${seed}: placeholders left: ${p!.text}`);
+      if (!sameAnswer(f.answer, q.answer)) fail('money: filling changed the answer');
+    }
   for (const p of PLACEHOLDERS) if (!used.has(p)) fail(`no story uses {${p}}`);
   if (plus < 400 || minus < 400) fail(`stories: ${plus} adding, ${minus} taking away`);
   // Other questions come back unchanged.

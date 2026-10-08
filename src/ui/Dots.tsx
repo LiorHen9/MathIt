@@ -7,14 +7,16 @@ import { starPath } from '../fx/Hero';
 
 const STAR = starPath(12, 12.5, 11, 5, 0.48);
 
-function label(v: Visual): string {
+type DotsVisual = Extract<Visual, { kind: 'dots' }>;
+
+function label(v: DotsVisual): string {
   const [a, b] = v.groups;
   if (v.crossed) return `${a} כוכבים, ${v.crossed} מהם הולכים`;
   if (b !== undefined) return `${a} כוכבים ועוד ${b} כוכבים`;
   return a === 1 ? 'כוכב אחד' : `${a} כוכבים`;
 }
 
-export function Dots({ visual, class: cls = '' }: { visual: Visual; class?: string }) {
+export function Dots({ visual, class: cls = '' }: { visual: DotsVisual; class?: string }) {
   const { groups, crossed = 0, between, numbered } = visual;
   // Numbers continue across groups when adding, start again for each group when comparing,
   // and skip the crossed-out ones when taking away.

@@ -93,7 +93,7 @@ export const world: WorldTheme = {
   mapSkin,
   templateSkins: { pop: { look: 'block' } },
   story: { chapters: ['בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!'] },
-  vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'] },
+  vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'], thing: ['מכוש', 'פנס', 'יהלום'] },
   coin: { icon: '💠', name: 'אבני חן' },
   rewards: [
     { id: 'b-torch', icon: '🔦', name: 'פנס מערות' },
