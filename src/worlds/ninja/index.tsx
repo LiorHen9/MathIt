@@ -77,7 +77,15 @@ export const world: WorldTheme = {
   bosses: [boss],
   mapSkin,
   templateSkins: { pop: { look: 'target' }, jump: { look: 'roofs' }, build: { look: 'bamboo' }, match: { look: 'scroll', deco: '📜' }, clock: { look: 'gong' }, shop: { look: 'market', icons: ['✴️', '📜', '🏮'] } },
-  story: { chapters: ['בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!'] },
+  story: {
+    chapters: [
+      'בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!',
+      'בחגורה הצהובה מתאמנים בחשבון עד 20!',
+      'במקדש ההר יש מאה מדרגות – עולים אותן בעשרות!',
+      'בשוק של הכפר קונים במטבעות, וגונג השעון מצלצל!',
+      'לחגורה השחורה מגיעים רק בחשבון עד 100!'
+    ]
+  },
   vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'], thing: ['כוכב נינג׳ה', 'מגילה', 'פנס נייר'] },
   coin: { icon: '🍙', name: 'כדורי אורז' },
   rewards: [

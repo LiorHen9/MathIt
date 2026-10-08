@@ -33,7 +33,8 @@ import { TEMPLATE_IDS, type TemplateId } from '../../src/core/types';
 const templateLooks: Partial<Record<TemplateId, Set<string>>> = {};
 const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 import { fillQuestion, hasPlaceholders } from '../../src/core/story';
-import { storyWords } from '../../src/worlds/index';
+import { bossOf, storyWords } from '../../src/worlds/index';
+import { JOURNEY, chapterNodes } from '../../src/core/quest/index';
 
 const WORLDS: WorldTheme[] = [BASE, fairies, football, basketball, ninja, blocks, stage];
 let failures = 0;
@@ -400,6 +401,15 @@ function badVoice(tones: Tone[]): Tone | null {
     // The story, the words, the coin, the rewards.
     for (const t of w.story?.chapters ?? []) if (!oneSentence(t)) fail(where(`the chapter story should be one sentence: "${t}"`));
     if (!w.story?.chapters.length) fail(where('no chapter story'));
+    // Phase 7: a sentence for every chapter of the journey, and the boss back stronger in each one.
+    if (w.story?.chapters.length !== JOURNEY.chapters.length) fail(where(`${w.story?.chapters.length} chapter stories for ${JOURNEY.chapters.length} chapters`));
+    const bossNodes = JOURNEY.chapters.map((c) => chapterNodes(c).at(-1)!).filter((n) => n.kind === 'boss');
+    for (const n of bossNodes) {
+      const b = n.kind === 'boss' ? bossOf(w, n.tier) : undefined;
+      if (!b || !b.name || !oneSentence(b.intro)) fail(where(`no boss for chapter tier ${n.kind === 'boss' ? n.tier : '?'}`));
+    }
+    const intros = bossNodes.map((n) => (n.kind === 'boss' ? bossOf(w, n.tier)?.intro : ''));
+    if (new Set(intros).size !== intros.length) fail(where('the boss says the same in two chapters'));
     if (!w.vocabulary?.items.length || !w.vocabulary.place.length) fail(where('no words for word problems'));
     if (!w.coin?.icon || !w.coin.name) fail(where('no coin'));
     const rw = w.rewards ?? [];

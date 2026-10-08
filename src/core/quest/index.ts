@@ -4,12 +4,13 @@
 // A station opens when the one before it is done, and – for a chest or the boss – when the
 // chapter holds enough stars. Nothing here depends on the order of calls or on the clock.
 import { CHAPTER_1 } from './chapter1';
+import { CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5 } from './chapters';
 import type { Chapter, Journey, NodeStatus, QuestNode, QuestProgress, ReviewNode, Section } from './types';
 import type { SkillId } from '../types';
 
 export * from './types';
 
-export const JOURNEY: Journey = { id: 'main', chapters: [CHAPTER_1] };
+export const JOURNEY: Journey = { id: 'main', chapters: [CHAPTER_1, CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5] };
 
 export function emptyProgress(): QuestProgress {
   return { stars: {}, chests: {} };
@@ -155,16 +156,27 @@ export function reviewSkills(due: SkillId[], played: SkillId[], min = 2, max = 3
 /**
  * Progress after the placement game: every lesson and practice station whose (skill, level) the
  * child already knows counts as done (practice with 3 stars), and a chest the child skipped past
- * counts as opened – the hero goes on to the first station not yet known. Boss stations are always
- * fought. Never takes stars away. Pure.
+ * counts as opened – the hero goes on to the first station not yet known. A chapter's boss is
+ * passed (one star – it can be fought later for more) when the child knows every skill it mixes
+ * at its level (phase 7, so a child who knows everything to 20 starts at chapter 3); the
+ * journey's last boss is always fought. Never takes stars away. Pure.
  */
 export function progressFromPlacement(p: QuestProgress, known: (skillId: SkillId, level: number) => boolean, j: Journey = JOURNEY): QuestProgress {
   let out: QuestProgress = { stars: { ...p.stars }, chests: { ...p.chests } };
   const nodes = allNodes(j);
-  const knownNode = (n: QuestNode) => (n.kind === 'lesson' ? known(n.skillId, 1) : n.kind === 'practice' ? known(n.skillId, n.level) : false);
+  const lastBoss = nodes.filter((n) => n.kind === 'boss').at(-1);
+  const knownNode = (n: QuestNode) =>
+    n.kind === 'lesson'
+      ? known(n.skillId, 1)
+      : n.kind === 'practice'
+        ? known(n.skillId, n.level)
+        : n.kind === 'boss'
+          ? n !== lastBoss && n.skillIds.every((id) => known(id, n.level))
+          : false;
   nodes.forEach((n, i) => {
     if (n.kind === 'lesson') knownNode(n) && (out = withStars(out, n.id, 1));
     else if (n.kind === 'practice') knownNode(n) && (out = withStars(out, n.id, 3));
+    else if (n.kind === 'boss') knownNode(n) && (out = withStars(out, n.id, 1));
     else if (n.kind === 'chest' && !out.chests[n.id] && nodes.slice(i + 1).some(knownNode)) out.chests[n.id] = n.prize.icon;
   });
   return out;

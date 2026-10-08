@@ -13,13 +13,13 @@ import { LADDER, PLACEMENT_MAX, placementResult, placementStep, rungKnown, start
 import { findNode } from '../core/quest/index';
 import { getSkill } from '../core/skills/index';
 import { fillQuestion } from '../core/story';
-import type { Question, SkillId } from '../core/types';
+import { answerKey, type Question, type SkillId } from '../core/types';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
 import { Hero, setHeroMood, useHeroMood } from '../fx/Hero';
 import { reducedMotion } from '../fx/motion';
 import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components/Speak';
 import { Ask, msg } from '../games/Ask';
-import { ageBand, byGender, type Profile } from '../profiles/profiles';
+import { approxAge, byGender, type Profile } from '../profiles/profiles';
 import { applyPlacement, recordAnswer } from '../storage/skillStates';
 import { placeOnMap } from '../storage/questProgress';
 import { storyWords, useWorld } from '../worlds/index';
@@ -41,7 +41,7 @@ export function Placement({ profile, onDone }: Props) {
   const words = storyWords(world, profile.gender);
   const seed = useMemo(() => Math.floor(Math.random() * 0x7fffffff), []);
   const [phase, setPhase] = useState<Phase>('intro');
-  const [st, setSt] = useState<PlacementState>(() => startPlacement(ageBand(profile)));
+  const [st, setSt] = useState<PlacementState>(() => startPlacement(approxAge(profile)));
   const [streak, setStreak] = useState(0);
   const [message, setMessage] = useState<Message | null>(null);
   const [to, setTo] = useState<string>('');
@@ -80,7 +80,7 @@ export function Placement({ profile, onDone }: Props) {
     setPhase('done');
     setMessage(null);
     setHeroMood('happy');
-    emit({ type: 'roundDone', stars: r.known >= 6 ? 3 : r.known >= 2 ? 2 : 1 });
+    emit({ type: 'roundDone', stars: r.known >= 12 ? 3 : r.known >= 4 ? 2 : 1 });
   }
 
   /** One question over: the ladder moves (right the first time or not). */
@@ -150,7 +150,7 @@ export function Placement({ profile, onDone }: Props) {
     );
 
   return (
-    <main class="screen game placement" data-testid="placement" data-phase="test" data-skill={rung.skillId} data-level={rung.level} data-rung={st.at}>
+    <main class="screen game placement" data-testid="placement" data-phase="test" data-skill={rung.skillId} data-level={rung.level} data-rung={st.at} data-answer={answerKey(q.answer)}>
       <header class="topbar game-top">
         <span />
         <h1 class="topbar-title">

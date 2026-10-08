@@ -92,7 +92,15 @@ export const world: WorldTheme = {
   bosses: [boss],
   mapSkin,
   templateSkins: { pop: { look: 'block' }, jump: { look: 'pillars' }, build: { look: 'brick' }, match: { look: 'crate', deco: '📦' }, clock: { look: 'pixel' }, shop: { look: 'mine', icons: ['⛏️', '🔦', '💎'] } },
-  story: { chapters: ['בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!'] },
+  story: {
+    chapters: [
+      'בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!',
+      'יורדים לקומה השנייה של המכרה, ושם בונים עד 20!',
+      'במכרה העמוק יש מאה בלוקים – מסדרים אותם בעשרות!',
+      'בתחנת המסחר קונים במטבעות, ושעון הלבה מתקתק!',
+      'בונים את הטירה הגדולה מחשבון עד 100!'
+    ]
+  },
   vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'], thing: ['מכוש', 'פנס', 'יהלום'] },
   coin: { icon: '💠', name: 'אבני חן' },
   rewards: [

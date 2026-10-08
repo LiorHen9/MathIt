@@ -1,6 +1,6 @@
 // The quest map as data (docs/ARCHITECTURE.md §4.4): Journey → Chapter → Section → Node.
 // Learning Core: no UI, no worlds, no sounds. The map screen (screens/QuestMap.tsx) draws it.
-import type { SkillId } from '../types';
+import type { SkillId, TemplateId } from '../types';
 
 export type NodeKind = 'lesson' | 'practice' | 'chest' | 'boss' | 'review';
 
@@ -29,6 +29,8 @@ export interface PracticeNode extends NodeBase {
   skillId: SkillId;
   /** The level the round plays (the skill's levels; rising along the chapter). */
   level: number;
+  /** The game the round is played in (phase 7; Pop when not set). */
+  template?: TemplateId;
 }
 
 /** A treasure chest – no stars, done once opened. */
@@ -45,8 +47,13 @@ export interface BossNode extends NodeBase {
   level: number;
   /** Right answers needed to win (= the boss's power bar). */
   hits: number;
-  /** Which boss (one shared boss until phase 5). */
+  /** Which boss (one shared boss until phase 5; since then the world's own). */
   bossId: 'muddler';
+  /**
+   * How strong the world's boss is (phase 7): chapter 1 meets it at 1; in every later chapter it
+   * comes back stronger – bigger, with an aura, its own sentence – and with more hits.
+   */
+  tier: number;
 }
 
 /**

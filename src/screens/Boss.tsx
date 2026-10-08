@@ -47,7 +47,7 @@ type Phase = 'intro' | 'fight' | 'won';
 export function Boss({ profile, nodeId, onMap }: Props) {
   const node = findNode(nodeId) as BossNode;
   const world = useWorld();
-  const def = bossOf(world);
+  const def = bossOf(world, node.tier ?? 1);
   const name = def?.name ?? node.title;
   const Art = def?.Art ?? BossArt;
   const mood = useHeroMood();
@@ -143,7 +143,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
   );
 
   return (
-    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" data-boss={def?.id ?? 'muddler'} onClick={skipParty}>
+    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" data-boss={def?.id ?? 'muddler'} data-tier={node.tier ?? 1} onClick={skipParty}>
       <header class="topbar game-top">
         <button
           type="button"
@@ -166,7 +166,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
       <div class="boss-arena">
         <Hero def={world.hero!} gender={profile.gender} state={mood.state} key={mood.n} class="boss-hero" />
         <div class="boss-spot" ref={bossEl} data-testid="boss-el">
-          <Art class="boss-big" state={phase === 'won' ? 'beaten' : 'idle'} />
+          <Art class={`boss-big boss-tier-${node.tier ?? 1}`} state={phase === 'won' ? 'beaten' : 'idle'} />
         </div>
       </div>
 

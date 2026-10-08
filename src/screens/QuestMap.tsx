@@ -15,12 +15,18 @@
 // the hero (made on the fly – core/quest reviewNode – never saved as a station), opening once in
 // a burst like any station; a mastered skill wears a small crown on its last practice station.
 //
+// Phase 7: five chapters. The map shows one chapter at a time (decision: a chapter is at most
+// ~17 stations, so the page stays light – instead of one endless scroll), with tabs to look at any
+// chapter already open. Roads lead in at the top and out at the bottom: when the next station is
+// in the next chapter, the hero walks out of this one, the map turns to the next chapter, and the
+// hero walks in to it – then it opens in a burst, with the chapter's story sentence.
+//
 // The map wears the world's skin (World.mapSkin, phase 5): its ground and scenery (a pitch, a
 // garden, a dojo, a cave, a stage…), its station shapes and path, icons on the section banners,
 // the world's boss on the boss station, and a one-sentence story for the chapter. The world's
 // coins show beside the stars.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { JOURNEY, allNodes, chapterMaxStars, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, reviewNode, reviewSkills, type QuestNode, type ReviewNode } from '../core/quest/index';
+import { JOURNEY, allNodes, chapterMaxStars, chapterNodes, chapterOf, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, reviewNode, reviewSkills, type QuestNode, type ReviewNode } from '../core/quest/index';
 import { dueSkills, isMastered } from '../core/mastery/index';
 import type { SkillId } from '../core/types';
 import { now } from '../app/clock';
@@ -67,12 +73,20 @@ export function nodeIcon(n: QuestNode): string {
   return n.kind === 'chest' ? '🎁' : '👾';
 }
 
+/** The index of the chapter a station is in (0 when unknown). */
+const chapterIndex = (id: string | null | undefined) => Math.max(0, JOURNEY.chapters.findIndex((c) => c === chapterOf(id ?? '')));
+
 export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollection, onNode }: Props) {
   const world = useWorld();
   const mood = useHeroMood();
-  const layout = useMemo(() => mapLayout(JOURNEY), []);
-  const nodes = useMemo(() => allNodes(), []);
-  const chapter = JOURNEY.chapters[0];
+  const all = useMemo(() => allNodes(), []);
+  const [view, setView] = useState<number | null>(null);
+  const chapter = JOURNEY.chapters[view ?? 0];
+  const layout = useMemo(() => mapLayout({ id: JOURNEY.id, chapters: [chapter] }), [chapter]);
+  /** The stations on screen: this chapter's. */
+  const nodes = useMemo(() => chapterNodes(chapter), [chapter]);
+  /** Section banners count on from the chapters before (their icons go round). */
+  const sectionBase = JOURNEY.chapters.slice(0, view ?? 0).reduce((n, c) => n + c.sections.length, 0);
   const [rec, setRec] = useState<QuestRecord | null>(null);
   const [skills, setSkills] = useState<Record<string, SkillState>>({});
   const [reviewFresh, setReviewFresh] = useState(false);
@@ -85,13 +99,16 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   const mapRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLButtonElement>(null);
   const segRefs = useRef<(SVGPathElement | null)[]>([]);
+  const entryRef = useRef<SVGPathElement>(null);
+  const exitRef = useRef<SVGPathElement>(null);
+  /** A walk into the next chapter, waiting for that chapter to be drawn. */
+  const arriving = useRef<{ to: string; pending: string[]; reviewNew: boolean } | null>(null);
   const nodeRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const timers = useRef<number[]>([]);
   const ran = useRef(false);
   const heroName = world.hero?.name(profile.gender) ?? '';
   const skin = world.mapSkin;
-  const boss = bossOf(world);
-  const story = world.story?.chapters[0] ?? null;
+  const story = world.story?.chapters[view ?? 0] ?? null;
   const purse = useCoins(profile.id, world);
 
   useEffect(() => {
@@ -104,7 +121,8 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
       if (!alive) return;
       setSkills(st);
       setRec(r);
-      setHeroAt(r.at ?? nodes[0].id);
+      setHeroAt(r.at ?? all[0].id);
+      setView(chapterIndex(r.at ?? all[0].id));
     });
     return () => {
       alive = false;
@@ -119,7 +137,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [rec !== null]);
+  }, [rec !== null, view]);
 
   const status = (n: QuestNode) => (rec ? nodeStatus(n, rec) : 'locked');
   const current = rec ? nextNode(rec) : null;
@@ -135,19 +153,21 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
     const out = new Set<string>();
     for (const id of Object.keys(skills)) {
       if (!isMastered(skills[id])) continue;
-      const last = nodes.filter((n) => n.kind === 'practice' && n.skillId === id).at(-1);
+      const last = all.filter((n) => n.kind === 'practice' && n.skillId === id).at(-1);
       if (last) out.add(last.id);
     }
     return out;
   }, [skills]);
   const spotOf = (id: string | null): Spot => layout.spots.find((s) => s.node.id === id) ?? layout.spots[0];
+  const inView = (id: string | null | undefined) => !!id && nodes.some((n) => n.id === id);
   const heroXY = (id: string | null) => {
     const f = heroSpot(spotOf(id));
     return `translate(${(f.x * scale - HERO_W / 2).toFixed(1)}px, ${(f.y * scale - HERO_H).toFixed(1)}px)`;
   };
-  /** A station's name on this map: the boss station takes the world's boss's name. */
+  /** A station's name on this map: the boss station takes the world's boss's name (stronger every chapter). */
   function titleOf(n: QuestNode): string {
-    return n.kind === 'boss' && boss ? boss.name : n.title;
+    const b = n.kind === 'boss' ? bossOf(world, n.tier) : undefined;
+    return b ? b.name : n.title;
   }
   /** Page scroll that puts a station in the middle of the screen. */
   const scrollTop = (id: string) => {
@@ -158,11 +178,15 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms));
 
   // What the child hears on arriving: what just opened, or where the journey goes on.
-  const opened = rec ? nodes.filter((n) => status(n) !== 'locked' && !rec.revealed.includes(n.id)) : [];
+  const opened = rec ? all.filter((n) => status(n) !== 'locked' && !rec.revealed.includes(n.id)) : [];
   const newcomer = !!rec && Object.keys(rec.stars).length === 0;
+  /** The hero is about to walk into the next chapter: its story is what the child hears. */
+  const newChapter = !!rec && !!current && chapterIndex(current.id) > chapterIndex(rec.at ?? all[0].id);
   const greeting = !rec
     ? null
-    : opened.length
+    : newChapter
+      ? world.story?.chapters[chapterIndex(current!.id)] ?? `${JOURNEY.chapters[chapterIndex(current!.id)].title}!`
+      : opened.length
       ? `נפתחה תחנה חדשה: ${titleOf(opened.at(-1)!)}!`
       : review && !reviewRevealed(rec)
         ? 'נפתחה תחנת חזרה: בואו ניזכר במה שלמדנו!'
@@ -170,14 +194,30 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
         ? story
         : current
         ? `שלום ${profile.name}, ממשיכים במסע!`
-        : `${byGender(profile, 'אלוף', 'אלופה', 'אלופים')}! סיימת את כל הפרק!`;
+        : `${byGender(profile, 'אלוף', 'אלופה', 'אלופים')}! סיימת את כל המסע!`;
   useAutoSpeak(greeting, rec ? 'map' : null);
 
-  // Once, when the map is ready: scroll to the hero, walk to the next station, open what opened.
+  /** The bursts for stations that opened (those on screen burst; the rest are just marked). */
+  function reveal(pending: string[], reviewNew: boolean) {
+    pending.forEach((id, k) =>
+      later(() => {
+        setFresh((f) => [...f, id]);
+        emit({ type: 'unlock' }, { el: nodeRefs.current[id] });
+      }, k * 420)
+    );
+    if (reviewNew)
+      later(() => {
+        setReviewFresh(true);
+        emit({ type: 'unlock' }, { el: reviewRef.current });
+      }, pending.length * 420 + 200);
+  }
+
+  // Once, when the map is ready: scroll to the hero, walk to the next station (into the next
+  // chapter if that is where it is), open what opened.
   useLayoutEffect(() => {
-    if (!rec || !scale || ran.current) return;
+    if (!rec || !scale || view === null || ran.current) return;
     ran.current = true;
-    const from = rec.at ?? nodes[0].id;
+    const from = rec.at ?? all[0].id;
     const to = current?.id ?? from;
     const pending = opened.map((n) => n.id);
     const reviewNew = !!review && !reviewRevealed(rec);
@@ -188,79 +228,118 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
     if (reviewNew) void revealReview(profile.id);
     const fi = nodes.findIndex((n) => n.id === from);
     const ti = nodes.findIndex((n) => n.id === to);
-    const reveal = () => {
-      pending.forEach((id, k) =>
-        later(() => {
-          setFresh((f) => [...f, id]);
-          emit({ type: 'unlock' }, { el: nodeRefs.current[id] });
-        }, k * 420)
+    if (ti < 0 && chapterIndex(to) > (view ?? 0)) {
+      // The next station is in a later chapter: out through the bottom road, then the map turns.
+      later(
+        () =>
+          void walkRoute(fi, nodes.length - 1, 'out').then(() => {
+            arriving.current = { to, pending, reviewNew };
+            setView(chapterIndex(to));
+          }),
+        reducedMotion() ? 150 : 450
       );
-      if (reviewNew)
-        later(() => {
-          setReviewFresh(true);
-          emit({ type: 'unlock' }, { el: reviewRef.current });
-        }, pending.length * 420 + 200);
-    };
-    if (ti > fi) later(() => void walk(fi, ti).then(reveal), reducedMotion() ? 150 : 450);
+    } else if (ti > fi) later(() => void walkRoute(fi, ti).then(() => reveal(pending, reviewNew)), reducedMotion() ? 150 : 450);
     else {
       setHeroAt(to);
-      later(reveal, 300);
+      if (ti < 0) setView(chapterIndex(to));
+      later(() => reveal(pending, reviewNew), 300);
     }
-  }, [rec, scale]);
+  }, [rec, scale, view]);
 
-  /** The hero walks from station `fi` to station `ti` along the path. */
-  async function walk(fi: number, ti: number): Promise<void> {
+  // Arriving in the next chapter: in through the top road, on to the station.
+  useLayoutEffect(() => {
+    const a = arriving.current;
+    if (!a || !scale || !inView(a.to)) return;
+    arriving.current = null;
+    // The hero waits, unseen, at the gate (it fades in as it walks down the road).
+    setWalking(true);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    const ti = nodes.findIndex((n) => n.id === a.to);
+    later(() => void walkRoute(-1, ti, 'in').then(() => reveal(a.pending, a.reviewNew)), reducedMotion() ? 150 : 350);
+  }, [view, scale]);
+
+  /** Points along a drawn path (map units), shifted from beside station a to beside station b. */
+  function along(path: SVGPathElement | null, a: { x: number; y: number }, b: { x: number; y: number }, oa: { x: number; y: number }, ob: { x: number; y: number }, first: boolean) {
+    const L = path?.getTotalLength() ?? Math.hypot(b.x - a.x, b.y - a.y);
+    const n = Math.max(6, Math.round(L / 12));
+    const pts: { x: number; y: number }[] = [];
+    for (let s = first ? 0 : 1; s <= n; s++) {
+      const t = s / n;
+      const p = path ? path.getPointAtLength(L * t) : { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      pts.push({ x: p.x + (oa.x - a.x) * (1 - t) + (ob.x - b.x) * t, y: p.y + (oa.y - a.y) * (1 - t) + (ob.y - b.y) * t });
+    }
+    return { pts, L };
+  }
+
+  /**
+   * The hero walks along the path from station `fi` to station `ti` of this chapter; `out` goes on
+   * along the road out at the bottom (fi to the edge), `in` starts at the top edge (fi = −1).
+   */
+  async function walkRoute(fi: number, ti: number, road?: 'in' | 'out'): Promise<void> {
     const hero = heroRef.current;
-    const to = nodes[ti].id;
+    const toId = road === 'out' ? null : nodes[ti]?.id;
     if (!hero) {
-      setHeroAt(to);
+      if (toId) setHeroAt(toId);
       return;
     }
     setWalking(true);
     const fast = reducedMotion();
-    window.scrollTo({ top: scrollTop(to), behavior: fast ? 'auto' : 'smooth' });
+    const endY = road === 'out' ? layout.gateOut.y : spotOf(toId!).y;
+    window.scrollTo({ top: Math.max(0, (mapRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY + endY * scale - window.innerHeight * 0.45), behavior: fast ? 'auto' : 'smooth' });
+    const px = (p: { x: number; y: number }) => `translate(${(p.x * scale - HERO_W / 2).toFixed(1)}px, ${(p.y * scale - HERO_H).toFixed(1)}px)`;
     if (fast) {
       // Reduced motion: no stroll – a short fade out here and in there.
       emit({ type: 'walk', steps: 0, ms: 300 });
       await hero.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: 'forwards' }).finished.catch(() => {});
-      hero.style.transform = heroXY(to);
-      setHeroAt(to);
-      await hero.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150 }).finished.catch(() => {});
-      hero.getAnimations().forEach((a) => a.cancel());
+      if (toId) {
+        hero.style.transform = heroXY(toId);
+        setHeroAt(toId);
+      }
+      await hero.animate([{ opacity: 0 }, { opacity: road === 'out' ? 0 : 1 }], { duration: 150, fill: road === 'out' ? 'forwards' : 'none' }).finished.catch(() => {});
+      if (road !== 'out') hero.getAnimations().forEach((x) => x.cancel());
       setWalking(false);
       return;
     }
-    // Points along the drawn path, shifted beside the stations where the hero stands.
     const pts: { x: number; y: number }[] = [];
     let length = 0;
-    for (let k = fi; k < ti; k++) {
-      const path = segRefs.current[k];
+    if (road === 'in') {
+      const b = layout.spots[0];
+      const r = along(entryRef.current, layout.gateIn, b, layout.gateIn, heroSpot(b), true);
+      pts.push(...r.pts);
+      length += r.L;
+    }
+    for (let k = Math.max(0, fi); k < ti; k++) {
       const a = layout.spots[k];
       const b = layout.spots[k + 1];
-      const oa = heroSpot(a);
-      const ob = heroSpot(b);
-      const L = path?.getTotalLength() ?? Math.hypot(b.x - a.x, b.y - a.y);
-      length += L;
-      const n = Math.max(6, Math.round(L / 12));
-      for (let s = k === fi ? 0 : 1; s <= n; s++) {
-        const t = s / n;
-        const p = path ? path.getPointAtLength(L * t) : { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-        pts.push({ x: p.x + (oa.x - a.x) * (1 - t) + (ob.x - b.x) * t, y: p.y + (oa.y - a.y) * (1 - t) + (ob.y - b.y) * t });
-      }
+      const r = along(segRefs.current[k], a, b, heroSpot(a), heroSpot(b), pts.length === 0);
+      pts.push(...r.pts);
+      length += r.L;
+    }
+    if (road === 'out') {
+      const a = layout.spots.at(-1)!;
+      const r = along(exitRef.current, a, layout.gateOut, heroSpot(a), layout.gateOut, pts.length === 0);
+      pts.push(...r.pts);
+      length += r.L;
+    }
+    if (pts.length < 2) {
+      setWalking(false);
+      return;
     }
     const ms = Math.round(Math.min(3400, Math.max(1400, length * 6)));
     const steps = Math.max(2, Math.round(ms / STRIDE_MS));
     emit({ type: 'walk', steps, ms });
     for (let s = 1; s < steps; s++) later(() => emit({ type: 'step', n: s }), s * STRIDE_MS);
-    const frames = pts.map((p, i) => ({
-      transform: `translate(${(p.x * scale - HERO_W / 2).toFixed(1)}px, ${(p.y * scale - HERO_H).toFixed(1)}px)`,
-      offset: i / (pts.length - 1)
-    }));
+    const frames: Keyframe[] = pts.map((p, i) => ({ transform: px(p), offset: i / (pts.length - 1) }));
+    if (road === 'in') frames[0].opacity = 0;
+    if (road === 'in') frames[1].opacity = 1;
+    if (road === 'out') frames.at(-1)!.opacity = 0;
     const anim = hero.animate(frames, { duration: ms, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' });
     await anim.finished.catch(() => {});
-    hero.style.transform = heroXY(to);
-    setHeroAt(to);
-    anim.cancel();
+    if (toId) {
+      hero.style.transform = heroXY(toId);
+      setHeroAt(toId);
+      anim.cancel();
+    }
     setWalking(false);
   }
 
@@ -295,7 +374,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   const stars = chapterStars(chapter, rec);
   // The review station stands beside the hero, on the side away from the station.
   const reviewSpot = (() => {
-    if (!review) return null;
+    if (!review || !inView(current?.id ?? nodes.at(-1)!.id)) return null;
     const s = spotOf(current?.id ?? nodes.at(-1)!.id);
     const h = heroSpot(s);
     const x = Math.max(REVIEW_SIZE / 2 + 8, Math.min(MAP_W - REVIEW_SIZE / 2 - 8, h.x + heroSide(s) * REVIEW_GAP));
@@ -375,7 +454,39 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
         </div>
       </section>
 
-      <h2 class="map-chapter">{chapter.title}</h2>
+      <nav class="map-chapters" aria-label="פרקים" data-testid="chapter-tabs">
+        {JOURNEY.chapters.map((c, k) => {
+          const first = chapterNodes(c)[0];
+          const shut = status(first) === 'locked' && !rec.revealed.includes(first.id);
+          return (
+            <button
+              type="button"
+              key={c.id}
+              class={`chip map-chapter-tab ${k === view ? 'is-now' : ''} ${shut ? 'is-locked' : ''}`}
+              data-testid={`chapter-tab-${k + 1}`}
+              aria-label={`${c.title}${shut ? ' – סגור' : ''}`}
+              aria-current={k === view ? 'page' : undefined}
+              disabled={walking}
+              onClick={() => {
+                if (shut) {
+                  setMessage(say(`עוד לא! ${c.title} נפתח אחרי ${titleOf(chapterNodes(JOURNEY.chapters[k - 1]).at(-1)!)}`));
+                  emit({ type: 'locked' });
+                  return;
+                }
+                playSfx('tap');
+                setFresh([]);
+                setView(k);
+                window.scrollTo({ top: 0, behavior: 'auto' });
+              }}
+            >
+              {shut ? '🔒' : k + 1}
+            </button>
+          );
+        })}
+      </nav>
+      <h2 class="map-chapter" data-testid="map-chapter" data-chapter={chapter.id}>
+        {chapter.title}
+      </h2>
       {story && (
         <p class="map-story" data-testid="map-story">
           {story} <SpeakButton text={story} class="speak-inline" />
@@ -394,6 +505,18 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
           </svg>
         )}
         <svg class="map-path" viewBox={`0 0 ${MAP_W} ${layout.height}`} aria-hidden="true">
+          {(view ?? 0) > 0 && (
+            <g>
+              <path class="map-road" d={layout.entry} />
+              <path class="map-trail is-lit" d={layout.entry} ref={entryRef} />
+            </g>
+          )}
+          {(view ?? 0) < JOURNEY.chapters.length - 1 && (
+            <g>
+              <path class="map-road" d={layout.exit} />
+              <path class={`map-trail ${status(chapterNodes(JOURNEY.chapters[(view ?? 0) + 1])[0]) !== 'locked' ? 'is-lit' : ''}`} d={layout.exit} ref={exitRef} />
+            </g>
+          )}
           {layout.segments.map((d, k) => {
             const target = layout.spots[k + 1].node;
             const lit = status(target) !== 'locked' && (rec.revealed.includes(target.id) || fresh.includes(target.id));
@@ -408,7 +531,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
 
         {layout.banners.map((b, i) => (
           <p key={b.id} class="map-section" style={{ top: `${(b.y / layout.height) * 100}%` }}>
-            {skin && <span aria-hidden="true">{skin.sectionIcons[i % skin.sectionIcons.length]} </span>}
+            {skin && <span aria-hidden="true">{skin.sectionIcons[(sectionBase + i) % skin.sectionIcons.length]} </span>}
             {b.title}
           </p>
         ))}
@@ -442,11 +565,10 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
                 onClick={() => tapNode(n)}
               >
                 {n.kind === 'boss' ? (
-                  boss ? (
-                    <boss.Art class="map-art" />
-                  ) : (
-                    <BossArt class="map-art" />
-                  )
+                  (() => {
+                    const b = bossOf(world, n.tier);
+                    return b ? <b.Art class={`map-art boss-tier-${n.tier}`} /> : <BossArt class="map-art" />;
+                  })()
                 ) : n.kind === 'chest' ? (
                   st === 'done' ? (
                     <span class="map-icon">{rec.chests[n.id]}</span>
@@ -520,7 +642,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
           </div>
         )}
 
-        {world.hero && scale > 0 && (
+        {world.hero && scale > 0 && (inView(heroAt) || walking) && (
           <button
             ref={heroRef}
             type="button"
@@ -528,7 +650,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
             data-testid="home-hero"
             data-at={heroAt ?? ''}
             aria-label={`${heroName} – לחיצה להגיד שלום`}
-            style={{ transform: heroXY(heroAt), width: `${HERO_W}px`, height: `${HERO_H}px` }}
+            style={{ transform: heroXY(heroAt), width: `${HERO_W}px`, height: `${HERO_H}px`, opacity: inView(heroAt) ? 1 : 0 }}
             onClick={() => {
               playSfx(`world-${world.id}` as SfxName);
               hop(heroRef.current?.querySelector('.hero'));

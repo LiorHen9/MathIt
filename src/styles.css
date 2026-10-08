@@ -4836,3 +4836,49 @@ p {
 .skin-disco .clock-rim {
   fill: var(--num-2);
 }
+
+/* The world's boss, stronger every chapter (phase 7): a growing aura (static, no animation). */
+.boss-tier-2 {
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+.boss-tier-3 {
+  filter: drop-shadow(0 0 6px var(--num-4)) drop-shadow(0 0 2px var(--accent));
+}
+.boss-tier-4 {
+  filter: drop-shadow(0 0 8px var(--num-1)) drop-shadow(0 0 3px var(--accent));
+}
+.boss-tier-5 {
+  filter: drop-shadow(0 0 10px var(--brand)) drop-shadow(0 0 4px var(--num-1));
+}
+.boss-screen[data-tier='5'] .boss-big {
+  width: 120px;
+  height: 120px;
+}
+
+/* Chapter tabs on the map (phase 7): one chapter is drawn at a time. */
+.map-chapters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s3) 0 var(--s1);
+}
+
+.map-chapter-tab {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  justify-content: center;
+  font-size: var(--fs-md);
+  font-weight: 800;
+  border: 0;
+  cursor: pointer;
+}
+
+.map-chapter-tab.is-now {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.map-chapter-tab.is-locked {
+  opacity: 0.6;
+}

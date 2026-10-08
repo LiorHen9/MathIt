@@ -19,7 +19,7 @@ import { Splash } from '../screens/Splash';
 import { hasPin } from '../profiles/pin';
 import { deleteProfile, getLastProfileId, listProfiles, saveProfile, setLastProfileId, type Profile } from '../profiles/profiles';
 import { activateProfile, activeProfile, useActiveProfile } from '../profiles/settings';
-import type { SkillId } from '../core/types';
+import type { SkillId, TemplateId } from '../core/types';
 import type { QuestNode } from '../core/quest/types';
 import { lazy } from './lazy';
 import { logError } from './errorLog';
@@ -57,7 +57,7 @@ type Screen =
   | { name: 'map' }
   | { name: 'practice' }
   | { name: 'settings' }
-  | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number } }
+  | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number; template?: TemplateId } }
   | { name: 'review'; skillIds: SkillId[]; count: number }
   | { name: 'placement' }
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
@@ -133,7 +133,7 @@ export function App() {
   /** A station on the map was tapped. */
   function openNode(n: QuestNode) {
     if (n.kind === 'lesson') setScreen({ name: 'lesson', skillId: n.skillId, from: 'map', nodeId: n.id });
-    else if (n.kind === 'practice') setScreen({ name: 'game', skillId: n.skillId, from: 'map', quest: { nodeId: n.id, level: n.level } });
+    else if (n.kind === 'practice') setScreen({ name: 'game', skillId: n.skillId, from: 'map', quest: { nodeId: n.id, level: n.level, template: n.template } });
     else if (n.kind === 'review') setScreen({ name: 'review', skillIds: n.skillIds, count: n.count });
     else if (n.kind === 'chest') setScreen({ name: 'chest', nodeId: n.id });
     else setScreen({ name: 'boss', nodeId: n.id });

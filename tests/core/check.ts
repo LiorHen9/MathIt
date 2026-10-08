@@ -10,7 +10,7 @@ import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/
 import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
 import { LESSONS, getLesson } from '../../src/core/lessons/index';
 import { MAX_WRONG, nextLevel, questionPoints, starsFor } from '../../src/core/round';
-import { JOURNEY, allNodes, chapterMaxStars, chapterStars, emptyProgress, findNode, journeyProblems, lockReason, maxStars, nextNode, nodeStatus, progressFromSkills, withStars, type QuestProgress } from '../../src/core/quest/index';
+import { JOURNEY, allNodes, chapterNodes, chapterMaxStars, chapterStars, emptyProgress, findNode, journeyProblems, lockReason, maxStars, nextNode, nodeStatus, progressFromSkills, withStars, type QuestProgress } from '../../src/core/quest/index';
 import { DEFAULT_WORDS, PLACEHOLDERS, fillQuestion, fillText, hasPlaceholders, type StoryWords } from '../../src/core/story';
 import {
   DAY,
@@ -499,22 +499,51 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   for (const pr of problems) fail(`journey: ${pr}`);
   const nodes = allNodes();
   const ch = JOURNEY.chapters[0];
-  if (nodes.length < 14 || nodes.length > 18) fail(`chapter 1 has ${nodes.length} stations (about 15)`);
-  if (nodes[0].kind !== 'lesson' || nodes.at(-1)!.kind !== 'boss') fail('chapter 1 runs from a lesson to the boss');
-  const chestAt = nodes.findIndex((n) => n.kind === 'chest');
-  if (chestAt < 4 || chestAt > nodes.length - 4) fail('the chest should be in the middle');
+  const c1 = chapterNodes(ch);
+  if (c1.length !== 16) fail(`chapter 1 has ${c1.length} stations (16, unchanged)`);
+  if (JOURNEY.chapters.map((c) => c.id).join() !== 'c1,c2,c3,c4,c5') fail('chapters: ' + JOURNEY.chapters.map((c) => c.id));
   if (ch.sections.map((s) => s.title).join('|') !== 'מספרים עד 10|חיבור וחיסור עד 10') fail('sections: ' + ch.sections.map((s) => s.title));
-  const boss = nodes.at(-1)!;
+  const boss = c1.at(-1)!;
   if (boss.kind === 'boss' && !(boss.skillIds.includes('add.within10') && boss.skillIds.includes('sub.within10'))) fail('the boss mixes adding and taking away');
-  // Every skill gets its lesson before its first practice; practice levels rise per skill.
+  // Every chapter: from a lesson to its boss (stronger each chapter), a chest in the middle, banners.
+  let lastHits = 0;
+  JOURNEY.chapters.forEach((c, k) => {
+    const list = chapterNodes(c);
+    if (list[0].kind !== 'lesson' || list.at(-1)!.kind !== 'boss') fail(`${c.id} runs from a lesson to the boss`);
+    const chestAt = list.findIndex((n) => n.kind === 'chest');
+    if (chestAt < 3 || chestAt > list.length - 3) fail(`${c.id}: the chest should be in the middle`);
+    if (c.sections.length < 2 || c.sections.some((s) => !s.title || !s.nodes.length)) fail(`${c.id}: two banners or more`);
+    const b = list.at(-1)!;
+    if (b.kind === 'boss') {
+      if (b.tier !== k + 1) fail(`${c.id}: boss tier ${b.tier}`);
+      if (b.hits < lastHits) fail(`${c.id}: the boss should not get weaker`);
+      lastHits = b.hits;
+      for (const id of b.skillIds) if (!list.some((n) => n.kind === 'practice' && n.skillId === id)) fail(`${c.id}: the boss asks ${id}, never practised in the chapter`);
+    }
+    if (!c.title.startsWith(`פרק ${k + 1}:`)) fail(`${c.id}: title ${c.title}`);
+  });
+  // Every skill is on the journey; every new game is played at some station.
+  for (const sk of SKILLS) if (sk.id !== 'story.within10' && !nodes.some((n) => n.kind === 'practice' && n.skillId === sk.id)) fail(`${sk.id} is not on the journey`);
+  for (const t of TEMPLATE_IDS) if (t !== 'pop' && !nodes.some((n) => n.kind === 'practice' && n.template === t)) fail(`no station plays ${t}`);
+  // A station's game is one its skill is played in, and fits its questions.
+  for (const n of nodes)
+    if (n.kind === 'practice' && n.template) {
+      if (!getSkill(n.skillId)!.templates.includes(n.template)) fail(`${n.id}: ${n.skillId} is not played in ${n.template}`);
+      let fits = 0;
+      for (let seed = 0; seed < 200; seed++) if (templateFits(n.template, makeQuestion(n.skillId, n.level, seed))) fits++;
+      if (fits < 120) fail(`${n.id}: ${n.template} fits only ${fits}/200 of its questions`);
+    }
+  // Every skill gets its lesson before its first practice; practice levels rise per skill (the
+  // same level again only in another game).
   const seenLesson = new Set<string>();
-  const lastLevel: Record<string, number> = {};
+  const lastLevel: Record<string, { level: number; template: string }> = {};
   for (const n of nodes) {
     if (n.kind === 'lesson') seenLesson.add(n.skillId);
     if (n.kind === 'practice') {
       if (!seenLesson.has(n.skillId)) fail(`${n.id}: practice before the lesson`);
-      if ((lastLevel[n.skillId] ?? 0) >= n.level) fail(`${n.id}: levels should rise`);
-      lastLevel[n.skillId] = n.level;
+      const last = lastLevel[n.skillId];
+      if (last && (last.level > n.level || (last.level === n.level && last.template === (n.template ?? 'pop')))) fail(`${n.id}: levels should rise`);
+      lastLevel[n.skillId] = { level: n.level, template: n.template ?? 'pop' };
     }
   }
 
@@ -554,6 +583,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   }
 
   // Star gates: one star everywhere is not enough for the chest; it says how many are missing.
+  const chestAt = c1.findIndex((n) => n.kind === 'chest');
   p = emptyProgress();
   for (const n of nodes.slice(0, chestAt)) p = withStars(p, n.id, 1);
   const chest = nodes[chestAt];
@@ -566,7 +596,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   // withStars keeps the best and caps at the station's most.
   if (withStars(withStars(p, nodes[1].id, 1), nodes[1].id, 0).stars[nodes[1].id] !== 3) fail('withStars should keep the best');
   if (withStars(emptyProgress(), nodes[0].id, 3).stars[nodes[0].id] !== 1) fail('a lesson gives one star');
-  if (chapterMaxStars(ch) !== nodes.reduce((s, n) => s + maxStars(n), 0)) fail('chapterMaxStars');
+  if (chapterMaxStars(ch) !== c1.reduce((s, n) => s + maxStars(n), 0)) fail('chapterMaxStars');
 
   // Progress from before the map (schema 2): lessons watched, rounds played.
   const from = progressFromSkills({
@@ -581,7 +611,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   // A lesson watched out of order shows as done; the stations before it still come first.
   const odd = progressFromSkills({ 'add.within10': { level: 1, bestStars: 0, rounds: 0, lessonSeen: true } });
   if (nodeStatus(findNode('c1-add-lesson')!, odd) !== 'done' || nextNode(odd)?.id !== 'c1-count-lesson') fail('out of order: ' + JSON.stringify(odd));
-  ok(`quest: ${nodes.length} stations from a lesson to the boss, ids unique, skills exist, every station reachable, opening only forward, star gates, migration from skills`);
+  ok(`quest: 5 chapters, ${nodes.length} stations, each chapter from a lesson to its (stronger) boss, every new game at a station, ids unique, skills exist, every station reachable, opening only forward, star gates, migration from skills`);
 }
 
 // ---------- Word problems: placeholders the world fills (core/story.ts) ----------
@@ -756,7 +786,17 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
     ['count.to10', 3, 'count-off-by-one'],
     ['compare.to10', 2, 'reversed-sign'],
     ['compare.to10', 2, 'not-equal'],
-    ['story.within10', 2, 'count-off-by-one']
+    ['story.within10', 2, 'count-off-by-one'],
+    // Phase 7: every new kind of mistake.
+    ['add.within20', 2, 'no-bridge'],
+    ['sub.within20', 2, 'no-bridge'],
+    ['add.within100', 2, 'swapped-digits'],
+    ['sub.within100', 1, 'tens-as-ones'],
+    ['numbers.to100', 3, 'swapped-digits'],
+    ['place.value', 2, 'swapped-digits'],
+    ['pattern', 2, 'wrong-step'],
+    ['clock', 2, 'hands-swapped'],
+    ['money', 3, 'added']
   ];
   const lines: string[] = [];
   for (const [skill, level, tag] of cases) {
@@ -771,7 +811,7 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
         [b, 'weighted']
       ] as const) {
         if (new Set(round.map((q) => q.key)).size !== round.length) fail(`${skill} ${which} seed ${seed}: an exercise twice`);
-        for (let i = 1; i < round.length; i++) if (round[i].answer === round[i - 1].answer) fail(`${skill} ${which} seed ${seed}: the same answer twice in a row`);
+        for (let i = 1; i < round.length; i++) if (sameAnswer(round[i].answer, round[i - 1].answer)) fail(`${skill} ${which} seed ${seed}: the same answer twice in a row`);
         for (const q of round) if (q.level !== level || q.skillId !== skill) fail(`${skill} ${which}: wrong level/skill`);
       }
       plain += a.filter((q) => invites(q, tag)).length;
@@ -790,6 +830,24 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (!invites(q('6+1'), 'count-off-by-one') || invites(q('4+4'), 'count-off-by-one') || !invites(q('count:8'), 'count-off-by-one') || invites(q('count:3'), 'count-off-by-one')) fail('invites: counting slips');
   if (!invites(q('5-2', { '7': 'added' }), 'added') || invites(q('5-4', {}), 'added')) fail('invites: added');
   if (!invites(q('3?4'), 'reversed-sign') || invites(q('4?4'), 'reversed-sign') || !invites(q('4?4'), 'not-equal')) fail('invites: signs');
+  if (!invites(q('8+5'), 'no-bridge') || invites(q('8+2'), 'no-bridge') || !invites(q('13-5'), 'no-bridge') || invites(q('17-4'), 'no-bridge')) fail('invites: no-bridge');
+  if (!invites(q('38+25'), 'no-carry') || invites(q('34+25'), 'no-carry') || !invites(q('52-17'), 'no-borrow') || invites(q('58-23'), 'no-borrow')) fail('invites: carry and borrow');
+  // Every new kind of mistake (phase 7) a generator makes is invited by some question of its skill.
+  const NEW_TAGS: ErrorTag[] = ['no-bridge', 'swapped-digits', 'tens-as-ones', 'no-carry', 'no-borrow', 'wrong-step', 'hands-swapped'];
+  for (const sk of SKILLS)
+    for (const lv of sk.levels) {
+      const offered = new Set<ErrorTag>();
+      const invited = new Set<ErrorTag>();
+      for (let seed = 0; seed < 200; seed++) {
+        const x = makeQuestion(sk.id, lv.level, seed);
+        for (const t of Object.values(x.errorTags)) {
+          if (!NEW_TAGS.includes(t)) continue;
+          offered.add(t);
+          if (invites(x, t)) invited.add(t);
+        }
+      }
+      for (const t of offered) if (!invited.has(t)) fail(`invites: no ${sk.id} L${lv.level} question invites "${t}"`);
+    }
   // pickQuestion keeps away from the keys given.
   const avoid = new Set(['1+1', '1+2', '2+1']);
   const rng = createRng(5);
@@ -853,12 +911,19 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   const top = LADDER.length - 1;
   for (const band of ['4-5', '6-7', '8-9', '10-12'] as AgeBand[]) {
     const knower = run(band, () => true);
-    if (knower.r.known !== top || knower.r.mastered.length !== 4 || knower.asked.length > 6) fail(`placement ${band}: the knower ${JSON.stringify(knower)}`);
+    const ladderSkills = new Set(LADDER.map((r) => r.skillId)).size;
+    if (knower.r.known !== top || knower.r.mastered.length !== ladderSkills || knower.asked.length > 10) fail(`placement ${band}: the knower ${JSON.stringify(knower)}`);
     const not = run(band, () => false);
-    if (not.r.known !== -1 || not.r.mastered.length || Object.keys(not.r.partial).length || not.asked.length > 6) fail(`placement ${band}: the beginner ${JSON.stringify(not)}`);
+    if (not.r.known !== -1 || not.r.mastered.length || Object.keys(not.r.partial).length || not.asked.length > 5) fail(`placement ${band}: the beginner ${JSON.stringify(not)}`);
+  }
+  // Start by age up to second grade: kindergarten at counting, first grade at adding to 10, second at chapter 2.
+  if (startPlacement(5).at !== 0 || startPlacement(6).at !== 3 || startPlacement(7).at !== 7 || startPlacement(9).at !== 9) fail('placement start by age');
+  for (const age of [5, 6, 7, 9]) {
+    const k = run(age as unknown as AgeBand, () => true);
+    if (k.asked.length > 10 || k.r.known !== top) fail(`placement age ${age}: the knower took ${k.asked.length}`);
   }
   // Every edge is found: a child who knows everything up to rung k.
-  for (const band of ['4-5', '6-7', '8-9'] as AgeBand[])
+  for (const band of ['4-5', '6-7', '8-9', 7] as AgeBand[])
     for (let k = -1; k <= top; k++) {
       const x = run(band, (i) => i <= k);
       if (x.r.known !== k || x.asked.length > 10) fail(`placement ${band}, knows up to ${k}: known ${x.r.known} after ${x.asked.length} (${x.asked.join(',')})`);
@@ -876,21 +941,29 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (knownRung({ passed: [4, 6], failed: [5] }) !== 4 || knownRung({ passed: [4, 5, 6], failed: [5] }) !== 6) fail('knownRung');
   // Up to "add to 7": counting and comparing mastered, adding partly (next level 3), not taking away.
   const mid = placementResult({ passed: [5], failed: [6] }, levelsOf);
-  if (mid.mastered.join() !== 'count.to10,compare.to10' || mid.partial['add.within10'] !== 3 || mid.partial['sub.within10']) fail('placementResult ' + JSON.stringify(mid));
-  if (!rungKnown('count.to10', 2, 1) || rungKnown('add.within10', 3, 7) || !rungKnown('add.within10', 2, 7)) fail('rungKnown');
+  if (mid.mastered.join() !== 'count.to10,compare.to10,add.within10' || mid.partial['sub.within10'] !== 3 || mid.partial['add.within20']) fail('placementResult ' + JSON.stringify(mid));
+  if (!rungKnown('count.to10', 2, 1) || rungKnown('add.within10', 3, 4) || !rungKnown('add.within10', 2, 4)) fail('rungKnown');
+  // Word problems are known with the sums they tell.
+  if (!rungKnown('story.within20', 2, 10) || rungKnown('story.within20', 1, 9) || !rungKnown('story.within10', 2, 6)) fail('rungKnown: implied skills');
   // On the map: the stations known are done, a chest skipped past is open, the boss is not.
-  const known = (id: SkillId, level: number) => rungKnown(id, level, 5);
+  const known = (id: SkillId, level: number) => rungKnown(id, level, 4);
   const p = progressFromPlacement(emptyProgress(), known);
   const next = nextNode(p);
-  if (next?.id !== 'c1-chest' || p.stars['c1-add-7'] !== 3 || p.stars['c1-count-lesson'] !== 1 || p.chests['c1-chest']) fail('placement on the map (up to add 7): ' + JSON.stringify(p) + ' next ' + next?.id);
+  if (next?.id !== 'c1-add-10' || p.stars['c1-sub-7'] !== 3 || p.stars['c1-count-lesson'] !== 1 || !p.chests['c1-chest'] || p.stars['c1-boss']) fail('placement on the map (up to taking away to 7): ' + JSON.stringify(p) + ' next ' + next?.id);
+  // Everything: every chapter's boss passed (one star), the hero at the last boss of the journey.
   const all = progressFromPlacement(emptyProgress(), (id, level) => rungKnown(id, level, top));
-  if (nextNode(all)?.id !== 'c1-boss' || !all.chests['c1-chest'] || all.stars['c1-boss']) fail('placement on the map (everything): next ' + nextNode(all)?.id);
+  if (nextNode(all)?.id !== 'c5-boss' || !all.chests['c4-chest'] || all.stars['c5-boss'] || all.stars['c1-boss'] !== 1 || all.stars['c4-boss'] !== 1) fail('placement on the map (everything): next ' + nextNode(all)?.id);
+  // Everything to 20 (chapters 1–2): the hero starts chapter 3.
+  const to20 = run(7 as unknown as AgeBand, (i) => i <= 12);
+  if (to20.r.known !== 12 || to20.asked.length > 10) fail('placement: knows to 20 ' + JSON.stringify(to20));
+  const p20 = progressFromPlacement(emptyProgress(), (id, level) => rungKnown(id, level, to20.r.known));
+  if (nextNode(p20)?.id !== 'c3-n100-lesson' || p20.stars['c2-boss'] !== 1 || p20.stars['c2-story-1'] !== 3) fail('placement on the map (to 20): next ' + nextNode(p20)?.id);
   const none = progressFromPlacement(emptyProgress(), () => false);
   if (nextNode(none)?.id !== 'c1-count-lesson' || Object.keys(none.stars).length) fail('placement on the map (nothing)');
   // Never takes stars away.
   const had = withStars(withStars(emptyProgress(), 'c1-count-lesson', 1), 'c1-count-5', 2);
   if (progressFromPlacement(had, () => false).stars['c1-count-5'] !== 2) fail('placement took stars away');
-  ok(`placement: the knower skips to the boss in ≤ 6 questions, the beginner stays at the start, every edge found in ≤ 10, stations known are done on the map`);
+  ok(`placement: a ladder of ${LADDER.length} through 5 chapters; the knower reaches the last boss in ≤ 10 questions, "knows to 20" lands at chapter 3, the beginner stays at the start, every edge found in ≤ 10, bosses of known chapters passed`);
 }
 
 // The review station: made on the fly, never a chapter's station; mixes skills.

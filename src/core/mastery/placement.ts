@@ -1,6 +1,7 @@
 // The placement game (docs/ARCHITECTURE.md §7.4), pure: up to 10 questions on a ladder of
-// (skill, level) rungs from "count to 5" to "take away within 10". It starts by age, climbs two
-// rungs after a right answer (one after the first mistake), and steps down after a wrong one; it
+// (skill, level) rungs from "count to 5" to "take away within 100" (phase 7: all five chapters).
+// It starts by age, climbs three rungs after a right answer (one after the first mistake), and
+// steps down after a wrong one; it
 // stops early when it finds the edge (right on one rung, wrong on the next), when the child is
 // right on the top rung, or wrong on the bottom one.
 // The result: the highest rung the child knows (and nothing failed below it), which skills are
@@ -14,26 +15,51 @@ export interface Rung {
   level: number;
 }
 
-/** Easiest first, in the order of the quest map's chapter 1. */
+/**
+ * Easiest first, in the order of the quest map: chapter 1 (rungs 0–6), chapter 2 (7–12),
+ * chapter 3 (13–14), chapter 4 (15–17), chapter 5 (18–21). Phase 7 made it longer: a level
+ * between two rungs of a skill is known when a higher rung is, so most skills need one or two.
+ */
 export const LADDER: readonly Rung[] = [
   { skillId: 'count.to10', level: 1 },
   { skillId: 'count.to10', level: 3 },
-  { skillId: 'compare.to10', level: 1 },
   { skillId: 'compare.to10', level: 2 },
-  { skillId: 'add.within10', level: 1 },
   { skillId: 'add.within10', level: 2 },
-  { skillId: 'sub.within10', level: 1 },
   { skillId: 'sub.within10', level: 2 },
   { skillId: 'add.within10', level: 3 },
-  { skillId: 'sub.within10', level: 3 }
+  { skillId: 'sub.within10', level: 3 },
+  { skillId: 'add.within20', level: 1 },
+  { skillId: 'sub.within20', level: 1 },
+  { skillId: 'add.bridge10', level: 2 },
+  { skillId: 'sub.bridge10', level: 2 },
+  { skillId: 'add.within20', level: 2 },
+  { skillId: 'sub.within20', level: 2 },
+  { skillId: 'numbers.to100', level: 3 },
+  { skillId: 'place.value', level: 3 },
+  { skillId: 'pattern', level: 3 },
+  { skillId: 'money', level: 3 },
+  { skillId: 'clock', level: 3 },
+  { skillId: 'add.within100', level: 2 },
+  { skillId: 'sub.within100', level: 2 },
+  { skillId: 'add.within100', level: 3 },
+  { skillId: 'sub.within100', level: 3 }
 ];
+
+/**
+ * Skills the ladder does not ask, known with another: word problems are the same sums told as a
+ * story (to 10 with taking away to 10; to 20 with crossing ten backwards).
+ */
+export const IMPLIED: Partial<Record<SkillId, SkillId>> = { 'story.within10': 'sub.within10', 'story.within20': 'sub.bridge10' };
+
+/** The first rung of each chapter after the first (where a chapter starts on the ladder). */
+export const CHAPTER_RUNGS = [7, 13, 15, 18];
 
 export const PLACEMENT_MAX = 10;
 
 export interface PlacementState {
   /** The rung asked next (index in LADDER). */
   at: number;
-  /** How far a right answer climbs (2 until the first mistake). */
+  /** How far a right answer climbs (FIRST_JUMP until the first mistake). */
   jump: number;
   /** Rungs answered right / wrong. */
   passed: number[];
@@ -42,14 +68,20 @@ export interface PlacementState {
   done: boolean;
 }
 
-/** Where a child starts: kindergarten at the bottom, first grade at comparing, older at adding. */
-export function placementStart(band: AgeBand): number {
-  const i = AGE_BANDS.indexOf(band);
-  return i <= 0 ? 0 : i === 1 ? 2 : 4;
+/**
+ * Where a child starts, by age (or an age band): kindergarten (≤ 5) at the bottom, first grade
+ * (6) at adding to 10, second grade (7) at the start of chapter 2, older ones at crossing ten.
+ */
+export function placementStart(age: number | AgeBand): number {
+  const a = typeof age === 'number' ? age : [5, 6, 8, 10][AGE_BANDS.indexOf(age)] ?? 6;
+  return a <= 5 ? 0 : a === 6 ? 3 : a === 7 ? 7 : 9;
 }
 
-export function startPlacement(band: AgeBand, ladder: readonly Rung[] = LADDER): PlacementState {
-  return { at: Math.min(placementStart(band), ladder.length - 1), jump: 2, passed: [], failed: [], asked: 0, done: false };
+/** How far a right answer climbs before the first mistake (bigger steps on the long ladder). */
+export const FIRST_JUMP = 3;
+
+export function startPlacement(age: number | AgeBand, ladder: readonly Rung[] = LADDER): PlacementState {
+  return { at: Math.min(placementStart(age), ladder.length - 1), jump: FIRST_JUMP, passed: [], failed: [], asked: 0, done: false };
 }
 
 /** After one answer (right the first time or not). Pure. */
@@ -70,8 +102,10 @@ export function placementStep(s: PlacementState, right: boolean, ladder: readonl
     if (wall !== undefined && at >= wall) at = wall - 1 > s.at ? wall - 1 : s.at + 1;
   } else {
     jump = 1;
+    // Nothing right yet: down as fast as it came up (a beginner is not asked ten times).
+    const down = s.passed.length ? 1 : FIRST_JUMP;
     if (s.at <= 0 || passed.includes(s.at - 1) || failed.filter((f) => f === s.at).length >= 2) done = true;
-    else at = s.at - 1;
+    else at = Math.max(0, s.at - down);
   }
   return { at, jump, passed, failed, asked, done };
 }
@@ -111,5 +145,10 @@ export function placementResult(s: Pick<PlacementState, 'passed' | 'failed'>, le
 /** Is this (skill, level) at or below what the child knows? */
 export function rungKnown(skillId: SkillId, level: number, known: number, ladder: readonly Rung[] = LADDER): boolean {
   // A level between two rungs (count level 2) is known when a higher rung of the skill is.
-  return ladder.some((r, i) => i <= known && r.skillId === skillId && r.level >= level);
+  if (ladder.some((r, i) => i <= known && r.skillId === skillId && r.level >= level)) return true;
+  // A skill the ladder does not ask: known when the one it goes with is known all the way.
+  const via = IMPLIED[skillId];
+  if (!via) return false;
+  const top = Math.max(0, ...ladder.filter((r) => r.skillId === via).map((r) => r.level));
+  return top > 0 && rungKnown(via, top, known, ladder);
 }

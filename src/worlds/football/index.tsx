@@ -79,7 +79,15 @@ export const world: WorldTheme = {
   bosses: [boss],
   mapSkin,
   templateSkins: { pop: { look: 'ball' }, jump: { look: 'cones' }, build: { look: 'turf' }, match: { look: 'shirt', deco: '👕' }, clock: { look: 'scoreboard' }, shop: { look: 'kiosk', icons: ['⚽', '📢', '🧣'] } },
-  story: { chapters: ['הליגה השכונתית מתחילה, וכל תשובה נכונה מקרבת אותנו לגביע!'] },
+  story: {
+    chapters: [
+      'הליגה השכונתית מתחילה, וכל תשובה נכונה מקרבת אותנו לגביע!',
+      'עולים לליגה הבאה, ושם משחקים עם מספרים עד 20!',
+      'האצטדיון מתמלא במאה אוהדים – סופרים אותם בעשרות!',
+      'בקיוסק של האצטדיון קונים במטבעות, ושעון המשחק מתקתק!',
+      'גמר הגביע מחכה, ושם משחקים עם מספרים עד 100!'
+    ]
+  },
   vocabulary: { items: ['כדורים', 'דגלים', 'קונוסים'], place: ['על המגרש', 'בחדר ההלבשה'], thing: ['כדור', 'משרוקית', 'צעיף אוהדים'] },
   coin: { icon: '🪙', name: 'מטבעות' },
   rewards: [

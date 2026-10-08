@@ -124,9 +124,16 @@ export async function applyWorld(id: string): Promise<void> {
   listeners.forEach((f) => f());
 }
 
-/** The world's boss for a chapter boss station (one per world for now). */
-export function bossOf(w: WorldTheme): BossDef | undefined {
-  return w.bosses?.[0];
+/**
+ * The world's boss for a chapter's boss station. Decision (phase 7): one boss per world that comes
+ * back stronger every chapter (`tier` 1–5) – bolts after its name (⚡, read as nothing), its own
+ * sentence for each return, a bigger picture with an aura (CSS .boss-tier-N), more hits.
+ */
+export function bossOf(w: WorldTheme, tier = 1): (BossDef & { tier: number }) | undefined {
+  const def = w.bosses?.[0];
+  if (!def) return undefined;
+  if (tier <= 1) return { ...def, tier: 1 };
+  return { ...def, tier, name: `${def.name} ${'⚡'.repeat(tier - 1)}`, intro: def.comebacks?.[tier - 2] ?? def.intro };
 }
 
 /** The active world; re-renders when it changes. */

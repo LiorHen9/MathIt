@@ -33,7 +33,7 @@ export const CHAPTER_1: Chapter = {
         { id: 'c1-sub-7', kind: 'practice', title: 'חיסור עד 7', skillId: 'sub.within10', level: 2 },
         { id: 'c1-add-10', kind: 'practice', title: 'חיבור עד 10', skillId: 'add.within10', level: 3 },
         { id: 'c1-sub-10', kind: 'practice', title: 'חיסור עד 10', skillId: 'sub.within10', level: 3 },
-        { id: 'c1-boss', kind: 'boss', title: 'הבלבלן', needStars: 18, skillIds: ['add.within10', 'sub.within10'], level: 3, hits: 8, bossId: 'muddler' }
+        { id: 'c1-boss', kind: 'boss', title: 'הבלבלן', needStars: 18, skillIds: ['add.within10', 'sub.within10'], level: 3, hits: 8, bossId: 'muddler', tier: 1 }
       ]
     }
   ]

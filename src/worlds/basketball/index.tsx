@@ -71,7 +71,15 @@ export const world: WorldTheme = {
   bosses: [boss],
   mapSkin,
   templateSkins: { pop: { look: 'hoop' }, jump: { look: 'hoops' }, build: { look: 'court' }, match: { look: 'jersey', deco: '🏀' }, clock: { look: 'shotclock' }, shop: { look: 'store', icons: ['🏀', '🎽', '🥤'] } },
-  story: { chapters: ['בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!'] },
+  story: {
+    chapters: [
+      'בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!',
+      'עוברים לאולם הגדול, ושם קולעים מספרים עד 20!',
+      'בטורניר יש מאה זריקות – סופרים אותן בעשרות!',
+      'בחנות של האולם קונים במטבעות, ושעון הזריקות רץ!',
+      'משחק האליפות מתחיל – קולעים עם מספרים עד 100!'
+    ]
+  },
   vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'], thing: ['כדור סל', 'סרט ראש', 'בקבוק מים'] },
   coin: { icon: '🏅', name: 'מדליות' },
   rewards: [

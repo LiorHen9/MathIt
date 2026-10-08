@@ -1,7 +1,8 @@
 // Choosing questions by the child's history (docs/ARCHITECTURE.md §7.3), pure and seeded:
 // - `invites(q, tag)`: does this question give room for that kind of mistake (a counting slip is
 //   invited by +1/−1/+2 and by many things to count; "added instead" by a take-away whose sum
-//   fits in the level…)? A round for a child with a common mistake asks more of these, to
+//   fits in the level; phase 7: "forgot the rest after ten" by an exercise that crosses ten,
+//   "no carry" / "no borrow" by one that needs it; the rest by the wrong answer being on offer)? A round for a child with a common mistake asks more of these, to
 //   practise exactly that.
 // - `pickQuestion`: one new question at a level, not repeating the round's exercises, weighted.
 // - `sisterOf`: a question that comes back after its answer was shown – a "sister" with the
@@ -40,6 +41,13 @@ export function invites(q: Pick<Question, 'key' | 'errorTags' | 'answer'>, tag: 
       return p.op === '?' && p.a !== p.b && (p.a < p.b || Math.abs(p.a - p.b) <= 2);
     case 'not-equal':
       return p.op === '?' && Math.abs(p.a - p.b) <= 1;
+    // Phase 7: making ten, carrying, borrowing – the exercises that need them.
+    case 'no-bridge':
+      return p.op === '+' ? p.a < 10 && p.b < 10 && p.a + p.b > 10 : p.op === '-' && p.a > 10 && p.a < 20 && p.b > p.a % 10 && p.a - p.b < 10;
+    case 'no-carry':
+      return p.op === '+' && (p.a % 10) + (p.b % 10) >= 10 && Math.max(p.a, p.b) >= 10;
+    case 'no-borrow':
+      return p.op === '-' && p.b % 10 > p.a % 10 && p.a >= 20;
     default:
       // added / subtracted / one-part: that wrong answer is among the choices.
       return offered;

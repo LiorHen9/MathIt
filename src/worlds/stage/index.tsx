@@ -98,7 +98,15 @@ export const world: WorldTheme = {
   bosses: [boss],
   mapSkin,
   templateSkins: { pop: { look: 'spot' }, jump: { look: 'lights' }, build: { look: 'neon' }, match: { look: 'ticket', deco: '🎟️' }, clock: { look: 'disco' }, shop: { look: 'merch', icons: ['🎤', '🎸', '🎩'] } },
-  story: { chapters: ['שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!'] },
+  story: {
+    chapters: [
+      'שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!',
+      'יוצאים לסיבוב הופעות, ושם שרים מספרים עד 20!',
+      'באולם יש מאה כיסאות – סופרים אותם בעשרות!',
+      'בדוכן המזכרות קונים במטבעות, ושעון ההופעה מתקתק!',
+      'ההופעה הגדולה מתחילה – שרים מספרים עד 100!'
+    ]
+  },
   vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'], thing: ['מיקרופון', 'גיטרה', 'כובע נוצץ'] },
   coin: { icon: '🎟️', name: 'כרטיסים' },
   rewards: [

@@ -401,7 +401,10 @@ async function playRound(p) {
     await p.waitForSelector('.quest-map');
     await p.waitForTimeout(600);
     must((await nodeAttr(p, 'c1-boss', 'data-status')) === 'done' && (await nodeAttr(p, 'c1-boss', 'data-stars')) === String(bossStars), 'the boss done on the map');
-    must(!(await p.$('[data-testid=map-go]')), 'nothing left to play in the chapter');
+    // Phase 7: the journey goes on – the hero walks out of chapter 1 into chapter 2.
+    await p.waitForSelector('[data-testid=map-chapter][data-chapter=c2]', { timeout: 15000 });
+    await p.waitForFunction(() => document.querySelector('.quest-map')?.dataset.walking === 'no' && document.querySelector('[data-testid=home-hero]')?.dataset.at === 'c2-add20-lesson', null, { timeout: 15000 });
+    must((await p.getAttribute('.quest-map', 'data-current')) === 'c2-add20-lesson', 'after the boss: chapter 2 is next');
     await p.screenshot({ path: `${SHOTS}/91-map-chapter-done.png` });
     step(`boss: appears, a mistake → a gentle dodge, 8 hits (hero attacks, rising notes, bar by transform) → victory, ${bossStars} stars, chapter done`);
 
