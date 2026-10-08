@@ -21,6 +21,7 @@ import {
 import type { SkillId } from '../core/types';
 import { now as clockNow } from '../app/clock';
 import { dbGet, dbGetAll, dbPut } from './db';
+import { recordDay } from './sessions';
 
 export interface SkillState extends MasteryFields {
   profileId: string;
@@ -84,9 +85,12 @@ export async function listSkillStates(profileId: string): Promise<Record<string,
 
 /**
  * One answered question (a round, the boss, a lesson's "your turn", a review, the placement
- * game): the mastery engine's step, saved at once. A skill never played starts at `startLevel`.
+ * game): the mastery engine's step, saved at once, and one more question in today's record.
+ * A skill never played starts at `startLevel`.
  */
 export function recordAnswer(profileId: string, skillId: string, result: AnswerResult, startLevel = 1, now = clockNow()): Promise<SkillState> {
+  // Today's practice for parents (storage/sessions.ts), in its own queue.
+  void recordDay(profileId, result.ms, result.correct && result.wrongBefore === 0, now);
   return change(profileId, skillId, (prev) => updateMastery(prev ?? fresh(profileId, skillId, startLevel), result, now));
 }
 

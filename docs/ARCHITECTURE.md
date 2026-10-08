@@ -427,8 +427,9 @@ DB: mathit (IndexedDB)
  ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated,
  │                 שלב 6: reviewedAt, reviews, reviewRevealed, placedAt }  (שלב 4, גרסה 3)
  ├─ inventory     key: profileId:worldId → { coins, items[], updated }  (שלב 5, גרסה 4)
- └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
+ └─ sessions      key: profileId:yyyy-mm-dd → { ms, questions, right, goalAt }  (שלב 8, גרסה 5; עד 90 יום)
 ```
+- גרסה 5 (שלב 8) מוסיפה את `sessions` (‏`storage/sessions.ts`: `recordDay` – נקרא מתוך `recordAnswer` בתור משלו לכל מפתח, `markGoal`, `getDayLog`, `listDayLogs`). נוצר ריק – ימים לפני השדרוג לא נרשמו, וה"סך הכול" בדשבורד בא מ-`skillStates.totalMs`. יום חדש מוחק ימים ישנים מ-90 (`staleDays`). החישובים להורים טהורים ב-`core/parents/` (‏`timeStats`, `journeyView`, `skillsByChapter`, `PARENT_ERRORS`, `goalProgress`, `breakDue`).
 - גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
 
 - שלב 7 – בלי סכמה חדשה: מיומנויות חדשות הן מפתחות חדשים ב-`skillStates`, תחנות חדשות ב-`questProgress.stars` (‏`normalizeQuestRecord` מכיר אותן כי הן במסע). מי שסיים את פרק 1 ממשיך לפרק 2 (התחנה הבאה, הליכה ופיצוץ).

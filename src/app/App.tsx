@@ -6,7 +6,8 @@
 //   map ⇄ "my collection" (coins and collectibles of every world, phase 5);
 //   map ⇄ a review station (made on the fly from skills due for review, phase 6);
 //   a new profile (if asked) or settings → the placement game → the map (phase 6);
-//   "who is playing?" or settings → the parents' door → the parents' area → back where it came from (phase 8).
+//   "who is playing?" or settings → the parents' door → the parents' area → back where it came from (phase 8);
+//   the parents' area ⇄ a child's dashboard → "practise this" / a lesson in that child's world → their map.
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 // Music (audio/music.ts) plays the world's loop on the profile's own screens only; lessons are
@@ -20,7 +21,7 @@ import { Splash } from '../screens/Splash';
 import { hasPin } from '../profiles/pin';
 import { deleteProfile, getLastProfileId, listProfiles, saveProfile, setLastProfileId, type Profile } from '../profiles/profiles';
 import { activateProfile, activeProfile, useActiveProfile } from '../profiles/settings';
-import type { SkillId, TemplateId } from '../core/types';
+import type { ErrorTag, SkillId, TemplateId } from '../core/types';
 import type { QuestNode } from '../core/quest/types';
 import { lazy } from './lazy';
 import { logError } from './errorLog';
@@ -46,6 +47,7 @@ const Placement = lazy(() => import('../screens/Placement').then((m) => m.Placem
 // The parents' area (phase 8): a door for adults, then the parents' own screens.
 const ParentGate = lazy(() => import('../screens/ParentGate').then((m) => m.ParentGate));
 const ParentHome = lazy(() => import('../screens/ParentHome').then((m) => m.ParentHome));
+const ParentDashboard = lazy(() => import('../screens/ParentDashboard').then((m) => m.ParentDashboard));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
@@ -64,7 +66,7 @@ type Screen =
   | { name: 'map' }
   | { name: 'practice' }
   | { name: 'settings' }
-  | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number; template?: TemplateId } }
+  | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number; template?: TemplateId }; focus?: ErrorTag }
   | { name: 'review'; skillIds: SkillId[]; count: number }
   | { name: 'placement' }
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
@@ -72,10 +74,11 @@ type Screen =
   | { name: 'boss'; nodeId: string }
   | { name: 'collection' }
   | { name: 'parentGate'; from: ParentFrom }
-  | { name: 'parentHome'; from: ParentFrom };
+  | { name: 'parentHome'; from: ParentFrom }
+  | { name: 'parentKid'; from: ParentFrom; profileId: string };
 
 /** The parents' screens: the neutral base look, whoever's profile is open behind them. */
-const PARENT_SCREENS: Screen['name'][] = ['parentGate', 'parentHome'];
+const PARENT_SCREENS: Screen['name'][] = ['parentGate', 'parentHome', 'parentKid'];
 
 /** Screens with the world's music (the rest are quiet). */
 const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'review', 'placement', 'chest', 'boss', 'collection', 'settings'];
@@ -184,6 +187,15 @@ export function App() {
     }
   }
 
+  /** From a child's dashboard into their world: the parent hands the phone over (no PIN – the parent is in). */
+  async function handOver(p: Profile, next: Screen) {
+    activateProfile(p);
+    void setLastProfileId(p.id);
+    setLastId(p.id);
+    await applyWorld(p.worldId);
+    setScreen(next);
+  }
+
   function leaveEditor(from: EditFrom) {
     if (from === 'settings' && active) {
       // Back to the profile's own skin.
@@ -264,10 +276,11 @@ export function App() {
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return (
         <GameHost
-          key={`${screen.skillId}:${screen.quest?.nodeId ?? ''}`}
+          key={`${screen.skillId}:${screen.quest?.nodeId ?? ''}:${screen.focus ?? ''}`}
           profile={active}
           skillId={screen.skillId}
           quest={screen.quest}
+          focus={screen.focus}
           onHome={() => setScreen(screen.from === 'map' ? { name: 'map' } : { name: 'practice' })}
         />
       );
@@ -310,6 +323,26 @@ export function App() {
     case 'parentGate':
       return <ParentGate exitLabel={PARENT_EXIT[screen.from]} onExit={() => leaveParents(screen.from)} onPass={() => setScreen({ name: 'parentHome', from: screen.from })} />;
     case 'parentHome':
-      return <ParentHome profiles={profiles} exitLabel={PARENT_EXIT[screen.from]} onExit={() => leaveParents(screen.from)} />;
+      return (
+        <ParentHome
+          profiles={profiles}
+          exitLabel={PARENT_EXIT[screen.from]}
+          onExit={() => leaveParents(screen.from)}
+          onChild={(p) => setScreen({ name: 'parentKid', from: screen.from, profileId: p.id })}
+        />
+      );
+    case 'parentKid': {
+      const kid = profiles.find((p) => p.id === screen.profileId);
+      if (!kid) return <main class="screen loading" aria-busy="true" />;
+      return (
+        <ParentDashboard
+          key={kid.id}
+          profile={kid}
+          onBack={() => setScreen({ name: 'parentHome', from: screen.from })}
+          onPractice={(skillId, focus) => void handOver(kid, { name: 'game', skillId, from: 'map', focus })}
+          onLesson={(skillId) => void handOver(kid, { name: 'lesson', skillId, from: 'map' })}
+        />
+      );
+    }
   }
 }

@@ -175,6 +175,9 @@ export async function deleteProfile(id: string): Promise<void> {
   await dbDelete('questProgress', id);
   // Coins and collectibles, every world's (storage/inventory.ts).
   await deleteInventories(id);
+  // Practice by day (storage/sessions.ts, key `${profileId}:${day}`) – here too, for the same reason.
+  const days = await dbKeys('sessions');
+  await Promise.all(days.filter((k) => k.startsWith(`${id}:`)).map((k) => dbDelete('sessions', k)));
   if ((await getLastProfileId()) === id) await dbDelete('meta', 'lastProfileId');
 }
 

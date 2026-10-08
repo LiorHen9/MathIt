@@ -256,7 +256,7 @@ async function watch(p, where, shot) {
     await layoutOk(p, 'lesson done');
     let db = await stored(p);
     let st = db.states.find((x) => x.skillId === 'add.within10');
-    must(db.v === 4, 'schema: ' + db.v);
+    must(db.v === 5, 'schema: ' + db.v);
     must(st && st.lessonSeen === true && st.rounds === 0 && st.level === 1, 'lesson saved: ' + JSON.stringify(st));
     step('end of the lesson: a star and a fanfare; saved as seen (no round, level 1)');
 

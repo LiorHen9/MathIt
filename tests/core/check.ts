@@ -4,7 +4,10 @@
 // skills and recommendations; round scoring; phase 6 the mastery engine (mastery steps, the level
 // inside a round, spaced review with an injected clock, questions weighted by the child's common
 // mistake over 1,000 seeds, comebacks, the placement game with a child who knows and one who
-// does not, placement on the map, the review station, recommendations and the summary).
+// does not, placement on the map, the review station, recommendations and the summary);
+// phase 8 the parents' area (mistakes in parents' words for every ErrorTag, practice time by
+// day with an injected clock, the daily goal and the break reminder, the journey and the skills
+// by chapter as parents see them).
 import { createRng } from '../../src/core/rng';
 import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/skills/index';
 import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
@@ -37,6 +40,26 @@ import {
   type MasteryFields,
   type PlacementState
 } from '../../src/core/mastery/index';
+import {
+  KEEP_DAYS,
+  PARENT_ERRORS,
+  addAnswer,
+  breakDue,
+  dayKey,
+  durationText,
+  emptyDayLog,
+  goalProgress,
+  journeyView,
+  lastDays,
+  normalizeDayLog,
+  normalizeGoal,
+  skillStatus,
+  skillsByChapter,
+  staleDays,
+  statusCounts,
+  timeStats,
+  weekdayLabel
+} from '../../src/core/parents/index';
 import { invites, makeAdaptiveRound, pickQuestion, sisterOf } from '../../src/core/mastery/pick';
 import { REVIEW_ID, progressFromPlacement, reviewNode, reviewSkills } from '../../src/core/quest/index';
 import type { AgeBand, ErrorTag, SkillId } from '../../src/core/types';
@@ -991,6 +1014,67 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (sum.mastered.join() !== 'count.to10,compare.to10' || sum.hard[0]?.skillId !== 'add.within10' || sum.hard[0].tag !== 'count-off-by-one' || sum.practiceMs !== 38 * 5000 || sum.attempts !== 38) fail('summary ' + JSON.stringify(sum));
   if (!sum.skills.find((x) => x.skillId === 'count.to10')?.due) fail('summary: due');
   ok('recommendations: due for review first, then what is being learned, then what is ready; summary: mastered, hard (by mistakes), time');
+}
+
+// Phase 8: the parents' area, pure.
+{
+  // Every kind of mistake in parents' words, a male and a female form and a tip.
+  const heb = /[\u05d0-\u05ea]/;
+  for (const t of ERROR_TAGS) {
+    const e = PARENT_ERRORS[t];
+    if (!e || !heb.test(e.m) || !heb.test(e.f) || !heb.test(e.tip)) fail(`parents' words for ${t}`);
+  }
+  if (Object.keys(PARENT_ERRORS).length !== ERROR_TAGS.length) fail('PARENT_ERRORS has extra tags');
+
+  // Days: local dates, a week across a month's end, answers capped at a minute.
+  const noon = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).getTime();
+  const now = noon(2026, 10, 3);
+  if (dayKey(now) !== '2026-10-03') fail('dayKey');
+  const week = lastDays(now, 7);
+  if (week.join() !== '2026-09-27,2026-09-28,2026-09-29,2026-09-30,2026-10-01,2026-10-02,2026-10-03') fail('lastDays ' + week.join());
+  if (lastDays(now, KEEP_DAYS).length !== KEEP_DAYS) fail('lastDays 90');
+  if (staleDays(['2026-06-01', '2026-07-05', '2026-10-01'], now).join() !== '2026-06-01,2026-07-05') fail('staleDays ' + staleDays(['2026-06-01', '2026-07-05', '2026-10-01'], now));
+  if (weekdayLabel('2026-10-03') !== 'ש׳' || weekdayLabel('2026-10-04') !== 'א׳') fail('weekdayLabel');
+  let log = emptyDayLog('p', '2026-10-03');
+  log = addAnswer(log, 8000, true);
+  log = addAnswer(log, 5 * 60_000, false);
+  if (log.ms !== 68_000 || log.questions !== 2 || log.right !== 1) fail('addAnswer ' + JSON.stringify(log));
+  const bad = normalizeDayLog({ ms: -5, questions: 3, right: 9, goalAt: NaN } as never, 'p', '2026-10-03');
+  if (bad.ms !== 0 || bad.right !== 3 || bad.goalAt !== 0) fail('normalizeDayLog ' + JSON.stringify(bad));
+  const logs = [
+    { ...emptyDayLog('p', '2026-10-03'), ms: 10 * 60_000, questions: 30, right: 25 },
+    { ...emptyDayLog('p', '2026-09-29'), ms: 5 * 60_000, questions: 12, right: 10 },
+    { ...emptyDayLog('p', '2026-09-20'), ms: 99 * 60_000, questions: 99, right: 99 },
+    { ...emptyDayLog('q', '2026-10-03'), ms: 77 * 60_000, questions: 77, right: 77 }
+  ];
+  const ts = timeStats(logs, 'p', now);
+  if (ts.today.questions !== 30 || ts.weekMs !== 15 * 60_000 || ts.weekQuestions !== 42 || ts.weekDays !== 2 || ts.week.length !== 7 || ts.week[6].day !== '2026-10-03') fail('timeStats ' + JSON.stringify(ts));
+  if (timeStats(logs, 'p', noon(2026, 10, 4)).today.questions !== 0) fail('timeStats: a new day starts empty');
+  if (durationText(0) !== '0 דק׳' || durationText(20_000) !== 'פחות מדקה' || durationText(12 * 60_000) !== '12 דק׳' || durationText(65 * 60_000) !== '1 שע׳ 5 דק׳' || durationText(120 * 60_000) !== '2 שע׳') fail('durationText');
+
+  // The daily goal and the break.
+  if (normalizeGoal({ kind: 'questions', amount: 20 })?.amount !== 20 || normalizeGoal({ kind: 'laps', amount: 3 }) || normalizeGoal({ kind: 'minutes', amount: 0 }) || normalizeGoal(null)) fail('normalizeGoal');
+  const gq = goalProgress({ kind: 'questions', amount: 20 }, { ms: 0, questions: 10 });
+  const gm = goalProgress({ kind: 'minutes', amount: 10 }, { ms: 12 * 60_000, questions: 3 });
+  if (gq.ratio !== 0.5 || gq.reached || !gm.reached || gm.ratio !== 1) fail('goalProgress');
+  const t = 1_000_000_000;
+  if (breakDue(null, t, 0, t + 3_600_000) || breakDue(15, t, 0, t + 14 * 60_000) || !breakDue(15, t, 0, t + 15 * 60_000) || breakDue(15, t, t + 15 * 60_000, t + 20 * 60_000)) fail('breakDue');
+
+  // The journey and the skills as parents see them.
+  const start = journeyView(emptyProgress());
+  if (start.chapter?.index !== 0 || start.station !== allNodes()[0].title || start.bossesBeaten !== 0 || !start.chapters[0].reached || start.chapters[1].reached) fail('journeyView at the start ' + JSON.stringify(start.chapter));
+  let all = emptyProgress();
+  for (const n of allNodes()) all = n.kind === 'chest' ? { ...all, chests: { ...all.chests, [n.id]: n.prize.icon } } : withStars(all, n.id, 3);
+  const end = journeyView(all);
+  if (end.chapter !== null || end.station !== null || end.bossesBeaten !== JOURNEY.chapters.length || end.chapters.some((c) => c.stars !== c.maxStars)) fail('journeyView at the end');
+  const byCh = skillsByChapter({ 'count.to10': { ...emptyMastery(), mastery: 0.9, attempts: 20, level: 2 }, 'add.within10': { ...emptyMastery(), mastery: 0.4, attempts: 5, level: 1 } });
+  const ids = byCh.flatMap((c) => c.skills.map((x) => x.skillId));
+  if (ids.length !== SKILLS.length || new Set(ids).size !== SKILLS.length) fail('skillsByChapter: every skill once ' + ids.length);
+  if (byCh[0].skills[0].skillId !== 'count.to10' || byCh[0].skills[0].status !== 'mastered' || !byCh[0].skills[0].levelLabel) fail('skillsByChapter: first chapter ' + JSON.stringify(byCh[0].skills[0]));
+  const c = statusCounts(byCh);
+  if (c.mastered !== 1 || c.learning !== 1 || c.new !== SKILLS.length - 2) fail('statusCounts ' + JSON.stringify(c));
+  if (skillStatus(undefined) !== 'new' || skillStatus({ mastery: 0, attempts: 1 }) !== 'learning') fail('skillStatus');
+  ok(`parents: ${ERROR_TAGS.length} mistakes in parents' words (m/f + tip), days and weeks with an injected clock (90 days kept), daily goal and break, journey and skills by chapter`);
 }
 
 if (failures) {

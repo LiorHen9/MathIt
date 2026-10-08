@@ -50,6 +50,8 @@ interface Props {
   quest?: { nodeId: string; level: number; template?: TemplateId };
   /** A review station: these skills mixed, each at its own level. */
   review?: { skillIds: SkillId[]; count: number };
+  /** From the parents' dashboard ("practise this"): aim the round at this mistake. */
+  focus?: ErrorTag;
 }
 
 type Result = 'first' | 'second' | 'shown';
@@ -90,7 +92,7 @@ export function roundTemplate(templates: readonly TemplateId[], rounds: number, 
   return templates[rounds % templates.length] ?? 'pop';
 }
 
-export function GameHost({ profile, skillId, onHome, quest, review }: Props) {
+export function GameHost({ profile, skillId, onHome, quest, review, focus }: Props) {
   const world = useWorld();
   const skills = review ? review.skillIds : [skillId!];
   const [setup, setSetup] = useState<Record<string, SkillSetup> | null>(null);
@@ -109,7 +111,7 @@ export function GameHost({ profile, skillId, onHome, quest, review }: Props) {
       const out: Record<string, SkillSetup> = {};
       for (const id of skills) {
         const s: SkillState | undefined = all[id];
-        out[id] = { level: s?.level ?? startLevel(getSkill(id)!, ageBand(profile)), common: commonError(s?.errorCounts), rounds: s?.rounds ?? 0 };
+        out[id] = { level: s?.level ?? startLevel(getSkill(id)!, ageBand(profile)), common: focus ?? commonError(s?.errorCounts), rounds: s?.rounds ?? 0 };
       }
       setSetup(out);
     });
@@ -342,6 +344,7 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
       data-total={P.total}
       data-template={game}
       data-answer={answerKey(q.answer)}
+      data-common={(single && setup[single]?.common) || ''}
     >
       <header class="topbar game-top">
         <button

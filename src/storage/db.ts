@@ -6,16 +6,16 @@
 // Stores today: meta (schemaVersion, deviceId, errorLog…), profiles, skillStates (version 2:
 // a profile's results per skill – level, best stars, rounds; storage/skillStates.ts) and
 // questProgress (version 3: a profile's way on the quest map; storage/questProgress.ts) and
-// inventory (version 4: coins and collectibles per profile and world; storage/inventory.ts).
-// Later phases add sessions (docs/ARCHITECTURE.md §9): each addition bumps SCHEMA_VERSION and
-// adds a step to MIGRATIONS.
+// inventory (version 4: coins and collectibles per profile and world; storage/inventory.ts) and
+// sessions (version 5: practice per profile and day, for parents; storage/sessions.ts).
+// Each addition bumps SCHEMA_VERSION and adds a step to MIGRATIONS.
 
-export type StoreName = 'meta' | 'profiles' | 'skillStates' | 'questProgress' | 'inventory';
+export type StoreName = 'meta' | 'profiles' | 'skillStates' | 'questProgress' | 'inventory' | 'sessions';
 
 const DB_NAME = 'mathit';
 /** Bump when stores change, and add a migration step below. */
-export const SCHEMA_VERSION = 4;
-const STORES: StoreName[] = ['meta', 'profiles', 'skillStates', 'questProgress', 'inventory'];
+export const SCHEMA_VERSION = 5;
+const STORES: StoreName[] = ['meta', 'profiles', 'skillStates', 'questProgress', 'inventory', 'sessions'];
 
 /**
  * Migration steps, by the version they upgrade TO. Each runs inside the upgrade transaction,
@@ -42,6 +42,12 @@ const MIGRATIONS: Record<number, (db: IDBDatabase, tx: IDBTransaction) => void> 
   // (chests[nodeId]) and the collection shows it.
   4: (db) => {
     if (!db.objectStoreNames.contains('inventory')) db.createObjectStore('inventory');
+  },
+  // Phase 8: practice time per profile and local day, key `${profileId}:${yyyy-mm-dd}`, for the
+  // parents' dashboard. Starts empty: days before it were not logged (all-time totals come from
+  // skillStates).
+  5: (db) => {
+    if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions');
   }
 };
 

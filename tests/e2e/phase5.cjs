@@ -13,7 +13,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // - music (window.__mathitMusic): silent before the first touch, the world's loop on the map,
 //   ducks while the hero speaks and comes back, very low during an explanation, off in lessons,
 //   on the shared screens and with the setting off;
-// - an old phone (schema 3, a chest opened in phase 4) moves to schema 4 and keeps its sticker;
+// - an old phone (schema 3, a chest opened in phase 4) moves to schema 5 and keeps its sticker;
 // - dark + reduced motion: no particles or popping words, the hero fades across;
 // - transform/opacity only, touch targets ≥ 48px, no sideways scroll; screenshots of the map, a
 //   game and the boss in every world, light and dark.
@@ -269,7 +269,7 @@ async function worldRun(b, id, dark, n) {
     await p.waitForFunction(() => Number(document.querySelector('[data-testid=coins]').dataset.coins) === 3);
     const d = await db(p);
     const inv = d.inventory.find((r) => r.worldId === id);
-    must(d.v === 4 && inv && inv.coins === 3, `${tag}: inventory ${JSON.stringify(d.inventory)}`);
+    must(d.v === 5 && inv && inv.coins === 3, `${tag}: inventory ${JSON.stringify(d.inventory)}`);
     step(`${tag}: a word problem in the world's words ("${text.slice(0, 30)}…"), 3 coins kept after a reload`);
 
     // --- The walk, the world's way ---
@@ -461,14 +461,14 @@ async function worldRun(b, id, dark, n) {
     await p.unroute(URL);
     await reenter(p);
     const d = await db(p);
-    must(d.v === 4 && d.stores.includes('inventory') && d.quest[0].chests['c1-chest'] === '🌈', 'migration 3 → 4: ' + JSON.stringify({ v: d.v, stores: d.stores }));
+    must(d.v === 5 && d.stores.includes('inventory') && d.quest[0].chests['c1-chest'] === '🌈', 'migration 3 → 5: ' + JSON.stringify({ v: d.v, stores: d.stores }));
     must((await p.textContent('.map-node[data-node="c1-chest"]')).includes('🌈'), 'the opened chest keeps its sticker on the map');
     await p.tap('[data-testid=open-collection]');
     await p.waitForSelector('[data-testid=collection] .shelf');
     must(await p.$('.shelf[data-world=stickers] .shelf-icon'), 'the sticker shelf');
     must((await p.textContent('.shelf[data-world=stickers]')).includes('🌈'), 'the 🌈 sticker in the collection');
     await p.screenshot({ path: `${SHOTS}/p5-collection-migrated.png`, fullPage: true });
-    step('schema 3 → 4: inventory added; the 🌈 sticker of a chest opened before stays on the map and in the collection');
+    step('schema 3 → 5: inventory (and sessions) added; the 🌈 sticker of a chest opened before stays on the map and in the collection');
     must(errors.length === 0, 'errors: ' + errors.join('\n'));
     await ctx.close();
   }

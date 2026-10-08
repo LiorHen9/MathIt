@@ -61,3 +61,151 @@ button.parent-kid:active {
   font-size: 1.6rem;
   color: var(--ink-soft);
 }
+
+/* One child's dashboard */
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.dash-big {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.dash-card .settings-note,
+.dash-card p {
+  margin: 0;
+}
+
+.dash-chapters,
+.dash-skills,
+.dash-hard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.dash-chapters li,
+.dash-skills li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-sm);
+}
+
+.dash-chapters li.is-ahead {
+  opacity: 0.6;
+}
+
+.dash-ch-stars {
+  min-width: 4.5em;
+  text-align: end;
+  color: var(--ink-soft);
+}
+
+.dash-ch-title {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+
+.dash-level {
+  color: var(--ink-soft);
+}
+
+.dash-meter {
+  width: 72px;
+  height: 10px;
+  display: block;
+}
+
+.dash-meter-bg,
+.dash-week-bg {
+  fill: var(--surface-2);
+}
+
+.dash-meter-fg,
+.dash-week-fg {
+  fill: var(--brand);
+}
+
+.dash-week-today {
+  fill: var(--accent);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.dash-week-label {
+  fill: var(--ink-soft);
+  font-size: 13px;
+  font-family: var(--font);
+}
+
+.dash-week {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  align-self: center;
+}
+
+.dash-status {
+  min-width: 4.5em;
+  text-align: center;
+  padding: 2px var(--s2);
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.dash-status.is-mastered {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.dash-status.is-learning {
+  background: var(--brand-soft);
+  color: var(--ink);
+}
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.dash-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.dash-stat-label,
+.dash-stat-sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.dash-stat-value {
+  font-weight: 800;
+  font-size: var(--fs-md);
+}
+
+.dash-hard-skill {
+  font-weight: 800;
+}
+
+.dash-count {
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+}
