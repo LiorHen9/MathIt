@@ -5,9 +5,10 @@ import type { Generator, GeneratorId, Question, SkillId } from '../types';
 import { add } from './add';
 import { compare } from './compare';
 import { count } from './count';
+import { story } from './story';
 import { sub } from './sub';
 
-export const GENERATORS: Record<GeneratorId, Generator> = { count, compare, add, sub };
+export const GENERATORS: Record<GeneratorId, Generator> = { count, compare, add, sub, story };
 
 /** The question for (skill, level, seed): always the same for the same three. */
 export function makeQuestion(skillId: SkillId, level: number, seed: number): Question {

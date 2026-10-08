@@ -1,10 +1,18 @@
 // 🧱 Blocks: a builder made of cubes – a square head, square hands – with a pickaxe, in a world
 // of blocks to dig and gems to collect. An original character (no game's characters or names).
+// Stomps along the map, swings the pickaxe at the cave creature; a block clicking into place, a
+// gem on a streak, a calm chiptune. Its sounds, music, feedback, boss and map are here.
 import { HERO as V, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const hero: HeroDef = {
+  walk: 'stomp',
+  attack: 'swing',
   name: (g) => byGender({ gender: g }, 'בנאי', 'בנאית'),
   parts: (g) => {
     const girl = g === 'girl';
@@ -78,6 +86,23 @@ export const world: WorldTheme = {
   icon: '🧱',
   blurb: 'בונים, חופרים ואוספים אבני חן',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'block' } },
+  story: { chapters: ['בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!'] },
+  vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'] },
+  coin: { icon: '💠', name: 'אבני חן' },
+  rewards: [
+    { id: 'b-torch', icon: '🔦', name: 'פנס מערות' },
+    { id: 'b-brick', icon: '🧱', name: 'לבנת זהב' },
+    { id: 'b-map', icon: '🗺️', name: 'מפת אוצרות' },
+    { id: 'b-key', icon: '🗝️', name: 'מפתח עתיק' },
+    { id: 'b-crystal', icon: '🔮', name: 'גביש סגול' },
+    { id: 'b-pick', icon: '⛏️', name: 'מכוש יהלום' }
+  ],
   light: {
     bg: '#f2f6ec',
     surface: '#ffffff',
@@ -102,7 +127,9 @@ export const world: WorldTheme = {
     'hero-trim': '#4a4f6b',
     'hero-prop': '#f2c14e',
     'hero-ink': '#1d1a17',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#e4edd8',
+    'map-deco': '#cbdbb7'
   },
   dark: {
     bg: '#151a12',
@@ -128,6 +155,8 @@ export const world: WorldTheme = {
     'hero-trim': '#5b6185',
     'hero-prop': '#f2c14e',
     'hero-ink': '#1d1a17',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#181e14',
+    'map-deco': '#273220'
   }
 };

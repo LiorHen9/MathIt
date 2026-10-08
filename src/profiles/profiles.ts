@@ -4,6 +4,7 @@
 // adding a field with a default needs no migration (a new store or key does: see storage/db.ts).
 import { dbDelete, dbGet, dbGetAll, dbPut } from '../storage/db';
 import { deleteSkillStates } from '../storage/skillStates';
+import { deleteInventories } from '../storage/inventory';
 import type { AgeBand } from '../core/types';
 import type { WorldId } from '../worlds/types';
 
@@ -16,11 +17,11 @@ export type PlayWorldId = Exclude<WorldId, 'base'>;
 export interface ProfileSettings {
   /** Sound effects. */
   sfx: boolean;
-  /** Background music (saved now, plays from phase 5). */
+  /** Background music (audio/music.ts): the world's loop on the profile's own screens. */
   music: boolean;
   /** Read new tasks aloud by themselves (the 🔊 button works either way). */
   narration: boolean;
-  /** 0..1, for effects (and music later). */
+  /** 0..1, for effects and music. */
   volume: number;
   /** Short feedback animations: true / false, or null to follow the phone's setting. */
   reducedMotion: boolean | null;
@@ -170,6 +171,8 @@ export async function deleteProfile(id: string): Promise<void> {
   await deleteSkillStates(id);
   // The way on the quest map (storage/questProgress.ts; one record per profile).
   await dbDelete('questProgress', id);
+  // Coins and collectibles, every world's (storage/inventory.ts).
+  await deleteInventories(id);
   if ((await getLastProfileId()) === id) await dbDelete('meta', 'lastProfileId');
 }
 

@@ -1,5 +1,7 @@
 // A small particle system on one Canvas above the whole screen (docs/ARCHITECTURE.md §6.5):
-// sparkles for a right answer or a star, confetti for the end of a round. It ignores touches,
+// sparkles for a right answer or a star, confetti for the end of a round, and each world's own
+// (phase 5): a rainbow trail (fairies), grass flying off a kick (football), fire (basketball),
+// sparks and smoke (ninja), little blocks (blocks), music notes (stage). It ignores touches,
 // is hidden from screen readers, runs only while there are particles, never holds more than
 // MAX_PARTICLES, and does nothing at all with reduced motion.
 // Colours are the world's CSS variables, read when a burst starts.
@@ -7,7 +9,8 @@ import { reducedMotion, type Point } from './motion';
 
 export const MAX_PARTICLES = 180;
 
-export type ParticleKind = 'sparkle' | 'confetti';
+export type ParticleKind = 'sparkle' | 'confetti' | 'rainbow' | 'leaf' | 'spark' | 'smoke' | 'block' | 'note' | 'flame';
+export const PARTICLE_KINDS: readonly ParticleKind[] = ['sparkle', 'confetti', 'rainbow', 'leaf', 'spark', 'smoke', 'block', 'note', 'flame'];
 
 interface Particle {
   kind: ParticleKind;
@@ -33,11 +36,43 @@ let last = 0;
 let dpr = 1;
 
 const PALETTE_VARS = ['--accent', '--brand', '--num-1', '--num-2', '--num-3', '--num-4', '--good'];
+/** Some kinds keep to a few of the world's colours. */
+const KIND_VARS: Partial<Record<ParticleKind, string[]>> = {
+  rainbow: ['--num-1', '--num-4', '--accent', '--num-3', '--num-2', '--brand'],
+  leaf: ['--good', '--num-3', '--brand'],
+  spark: ['--accent', '--hero-light', '--accent'],
+  smoke: ['--ink-soft', '--line'],
+  flame: ['--accent', '--num-4', '--danger']
+};
 
-function palette(): string[] {
+function palette(kind: ParticleKind): string[] {
   const css = getComputedStyle(document.documentElement);
-  const out = PALETTE_VARS.map((v) => css.getPropertyValue(v).trim()).filter(Boolean);
+  const out = (KIND_VARS[kind] ?? PALETTE_VARS).map((v) => css.getPropertyValue(v).trim()).filter(Boolean);
   return out.length ? out : ['#ffb627'];
+}
+
+/** Launch angle, speed, size and life for a kind. */
+function launch(kind: ParticleKind, i: number, n: number): { a: number; speed: number; size: number; life: number } {
+  switch (kind) {
+    case 'confetti':
+      return { a: rand(-Math.PI * 0.85, -Math.PI * 0.15), speed: rand(260, 620), size: rand(6, 11), life: rand(1.3, 2.1) };
+    case 'leaf':
+    case 'block':
+      return { a: rand(-Math.PI * 0.9, -Math.PI * 0.1), speed: rand(160, 400), size: rand(4, 8), life: rand(0.8, 1.3) };
+    case 'rainbow':
+      // A fan across the top, colour by position: a little rainbow arc.
+      return { a: -Math.PI + (Math.PI * (i + 0.5)) / n, speed: rand(150, 200), size: rand(3.5, 5.5), life: rand(0.7, 1) };
+    case 'spark':
+      return { a: rand(0, Math.PI * 2), speed: rand(260, 480), size: rand(2, 3.5), life: rand(0.25, 0.45) };
+    case 'smoke':
+      return { a: rand(0, Math.PI * 2), speed: rand(30, 90), size: rand(7, 13), life: rand(0.7, 1.1) };
+    case 'flame':
+      return { a: rand(-Math.PI * 0.8, -Math.PI * 0.2), speed: rand(70, 190), size: rand(4, 8), life: rand(0.5, 0.85) };
+    case 'note':
+      return { a: rand(-Math.PI * 0.85, -Math.PI * 0.15), speed: rand(70, 150), size: rand(6, 9), life: rand(0.9, 1.3) };
+    default:
+      return { a: rand(0, Math.PI * 2), speed: rand(90, 260), size: rand(3, 6.5), life: rand(0.45, 0.8) };
+  }
 }
 
 function ensureCanvas(): boolean {
@@ -68,12 +103,11 @@ function rand(a: number, b: number): number {
 /** A burst at a screen point. `count` is a wish: the total never goes over MAX_PARTICLES. */
 export function burst(at: Point, kind: ParticleKind = 'sparkle', count = 18): number {
   if (reducedMotion() || !ensureCanvas()) return 0;
-  const colors = palette();
+  const colors = palette(kind);
   const room = Math.max(0, MAX_PARTICLES - live.length);
-  const n = Math.min(count, room);
+  const n = Math.min(Math.round(count), room);
   for (let i = 0; i < n; i++) {
-    const a = kind === 'confetti' ? rand(-Math.PI * 0.85, -Math.PI * 0.15) : rand(0, Math.PI * 2);
-    const speed = kind === 'confetti' ? rand(260, 620) : rand(90, 260);
+    const { a, speed, size, life } = launch(kind, i, n);
     live.push({
       kind,
       x: at.x,
@@ -82,10 +116,10 @@ export function burst(at: Point, kind: ParticleKind = 'sparkle', count = 18): nu
       vy: Math.sin(a) * speed,
       r: rand(0, Math.PI),
       vr: rand(-9, 9),
-      size: kind === 'confetti' ? rand(6, 11) : rand(3, 6.5),
-      color: colors[i % colors.length],
+      size,
+      color: kind === 'rainbow' ? colors[Math.floor((i / n) * colors.length)] : colors[i % colors.length],
       age: 0,
-      life: kind === 'confetti' ? rand(1.3, 2.1) : rand(0.45, 0.8)
+      life
     });
   }
   if (!raf) {
@@ -126,6 +160,107 @@ function sparkle(c: CanvasRenderingContext2D, s: number): void {
   c.fill();
 }
 
+/** A music note: a head and a stem with a flag. */
+function noteShape(c: CanvasRenderingContext2D, s: number): void {
+  c.beginPath();
+  c.ellipse(0, s * 0.6, s * 0.55, s * 0.4, -0.4, 0, Math.PI * 2);
+  c.fill();
+  c.fillRect(s * 0.38, -s * 1.1, s * 0.18, s * 1.75);
+  c.beginPath();
+  c.moveTo(s * 0.5, -s * 1.1);
+  c.quadraticCurveTo(s * 1.2, -s * 0.7, s * 0.9, -s * 0.1);
+  c.lineTo(s * 0.5, -s * 0.6);
+  c.fill();
+}
+
+/** Move one particle by its kind's physics. */
+function move(p: Particle, dt: number): void {
+  switch (p.kind) {
+    case 'confetti':
+      p.vy += 700 * dt;
+      p.vx *= 1 - 1.2 * dt;
+      p.vy *= 1 - 0.6 * dt;
+      break;
+    case 'leaf':
+    case 'block':
+      p.vy += 760 * dt;
+      p.vx *= 1 - 1.5 * dt;
+      break;
+    case 'smoke':
+      p.vx *= 1 - 2 * dt;
+      p.vy = p.vy * (1 - 2 * dt) - 30 * dt;
+      break;
+    case 'flame':
+      p.vx *= 1 - 3 * dt;
+      p.vy = p.vy * (1 - 1.5 * dt) - 90 * dt;
+      break;
+    case 'note':
+      p.vx = Math.sin(p.age * 7 + p.r) * 30;
+      p.vy *= 1 - 1.2 * dt;
+      break;
+    case 'spark':
+      p.vx *= 1 - 6 * dt;
+      p.vy *= 1 - 6 * dt;
+      break;
+    default:
+      p.vx *= 1 - 3.5 * dt;
+      p.vy *= 1 - 3.5 * dt;
+      p.vy += 40 * dt;
+  }
+  p.x += p.vx * dt;
+  p.y += p.vy * dt;
+  p.r += p.vr * dt;
+}
+
+/** Draw one particle at the origin (already moved and turned). */
+function draw(c: CanvasRenderingContext2D, p: Particle, t: number): void {
+  switch (p.kind) {
+    case 'confetti': {
+      // A tumbling paper strip: its width wobbles as it turns.
+      const w = Math.abs(Math.cos(p.r * 1.7));
+      c.fillRect(-p.size / 2, (-p.size / 4) * w - 1, p.size, (p.size / 2) * w + 2);
+      return;
+    }
+    case 'leaf':
+      c.beginPath();
+      c.ellipse(0, 0, p.size, p.size * 0.38, 0, 0, Math.PI * 2);
+      c.fill();
+      return;
+    case 'block':
+      c.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      return;
+    case 'rainbow':
+      c.beginPath();
+      c.arc(0, 0, p.size * (1 - t * 0.4), 0, Math.PI * 2);
+      c.fill();
+      return;
+    case 'smoke':
+      c.globalAlpha *= 0.45;
+      c.beginPath();
+      c.arc(0, 0, p.size * (1 + t * 1.6), 0, Math.PI * 2);
+      c.fill();
+      return;
+    case 'flame':
+      c.beginPath();
+      c.arc(0, 0, p.size * (1 - t * 0.8), 0, Math.PI * 2);
+      c.fill();
+      return;
+    case 'note':
+      c.rotate(-p.r);
+      noteShape(c, p.size);
+      return;
+    case 'spark': {
+      // A streak along its flight.
+      c.rotate(-p.r + Math.atan2(p.vy, p.vx));
+      const len = p.size * 3 + Math.hypot(p.vx, p.vy) * 0.03;
+      c.fillRect(-len, -p.size / 2, len * 2, p.size);
+      return;
+    }
+    default:
+      sparkle(c, p.size * (1 - t * 0.5));
+  }
+}
+
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -137,27 +272,13 @@ function frame(now: number): void {
   for (const p of live) {
     p.age += dt;
     if (p.age >= p.life) continue;
-    if (p.kind === 'confetti') {
-      p.vy += 700 * dt;
-      p.vx *= 1 - 1.2 * dt;
-      p.vy *= 1 - 0.6 * dt;
-    } else {
-      p.vx *= 1 - 3.5 * dt;
-      p.vy *= 1 - 3.5 * dt;
-      p.vy += 40 * dt;
-    }
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.r += p.vr * dt;
+    move(p, dt);
     const t = p.age / p.life;
     c.globalAlpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
     c.fillStyle = p.color;
     c.setTransform(dpr, 0, 0, dpr, p.x * dpr, p.y * dpr);
     c.rotate(p.r);
-    if (p.kind === 'confetti') {
-      // A tumbling paper strip: its width wobbles as it turns.
-      c.fillRect(-p.size / 2, (-p.size / 4) * Math.abs(Math.cos(p.r * 1.7)) - 1, p.size, (p.size / 2) * Math.abs(Math.cos(p.r * 1.7)) + 2);
-    } else sparkle(c, p.size * (1 - t * 0.5));
+    draw(c, p, t);
     next.push(p);
   }
   live = next;

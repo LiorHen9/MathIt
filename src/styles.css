@@ -28,6 +28,8 @@
   --hero-prop: #ffffff;
   --hero-ink: #24203a;
   --hero-light: #ffffff;
+  --map-bg: #f7ecd8;
+  --map-deco: #eddcbf;
 
   /* Shape and depth */
   --radius: 22px;
@@ -91,6 +93,8 @@
     --hero-prop: #ffffff;
     --hero-ink: #1b1830;
     --hero-light: #ffffff;
+    --map-bg: #1d1a35;
+    --map-deco: #2d2852;
     --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
     --press: 0 5px 0 rgba(0, 0, 0, 0.45);
   }
@@ -2770,9 +2774,9 @@ p {
   transform: translateX(-50%);
   padding: 0 var(--s2);
   border-radius: 999px;
-  background: var(--accent);
-  /* --hero-ink is dark in light and dark mode, readable on the yellow tag. */
-  color: var(--hero-ink);
+  /* Brand on brand-ink: readable in every world (the accent is dark in some). */
+  background: var(--brand);
+  color: var(--brand-ink);
   font-weight: 800;
   font-size: var(--fs-sm);
   white-space: nowrap;
@@ -3172,6 +3176,590 @@ p {
   justify-content: flex-start;
 }
 
+/* ---------- Worlds in full (phase 5) ---------- */
+
+/* A word that pops where it happened ("גול!", "סוויש!"): fx/motion.ts popWord. */
+.fx-word {
+  position: fixed;
+  z-index: 42;
+  padding: 0.05em 0.55em;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--press);
+}
+
+/* The world's coins (components/Coins.tsx). */
+.coin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 0;
+  padding: 0 var(--s3);
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.game-top-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.game-top-end .combo {
+  min-width: 0;
+}
+
+.game-top-end .coin-chip {
+  font-size: var(--fs-sm);
+  padding: 0 var(--s2);
+}
+
+/* --- The hero's walk, by world (fx/Hero.tsx HeroDef.walk) --- */
+
+/* Fairies float: a slow hover, wings beating fast, the legs dangling. */
+.hero.walk-float.is-walk .h-all {
+  animation: hero-float 800ms ease-in-out infinite alternate;
+}
+
+.hero.walk-float.is-walk .h-wing-l,
+.hero.walk-float.is-walk .h-wing-r {
+  animation-duration: 0.16s;
+}
+
+/* A jog: quicker, leaning into it. */
+.hero.walk-jog.is-walk .h-all {
+  animation: hero-jog 240ms ease-in-out infinite alternate;
+}
+
+/* Dribbling: the ball goes down to the floor and back up on every step. */
+.hero.walk-dribble.is-walk .h-prop {
+  transform-origin: center;
+  animation: hero-dribble 360ms ease-in infinite;
+}
+
+/* Sneaking: low, small quick steps. */
+.hero.walk-sneak.is-walk .h-all {
+  animation: hero-sneak 260ms ease-in-out infinite alternate;
+}
+
+/* Stomping: blocky, in steps. */
+.hero.walk-stomp.is-walk .h-all {
+  animation: hero-stomp 420ms steps(2, jump-none) infinite;
+}
+
+/* Dancing: a sway and a bounce. */
+.hero.walk-dance.is-walk .h-all {
+  animation: hero-dance 420ms ease-in-out infinite alternate;
+}
+
+@keyframes hero-float {
+  from {
+    transform: translateY(-8px) rotate(-3deg);
+  }
+  to {
+    transform: translateY(-18px) rotate(3deg);
+  }
+}
+
+@keyframes hero-jog {
+  from {
+    transform: translateY(0) rotate(-8deg);
+  }
+  to {
+    transform: translateY(-9px) rotate(-4deg);
+  }
+}
+
+@keyframes hero-dribble {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translate(-4px, 84px) scale(1.05, 0.9);
+  }
+}
+
+@keyframes hero-sneak {
+  from {
+    transform: translateY(6px) scale(1.04, 0.92) rotate(-6deg);
+  }
+  to {
+    transform: translateY(3px) scale(1.04, 0.92) rotate(-2deg);
+  }
+}
+
+@keyframes hero-stomp {
+  from {
+    transform: translateY(0) rotate(-4deg);
+  }
+  to {
+    transform: translateY(-7px) rotate(4deg);
+  }
+}
+
+@keyframes hero-dance {
+  from {
+    transform: translateY(0) rotate(-10deg);
+  }
+  to {
+    transform: translateY(-8px) rotate(10deg);
+  }
+}
+
+/* --- The hero's attack, by world (HeroDef.attack); the boss stands to its left --- */
+
+.hero .h-shot {
+  opacity: 0;
+}
+
+.hero.is-attack .h-shot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Fairies: the wand goes up and a star spell flies. */
+.hero.atk-spell.is-attack .h-all {
+  animation: hero-cast 600ms var(--ease-out);
+}
+
+.hero.atk-spell.is-attack .h-shot {
+  animation: shot-spell 600ms ease-out;
+}
+
+/* Stage: a step forward and a sound wave rolls out, growing. */
+.hero.atk-wave.is-attack .h-all {
+  animation: hero-cast 600ms var(--ease-out);
+}
+
+.hero.atk-wave.is-attack .h-shot {
+  animation: shot-wave 600ms ease-out;
+}
+
+/* Football: a lean back, and the ball at the foot is kicked across. */
+.hero.atk-kick.is-attack .h-all {
+  animation: hero-kick 600ms var(--ease-out);
+}
+
+.hero.atk-kick.is-attack .h-prop {
+  transform-origin: center;
+  animation: prop-kick 600ms ease-out;
+}
+
+/* Basketball: a jump, and the ball arcs over. */
+.hero.atk-shoot.is-attack .h-all {
+  animation: hero-shoot 600ms var(--ease-out);
+}
+
+.hero.atk-shoot.is-attack .h-prop {
+  transform-origin: center;
+  animation: prop-shoot 600ms ease-out;
+}
+
+/* Ninja: a quick lunge, and the star spins straight across. */
+.hero.atk-throw.is-attack .h-prop {
+  transform-origin: center;
+  animation: prop-throw 600ms ease-out;
+}
+
+/* Blocks: a big swing of the pickaxe. */
+.hero.atk-swing.is-attack .h-prop {
+  animation: hero-swing-big 600ms var(--ease-out);
+}
+
+@keyframes hero-cast {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  30% {
+    transform: translate(-10px, -10px) rotate(-6deg) scale(1.05);
+  }
+}
+
+@keyframes hero-kick {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(8deg) translateX(4px);
+  }
+  45% {
+    transform: rotate(-10deg) translateX(-14px);
+  }
+}
+
+@keyframes hero-shoot {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-20px) scale(0.97, 1.04);
+  }
+}
+
+@keyframes shot-spell {
+  0% {
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-10px, 0) scale(1) rotate(40deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-300px, 40px) scale(1.4) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shot-wave {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-280px, 30px) scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes prop-kick {
+  0%,
+  15% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-300px, -40px) rotate(-600deg);
+    opacity: 1;
+  }
+  71%,
+  90% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes prop-shoot {
+  0%,
+  20% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-150px, -90px) rotate(-200deg);
+  }
+  78% {
+    transform: translate(-300px, 30px) rotate(-400deg);
+    opacity: 1;
+  }
+  79%,
+  92% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes prop-throw {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  65% {
+    transform: translate(-310px, 20px) rotate(-1080deg);
+    opacity: 1;
+  }
+  66%,
+  88% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes hero-swing-big {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(50deg);
+  }
+  45% {
+    transform: rotate(-100deg) scale(1.2);
+  }
+}
+
+/* --- The map in the world's dress (World.mapSkin) --- */
+
+.map {
+  background: var(--map-bg);
+  border-radius: var(--radius);
+}
+
+.map-scenery {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.map-story {
+  margin: var(--s1) auto var(--s2);
+  max-width: 30em;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.map-section > span {
+  margin-inline-end: 0.15em;
+}
+
+/* Station shapes */
+.map.node-petal .map-node {
+  border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+  border-style: double;
+  border-width: 6px;
+}
+
+.map.node-ball .map-node {
+  border-style: dashed;
+}
+
+.map.node-square .map-node {
+  border-radius: 6px;
+}
+
+.map.node-tile .map-node {
+  border-radius: 16px;
+  border-style: double;
+  border-width: 6px;
+}
+
+.map.node-gem .map-node {
+  border-radius: 30%;
+}
+
+.map.node-gem .is-open > .map-node,
+.map.node-gem .is-done > .map-node {
+  box-shadow:
+    0 0 0 3px var(--map-bg),
+    0 0 0 5px var(--brand);
+}
+
+/* Paths */
+.map.path-sparkle .map-road {
+  stroke-width: 12;
+  stroke-dasharray: 0.1 15;
+}
+
+.map.path-chalk .map-road {
+  stroke: var(--surface);
+  stroke-width: 6;
+  stroke-linecap: butt;
+  stroke-dasharray: 14 12;
+}
+
+.map.path-court .map-road {
+  stroke: var(--num-4);
+  stroke-width: 5;
+  stroke-dasharray: none;
+  opacity: 0.45;
+}
+
+.map.path-stones .map-road {
+  stroke-width: 20;
+  stroke-dasharray: 0.1 27;
+}
+
+.map.path-blocks .map-road {
+  stroke-width: 13;
+  stroke-linecap: butt;
+  stroke-dasharray: 13 9;
+}
+
+.map.path-neon .map-road {
+  stroke: var(--brand);
+  stroke-width: 5;
+  stroke-dasharray: none;
+  opacity: 0.5;
+}
+
+/* --- Pop's answers in the world's dress (World.templateSkins.pop) --- */
+
+/* Football: a ball with patches. */
+.bubbles.skin-ball .bubble-face {
+  background: repeating-conic-gradient(from 18deg, var(--surface-2) 0 36deg, var(--surface) 0 72deg);
+}
+
+/* Basketball: a hoop with its net. */
+.bubbles.skin-hoop .bubble-face {
+  background: repeating-linear-gradient(45deg, var(--surface) 0 7px, var(--surface-2) 7px 9px);
+  box-shadow:
+    inset 0 0 0 8px var(--c),
+    var(--shadow);
+}
+
+/* Ninja: a target. */
+.bubbles.skin-target .bubble-face {
+  background: radial-gradient(circle, var(--surface) 0 36%, var(--surface-2) 36% 50%, var(--surface) 50% 64%, var(--surface-2) 64% 78%, var(--surface) 78%);
+}
+
+/* Blocks: a block with a bevel, bobbing in steps. */
+.bubbles.skin-block .bubble,
+.bubbles.skin-block .bubble-face {
+  border-radius: 14%;
+}
+
+.bubbles.skin-block .bubble-face {
+  background: linear-gradient(135deg, var(--surface) 0 50%, var(--surface-2) 50%);
+  box-shadow:
+    inset 0 0 0 4px var(--c),
+    inset -7px -7px 0 var(--line),
+    var(--shadow);
+  animation-timing-function: steps(3, jump-none);
+}
+
+/* Stage: a spotlight from above. */
+.bubbles.skin-spot .bubble-face {
+  background: radial-gradient(ellipse at 50% 0%, var(--brand-soft) 0 48%, var(--surface) 78%);
+}
+
+/* --- The boss's prize --- */
+.boss-reward {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.boss-reward-icon {
+  display: inline-block;
+  font-size: 2rem;
+  animation: pop-in 420ms var(--ease-back);
+}
+
+/* --- "My collection" (screens/Collection.tsx) --- */
+.collection {
+  gap: var(--s3);
+}
+
+.collection-line {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.collection-count {
+  margin: 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+/* Each shelf wears its own world's colours (worldStyle on the section). */
+.shelf {
+  padding: var(--s3) var(--s4) var(--s4);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+  border: 2px solid var(--line);
+}
+
+.shelf.is-current {
+  border-color: var(--brand);
+}
+
+.shelf-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.shelf-coins {
+  margin-inline-start: auto;
+  min-height: 40px;
+  color: var(--ink);
+}
+
+.shelf-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelf-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s2) var(--s1);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: center;
+}
+
+.shelf-icon {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.shelf-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Not won yet: a silhouette. */
+.shelf-item.is-missing {
+  background: var(--surface-2);
+}
+
+.shelf-item.is-missing .shelf-icon {
+  filter: brightness(0);
+  opacity: 0.22;
+}
+
+.shelf-item.is-missing .shelf-name {
+  color: var(--ink-soft);
+}
+
 /* ---------- Reduced motion ----------
    Set by src/fx/motion.ts from the phone's setting or the profile's choice. Feedback and
    decoration become short fades or stop. Teaching animations (manipulatives/, from phase 3) are
@@ -3232,6 +3820,7 @@ p {
 }
 
 :root[data-motion='reduced'] .map-new,
+:root[data-motion='reduced'] .boss-reward-icon,
 :root[data-motion='reduced'] .prize-shelf.is-full .prize-slot {
   animation: fade-in 200ms linear;
 }

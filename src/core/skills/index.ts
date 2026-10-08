@@ -55,6 +55,19 @@ export const SKILLS: readonly Skill[] = [
       { level: 2, label: 'עד 7', min: 0, max: 7 },
       { level: 3, label: 'עד 10', min: 0, max: 10 }
     ]
+  },
+  {
+    // Word problems: adding and taking away as a little story in the world's words (core/story.ts).
+    id: 'story.within10',
+    title: 'סיפורי חשבון',
+    icon: '💬',
+    band: '6-7',
+    prerequisites: ['add.within10', 'sub.within10'],
+    generatorId: 'story',
+    levels: [
+      { level: 1, label: 'עד 5', min: 0, max: 5 },
+      { level: 2, label: 'עד 10', min: 0, max: 10 }
+    ]
   }
 ];
 

@@ -2,10 +2,14 @@
 // bundle; every world is its own small chunk, loaded when a profile that uses it becomes active
 // (or when the picker shows previews). Switching = new CSS variables on <html>, no reload.
 import { useEffect, useState } from 'preact/hooks';
+import { setSoundPack } from '../audio/sfx';
+import { setMusicLoop } from '../audio/music';
+import { DEFAULT_WORDS, type StoryWords } from '../core/story';
+import type { Gender } from '../profiles/profiles';
 import { BASE } from './base';
-import type { WorldId, WorldTheme, WorldVars } from './types';
+import type { BossDef, WorldId, WorldTheme, WorldVars } from './types';
 
-export type { WorldId, WorldTheme } from './types';
+export type { BossDef, Collectible, WorldId, WorldTheme } from './types';
 export { BASE } from './base';
 
 /**
@@ -109,7 +113,20 @@ export async function applyWorld(id: string): Promise<void> {
   const meta = document.querySelector('meta[name="theme-color"]');
   meta?.setAttribute('content', prefersDark() ? w.dark.bg : w.light.brand);
   current = w;
+  // Its sounds at once; its music when its chunk arrives (unless another world came first).
+  setSoundPack(w.id, w.sounds);
+  if (!w.music) setMusicLoop(null, null);
+  else
+    void w.music().then(
+      (loop) => mine === token && setMusicLoop(w.id, loop),
+      () => mine === token && setMusicLoop(null, null)
+    );
   listeners.forEach((f) => f());
+}
+
+/** The world's boss for a chapter boss station (one per world for now). */
+export function bossOf(w: WorldTheme): BossDef | undefined {
+  return w.bosses?.[0];
 }
 
 /** The active world; re-renders when it changes. */
@@ -122,4 +139,9 @@ export function useWorld(): WorldTheme {
     return () => void listeners.delete(f);
   }, []);
   return w;
+}
+
+/** The words a world fills word problems with (core/story.ts): its vocabulary and its hero's name. */
+export function storyWords(w: WorldTheme, gender: Gender | undefined): StoryWords {
+  return { ...DEFAULT_WORDS, ...w.vocabulary, hero: w.hero?.name(gender) ?? DEFAULT_WORDS.hero };
 }

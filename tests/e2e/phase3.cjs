@@ -169,7 +169,7 @@ async function watch(p, where, shot) {
 
     await newProfile(p, { name: 'נועה', age: 6, gender: 'girl', world: 'fairies' });
     const lessonBtns = await p.$$eval('.lesson-btn', (els) => els.map((e) => e.dataset.lesson));
-    must(lessonBtns.join() === 'count.to10,compare.to10,add.within10,sub.within10', 'lesson buttons: ' + lessonBtns);
+    must(lessonBtns.join() === 'count.to10,compare.to10,add.within10,sub.within10,story.within10', 'lesson buttons: ' + lessonBtns);
     await layoutOk(p, 'home');
     await p.screenshot({ path: `${SHOTS}/60-home-lessons.png`, fullPage: true });
     step('home: a "lesson" button beside practice for each of the four skills');
@@ -255,7 +255,7 @@ async function watch(p, where, shot) {
     await layoutOk(p, 'lesson done');
     let db = await stored(p);
     let st = db.states.find((x) => x.skillId === 'add.within10');
-    must(db.v === 3, 'schema: ' + db.v);
+    must(db.v === 4, 'schema: ' + db.v);
     must(st && st.lessonSeen === true && st.rounds === 0 && st.level === 1, 'lesson saved: ' + JSON.stringify(st));
     step('end of the lesson: a star and a fanfare; saved as seen (no round, level 1)');
 

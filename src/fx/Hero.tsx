@@ -6,8 +6,11 @@
 // States (CSS in styles.css, transform and opacity only): `idle` (breathing, blinking, a moving
 // prop), `think` (head tilted, a slow sway), `happy` (a hop), `cheer` (jumping for joy), `oops`
 // (a small flinch and head shake – gentle, never scary), `walk` (a bouncing stride with a sway,
-// on the quest map), `attack` (a lunge toward the boss with the prop swung). A hop on tap is
-// fx/motion.ts. Phase 5 makes walk and attack each world's own (docs/ARCHITECTURE.md §6.2).
+// on the quest map), `attack` (toward the boss, who stands to its left). A hop on tap is
+// fx/motion.ts. Walk and attack are each world's own (HeroDef.walk / .attack, phase 5): the
+// fairy floats instead of walking and casts a spell, the striker jogs and kicks the ball at the
+// boss, the player dribbles and shoots, the ninja sneaks and throws the star, the builder stomps
+// and swings the pickaxe, the singer dances and sends out a sound wave.
 // The Feedback Director (fx/director.ts) sets the mood with setHeroMood; a hero drawn with
 // useHeroMood follows it and goes back to idle by itself.
 //
@@ -81,10 +84,23 @@ export interface HeroParts {
   shape?: 'round' | 'blocky';
 }
 
+/** How the hero gets along the map path. */
+export type WalkStyle = 'walk' | 'float' | 'jog' | 'dribble' | 'sneak' | 'stomp' | 'dance';
+/** How the hero hits the boss. */
+export type AttackStyle = 'lunge' | 'spell' | 'kick' | 'shoot' | 'throw' | 'swing' | 'wave';
+export const WALK_STYLES: readonly WalkStyle[] = ['walk', 'float', 'jog', 'dribble', 'sneak', 'stomp', 'dance'];
+export const ATTACK_STYLES: readonly AttackStyle[] = ['lunge', 'spell', 'kick', 'shoot', 'throw', 'swing', 'wave'];
+
 export interface HeroDef {
   /** "חלוץ" / "חלוצה" – shown under the hero. */
   name: (g: Gender | undefined) => string;
   parts: (g: Gender | undefined) => HeroParts;
+  /** The world's way of walking (CSS `.walk-<style>`); default a bouncing stride. */
+  walk?: WalkStyle;
+  /** The world's attack (CSS `.atk-<style>`); default a lunge with the prop swung. */
+  attack?: AttackStyle;
+  /** What flies at the boss in the attack (a spell, a sound wave), drawn around (0, 0) at the hand. */
+  shot?: ComponentChildren;
 }
 
 const V = {
@@ -166,14 +182,18 @@ export function Hero({ def, gender, state = 'idle', class: cls = '', label }: Pr
   const cap = blocky ? 'square' : 'round';
   const hand = (x: number, y: number) =>
     blocky ? <rect x={x - 6} y={y - 6} width="12" height="12" rx="1.5" fill={V.skin} /> : <circle cx={x} cy={y} r="5.6" fill={V.skin} />;
+  const walk = def.walk ?? 'walk';
+  const attack = def.attack ?? 'lunge';
   return (
     <svg
-      class={`hero is-${state} ${cls}`}
+      class={`hero is-${state} walk-${walk} atk-${attack} ${cls}`}
       viewBox="0 0 120 160"
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : 'true'}
       data-hero-prop={at}
+      data-walk={walk}
+      data-attack={attack}
     >
       <g class="h-all">
         {p.back && <g class="h-back">{p.back}</g>}
@@ -202,6 +222,11 @@ export function Hero({ def, gender, state = 'idle', class: cls = '', label }: Pr
         {at === 'foot' && (
           <g transform={`translate(${px} ${py})`}>
             <g class="h-prop">{p.prop}</g>
+          </g>
+        )}
+        {def.shot && (
+          <g transform={`translate(${px} ${py - 20})`}>
+            <g class="h-shot">{def.shot}</g>
           </g>
         )}
       </g>

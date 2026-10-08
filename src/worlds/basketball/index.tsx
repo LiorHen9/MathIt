@@ -1,7 +1,13 @@
 // 🏀 Basketball: a player in an invented team's kit (no real team or player), spinning the ball.
+// Dribbles along the map, shoots at the 1-on-1 champion; a swish through the net, a ball on fire
+// on a streak, a light hip-hop beat. Its sounds, music, feedback, boss and map are here.
 import { HERO as V, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const FLAT = 'M31 46 Q30 18 60 17 Q90 18 89 46 Q85 32 60 31 Q35 32 31 46Z';
 
@@ -16,6 +22,8 @@ function Ball() {
 }
 
 const hero: HeroDef = {
+  walk: 'dribble',
+  attack: 'shoot',
   name: (g) => byGender({ gender: g }, 'שחקן', 'שחקנית'),
   parts: (g) => {
     const girl = g === 'girl';
@@ -57,6 +65,23 @@ export const world: WorldTheme = {
   icon: '🏀',
   blurb: 'כדרור, קליעה וסל מנצח',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'hoop' } },
+  story: { chapters: ['בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!'] },
+  vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'] },
+  coin: { icon: '🏅', name: 'מדליות' },
+  rewards: [
+    { id: 'bb-shoes', icon: '👟', name: 'נעלי קפיצה' },
+    { id: 'bb-shirt', icon: '🎽', name: 'גופיית הקבוצה' },
+    { id: 'bb-cap', icon: '🧢', name: 'כובע מצחייה' },
+    { id: 'bb-bag', icon: '🎒', name: 'תיק ספורט' },
+    { id: 'bb-ball', icon: '🏀', name: 'כדור זוהר' },
+    { id: 'bb-cup', icon: '🏆', name: 'גביע החצר' }
+  ],
   light: {
     bg: '#fff6ec',
     surface: '#ffffff',
@@ -81,7 +106,9 @@ export const world: WorldTheme = {
     'hero-trim': '#ffc83d',
     'hero-prop': '#f07a1a',
     'hero-ink': '#24160f',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#f7e4cb',
+    'map-deco': '#ebcda6'
   },
   dark: {
     bg: '#1c130c',
@@ -107,6 +134,8 @@ export const world: WorldTheme = {
     'hero-trim': '#ffc83d',
     'hero-prop': '#f07a1a',
     'hero-ink': '#24160f',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#241811',
+    'map-deco': '#3a281a'
   }
 };

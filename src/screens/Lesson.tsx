@@ -7,6 +7,7 @@
 // map, where the hero walks on. Loaded lazily, like the game.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { findQuestion } from '../core/generators/index';
+import { fillQuestion } from '../core/story';
 import { getLesson } from '../core/lessons/index';
 import { getSkill, startLevel } from '../core/skills/index';
 import type { SkillId } from '../core/types';
@@ -19,7 +20,7 @@ import { Explainer } from '../manipulatives/Explainer';
 import { ageBand, byGender, type Profile } from '../profiles/profiles';
 import { saveLessonSeen } from '../storage/skillStates';
 import { recordNodeStars } from '../storage/questProgress';
-import { useWorld } from '../worlds/index';
+import { storyWords, useWorld } from '../worlds/index';
 import { playSfx } from '../audio/sfx';
 import { stopSpeaking } from '../audio/speech';
 
@@ -46,7 +47,11 @@ export function Lesson({ profile, skillId, onHome, onPractice, nodeId }: Props) 
   const dots = useRef<HTMLOListElement>(null);
   const timers = useRef<number[]>([]);
   const part = lesson.parts[at];
-  const question = useMemo(() => (part.kind === 'try' ? findQuestion(skillId, part.level, part.key) : null), [skillId, at]);
+  const words = storyWords(world, profile.gender);
+  const question = useMemo(() => {
+    const q = part.kind === 'try' ? findQuestion(skillId, part.level, part.key) : null;
+    return q && fillQuestion(q, words);
+  }, [skillId, at]);
 
   useEffect(() => {
     setFxWorld(world.id);

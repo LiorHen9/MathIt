@@ -3,15 +3,19 @@
 // and the director decides what it looks and sounds like: the sound, the hero's mood, particles,
 // and the motion of the element involved.
 //
-// The mapping is one table shared by all worlds for now; the world only colours the sounds
-// (`flavor`). Phase 5 gives every world its own mapping on top of this one (World.fx).
+// Two layers (phase 5): one shared mapping for every event (`sharedPlan`), and each world's own
+// mapping on top of it (World.fx, src/worlds/<id>/fx.ts) – its particles, a word that pops ("גול!"),
+// the token that flies, a motion. The sounds keep their names here; the world's SoundPack
+// (audio/sfx.ts) makes each one the world's own. `planFor(event, world)` merges the two and is
+// pure; `planFeedback(event, worldId)` does the same for a world already loaded.
 // tests/worlds/check.ts checks that every event is mapped in every world.
 //
 // Every event is logged to window.__mathitFx (what happened and what the director chose), the
 // way window.__mathitSounds logs sounds.
-import { playSfx, comboPitch, countPitch, hitPitch, jumpPitch, starPitch, hushSfx, type SfxName, type SfxOpts } from '../audio/sfx';
+import { playSfx, comboPitch, countPitch, hitPitch, jumpPitch, starPitch, hushSfx, soundSource, type SfxName, type SfxOpts } from '../audio/sfx';
+import { cachedWorld, type WorldTheme } from '../worlds/index';
 import { setHeroMood, type HeroState } from './Hero';
-import { centerOf, dodge, pop, shake, flyTo, tremble, wobble } from './motion';
+import { centerOf, dodge, pop, popWord, shake, flyTo, tremble, wobble } from './motion';
 import { burst, clearParticles, confetti, type ParticleKind } from './particles';
 
 export type FeedbackEvent =
@@ -60,7 +64,10 @@ export type FeedbackEvent =
   /** A wrong answer: the boss slips aside (beside the soft "wrong"). */
   | { type: 'bossDodge' }
   /** The boss is beaten. */
-  | { type: 'bossDefeated'; stars: number };
+  | { type: 'bossDefeated'; stars: number }
+  // Coins (phase 5).
+  /** A coin flies into the purse; `n` = the coins there now. */
+  | { type: 'coin'; n: number };
 
 export type FeedbackType = FeedbackEvent['type'];
 export const FEEDBACK_TYPES: readonly FeedbackType[] = [
@@ -85,15 +92,16 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'bossAppear',
   'bossHit',
   'bossDodge',
-  'bossDefeated'
+  'bossDefeated',
+  'coin'
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
 export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh'];
 /** The hero's explaining moods: no sound of their own (the hero is speaking). */
 export const EXPLAIN_TYPES: readonly FeedbackType[] = ['explain', 'explained'];
-/** Sounds that go along with another event, which already set the hero's mood (walk, wrong). */
-export const COMPANION_TYPES: readonly FeedbackType[] = ['step', 'bossDodge'];
+/** Sounds that go along with another event, which already set the hero's mood (walk, wrong, correct). */
+export const COMPANION_TYPES: readonly FeedbackType[] = ['step', 'bossDodge', 'coin'];
 
 /** Examples of every event, for tests and the docs. */
 export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
@@ -126,7 +134,9 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'bossHit', n: 1, left: 7 },
   { type: 'bossHit', n: 8, left: 0 },
   { type: 'bossDodge' },
-  { type: 'bossDefeated', stars: 3 }
+  { type: 'bossDefeated', stars: 3 },
+  { type: 'coin', n: 1 },
+  { type: 'coin', n: 12 }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -150,13 +160,30 @@ export interface FxPlan {
   particles?: { kind: ParticleKind; count: number; at: 'el' | 'screen' };
   /** Fly a token from `el` to `to`. */
   fly?: string;
+  /** A word that pops up where it happened ("גול!", "סוויש!"). Not with reduced motion. */
+  word?: string;
 }
 
-/**
- * The shared mapping (every world, until phase 5). Pure: the same event and world always give
- * the same plan.
- */
+/** A world's own touch on one event: changes on top of the shared plan. */
+export type WorldFxRule<T extends FeedbackType = FeedbackType> = (e: Extract<FeedbackEvent, { type: T }>, base: FxPlan) => Partial<FxPlan>;
+
+/** A world's feedback mapping (World.fx): rules for the events it dresses its own way. */
+export type WorldFx = { [T in FeedbackType]?: WorldFxRule<T> };
+
+/** The world's rule merged over the shared plan. Pure. */
+export function planFor(e: FeedbackEvent, world?: Pick<WorldTheme, 'fx'>): FxPlan {
+  const base = sharedPlan(e);
+  const rule = world?.fx?.[e.type] as WorldFxRule | undefined;
+  return rule ? { ...base, ...rule(e, base) } : base;
+}
+
+/** The plan for a world already loaded (by id); an unknown or unloaded world gets the shared plan. */
 export function planFeedback(e: FeedbackEvent, worldId: string): FxPlan {
+  return planFor(e, cachedWorld(worldId));
+}
+
+/** The shared mapping, under every world's own. Pure. */
+export function sharedPlan(e: FeedbackEvent): FxPlan {
   switch (e.type) {
     case 'tap':
       return { sound: 'click', soundOpts: { step: e.key }, hero: null, motion: 'pop' };
@@ -164,7 +191,7 @@ export function planFeedback(e: FeedbackEvent, worldId: string): FxPlan {
       const big = e.streak >= 3;
       return {
         sound: 'correct',
-        soundOpts: { step: e.streak, flavor: worldId },
+        soundOpts: { step: e.streak },
         hero: big ? 'cheer' : 'happy',
         motion: 'pop',
         // The celebration grows with the streak.
@@ -217,6 +244,8 @@ export function planFeedback(e: FeedbackEvent, worldId: string): FxPlan {
       return { sound: 'dodge', hero: null, motion: 'dodge' };
     case 'bossDefeated':
       return { sound: 'victory', hero: 'cheer', particles: { kind: 'confetti', count: 150, at: 'screen' } };
+    case 'coin':
+      return { sound: 'coin', soundOpts: { step: e.n }, hero: null, fly: '🪙' };
   }
 }
 
@@ -231,6 +260,12 @@ export interface FxLogEntry {
   hero: HeroState | null;
   motion?: Motion;
   particles?: number;
+  /** The particles' kind (the world's: leaf, spark, smoke…). */
+  kind?: ParticleKind;
+  /** Where the sound came from: the world's pack (its id) or "shared". */
+  pack?: string;
+  fly?: string;
+  word?: string;
   t: number;
 }
 
@@ -259,6 +294,7 @@ export function emit(e: FeedbackEvent, at: FxTargets = {}): FxPlan {
     else if (at.el) particles = burst(centerOf(at.el), plan.particles.kind, plan.particles.count);
   }
   if (plan.fly && at.el && at.to) void flyTo(at.el, at.to, plan.fly);
+  if (plan.word && at.el) popWord(at.el, plan.word);
 
   const { type, ...detail } = e;
   fxLog.push({
@@ -271,6 +307,10 @@ export function emit(e: FeedbackEvent, at: FxTargets = {}): FxPlan {
     hero: plan.hero,
     motion: plan.motion,
     particles,
+    kind: plan.particles?.kind,
+    pack: plan.sound ? soundSource(plan.sound) : undefined,
+    fly: plan.fly,
+    word: plan.word,
     t: Math.round(typeof performance !== 'undefined' ? performance.now() : 0)
   });
   if (fxLog.length > 500) fxLog.shift();

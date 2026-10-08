@@ -86,10 +86,10 @@ async function phone(browser, opts = {}) {
           req.onerror = () => resolve(null);
         })
     );
-    must(meta && meta.v === 3, 'schemaVersion not 3: ' + JSON.stringify(meta));
+    must(meta && meta.v === 4, 'schemaVersion not 4: ' + JSON.stringify(meta));
     must(meta.d && meta.d.length > 8, 'no device id');
-    must(meta.stores.join() === 'meta,profiles,questProgress,skillStates', 'stores: ' + meta.stores);
-    step('IndexedDB "mathit": stores meta + profiles + skillStates + questProgress, schemaVersion 3, device id');
+    must(meta.stores.join() === 'inventory,meta,profiles,questProgress,skillStates', 'stores: ' + meta.stores);
+    step('IndexedDB "mathit": stores meta + profiles + skillStates + questProgress + inventory, schemaVersion 4, device id');
 
     // No sound before the first touch, the chime right after it.
     must((await p.evaluate(() => window.__mathitSounds.length)) === 0, 'sound before any touch');

@@ -2,7 +2,8 @@
 // card, and the answer picked from big floating bubbles or typed on the number pad.
 // A template only shows one question and reports the child's answer (with the element it came
 // from, for the feedback to start there). The round, scoring and feedback are GameHost's.
-// Phase 5 gives every world its own skin for it (magic bubbles, hoops, targets…).
+// Every world dresses the answers its own way (World.templateSkins.pop, CSS `.skin-<look>`):
+// magic bubbles, balls, hoops, targets, blocks, spotlights.
 import { useRef, useState } from 'preact/hooks';
 import type { Answer, Hint, Question, Sign } from '../core/types';
 import { SpeakButton } from '../components/Speak';
@@ -10,6 +11,7 @@ import { Dots } from '../ui/Dots';
 import { NumPad } from '../ui/NumPad';
 import { Manipulative } from '../manipulatives/index';
 import { playSfx } from '../audio/sfx';
+import { useWorld } from '../worlds/index';
 
 /** A hint's animation runs a little calmer than a lesson. */
 const HINT_SPEED = 0.85;
@@ -38,6 +40,7 @@ function say(a: Answer): string {
 }
 
 export function Pop({ question: q, mode, done, tried, reveal, hint, explaining = false, onAnswer }: Props) {
+  const look = useWorld().templateSkins?.pop.look ?? 'magic';
   const [typed, setTyped] = useState('');
   const [replay, setReplay] = useState(0);
   const slot = useRef<HTMLSpanElement>(null);
@@ -103,7 +106,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, explaining =
       </section>
 
       {explaining ? null : mode === 'bubbles' ? (
-        <div class={`bubbles n-${q.choices.length}`} dir="ltr" role="group" aria-label="תשובות">
+        <div class={`bubbles n-${q.choices.length} skin-${look}`} data-skin={look} dir="ltr" role="group" aria-label="תשובות">
           {q.choices.map((c, i) => {
             const wrong = tried.includes(c);
             const right = showAnswer && c === q.answer;

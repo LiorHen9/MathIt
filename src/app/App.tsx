@@ -2,13 +2,17 @@
 // loading → splash → "who is playing?" (or straight to a new profile the first time)
 //   → [PIN] → the quest map (the profile's main screen, phase 4) ⇄ settings / editing;
 //   map ⇄ a station (lesson, practice round, chest, boss) – back to the map, where the hero walks on;
-//   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice).
+//   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice);
+//   map ⇄ "my collection" (coins and collectibles of every world, phase 5).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
+// Music (audio/music.ts) plays the world's loop on the profile's own screens only; lessons are
+// quiet (the child listens to the explanation), and so are the shared screens and the editor.
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 import { deviceId, requestPersistence } from '../storage/db';
 import { applyWorld } from '../worlds/index';
 import { stopSpeaking } from '../audio/speech';
+import { setMusicScene } from '../audio/music';
 import { Splash } from '../screens/Splash';
 import { hasPin } from '../profiles/pin';
 import { deleteProfile, getLastProfileId, listProfiles, saveProfile, setLastProfileId, type Profile } from '../profiles/profiles';
@@ -29,6 +33,7 @@ const Home = lazy(() => import('../screens/Home').then((m) => m.Home));
 const Chest = lazy(() => import('../screens/Chest').then((m) => m.Chest));
 const Boss = lazy(() => import('../screens/Boss').then((m) => m.Boss));
 const SettingsScreen = lazy(() => import('../screens/SettingsScreen').then((m) => m.SettingsScreen));
+const Collection = lazy(() => import('../screens/Collection').then((m) => m.Collection));
 // The game brings the generators and the feedback engine with it.
 const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost));
 // A lesson brings the teaching animations (shared with the game).
@@ -51,7 +56,11 @@ type Screen =
   | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number } }
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
   | { name: 'chest'; nodeId: string }
-  | { name: 'boss'; nodeId: string };
+  | { name: 'boss'; nodeId: string }
+  | { name: 'collection' };
+
+/** Screens with the world's music (the rest are quiet). */
+const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'chest', 'boss', 'collection', 'settings'];
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -96,6 +105,11 @@ export function App() {
     stopSpeaking();
     if (screen.name !== 'map') window.scrollTo(0, 0);
   }, [screen.name]);
+
+  // The world's music on the profile's own screens; quiet in lessons and on the shared screens.
+  useLayoutEffect(() => {
+    setMusicScene(active && MUSIC_SCREENS.includes(screen.name) ? 'play' : 'off');
+  }, [screen.name, !!active]);
 
   async function afterSplash() {
     const list = await refresh();
@@ -195,9 +209,13 @@ export function App() {
           }}
           onSettings={() => setScreen({ name: 'settings' })}
           onPractice={() => setScreen({ name: 'practice' })}
+          onCollection={() => setScreen({ name: 'collection' })}
           onNode={openNode}
         />
       );
+    case 'collection':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <Collection profile={active} onBack={() => setScreen({ name: 'map' })} />;
     case 'practice':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return (

@@ -1,9 +1,11 @@
 // Sound effects, synthesised with Web Audio – no audio files to download.
 // A small ZzFX-style synth: oscillators and noise, each with an envelope, a pitch slide, vibrato,
 // an optional detuned twin (a fuller, chorused tone), a filter sweep, and an echo per sound.
-// Phase 5 gives every world its own SoundPack (docs/ARCHITECTURE.md §6.3); for now the shared
-// sounds take a "flavor" from the world (fairies → a bell, football → a kick, basketball → a
-// swish, ninja → a blade, blocks → a block clicking into place, stage → a synth chord) and the `world-*` samples are each world's calling card.
+// Every world brings a SoundPack (docs/ARCHITECTURE.md §6.3, src/worlds/<id>/sounds.ts, built
+// with audio/packs.ts): the world's own tap, right answer, star, fanfare, footstep, hit, victory…
+// A sound the pack lacks falls back to the shared one here. The teaching sounds (count, jump,
+// ten, whoosh) are the lesson itself, so they are the same in every world and no pack replaces
+// them. The `world-*` samples are each world's calling card (the picker, a tap on the hero).
 // Games never call this directly: they emit feedback events and the Feedback Director
 // (fx/director.ts) picks the sound.
 //
@@ -33,6 +35,8 @@ export type SfxName =
   | 'hit'
   | 'dodge'
   | 'victory'
+  // Coins (phase 5).
+  | 'coin'
   | 'world-fairies'
   | 'world-football'
   | 'world-basketball'
@@ -45,11 +49,10 @@ export interface SfxOpts {
   /**
    * correct: the streak (the pitch climbs); star: which star (1–3); click: the key (0–9);
    * count: which item is being counted (1, 2, 3…); jump: the number landed on (0–10);
-   * step: which footstep (left/right alternate); hit: which hit on the boss (1, 2, 3…).
+   * step: which footstep (left/right alternate); hit: which hit on the boss (1, 2, 3…);
+   * coin: the coin count (a little higher every few coins).
    */
   step?: number;
-  /** A world id: the shared sounds take its colour. */
-  flavor?: string;
 }
 
 /** One synthesised voice. Times in seconds from the start of the sound. */
@@ -72,14 +75,14 @@ export interface Tone {
   filter?: { type: BiquadFilterType; freq: number; to?: number; q?: number };
 }
 
-interface Sound {
+export interface Sound {
   tones: (o: SfxOpts) => Tone[];
   /** A soft echo: delay in seconds, feedback 0..1, wet level 0..1. */
   echo?: { time: number; feedback: number; wet: number };
 }
 
 /** A struck bell: a few inharmonic partials that fade at different speeds. */
-function bell(freq: number, at: number, vol: number, len = 1.1): Tone[] {
+export function bell(freq: number, at: number, vol: number, len = 1.1): Tone[] {
   return [
     { wave: 'sine', freq, at, len, vol, attack: 0.004 },
     { wave: 'sine', freq: freq * 2.76, at, len: len * 0.4, vol: vol * 0.28, attack: 0.004 },
@@ -88,7 +91,7 @@ function bell(freq: number, at: number, vol: number, len = 1.1): Tone[] {
 }
 
 /** One bounce of a ball on the floor: a low thump and a slap of noise. */
-function bounce(at: number, vol: number): Tone[] {
+export function bounce(at: number, vol: number): Tone[] {
   return [
     { wave: 'sine', freq: 150, to: 52, at, len: 0.13, vol, attack: 0.003 },
     { wave: 'noise', at, len: 0.045, vol: vol * 0.35, attack: 0.002, filter: { type: 'lowpass', freq: 900 } }
@@ -96,7 +99,7 @@ function bounce(at: number, vol: number): Tone[] {
 }
 
 /** A quick run of tiny high notes: sparkle. */
-function sparkle(at: number, notes: number, vol: number, from = 2637): Tone[] {
+export function sparkle(at: number, notes: number, vol: number, from = 2637): Tone[] {
   const out: Tone[] = [];
   for (let i = 0; i < notes; i++) {
     out.push({ wave: 'triangle', freq: from * 2 ** ((i * 3) / 12), at: at + i * 0.045, len: 0.11, vol, attack: 0.003 });
@@ -146,41 +149,6 @@ export function hitPitch(n: number): number {
   return 261.63 * 2 ** (COMBO_STEPS[i] / 12);
 }
 
-/** The world's touch on a right answer. */
-function correctFlavor(flavor: string | undefined, f: number): Tone[] {
-  switch (flavor) {
-    case 'fairies':
-      return [...bell(f * 2, 0.1, 0.16, 0.8), { wave: 'noise', at: 0.08, len: 0.3, vol: 0.035, filter: { type: 'highpass', freq: 7500 } }];
-    case 'football':
-      // A kick, then the crowd goes "ooh".
-      return [
-        { wave: 'sine', freq: 140, to: 48, at: 0, len: 0.12, vol: 0.5, attack: 0.002 },
-        { wave: 'noise', at: 0, len: 0.04, vol: 0.12, attack: 0.002, filter: { type: 'lowpass', freq: 1400 } },
-        { wave: 'noise', at: 0.08, len: 0.5, vol: 0.06, attack: 0.18, filter: { type: 'bandpass', freq: 900, to: 1300, q: 0.7 } }
-      ];
-    case 'basketball':
-      // Through the net: a swish.
-      return [{ wave: 'noise', at: 0, len: 0.24, vol: 0.16, attack: 0.05, filter: { type: 'bandpass', freq: 2500, to: 7000, q: 1.2 } }];
-    case 'ninja':
-      // A blade: a bright metallic ring with a shiver.
-      return [
-        { wave: 'triangle', freq: 2900, to: 2500, at: 0, len: 0.3, vol: 0.1, attack: 0.003, vib: { rate: 38, depth: 60 } },
-        { wave: 'noise', at: 0, len: 0.07, vol: 0.1, attack: 0.002, filter: { type: 'bandpass', freq: 5200, q: 3 } }
-      ];
-    case 'blocks':
-      // A block clicks into place: a hollow wooden "tok".
-      return [
-        { wave: 'triangle', freq: 330, to: 220, at: 0, len: 0.07, vol: 0.32, attack: 0.002 },
-        { wave: 'noise', at: 0, len: 0.03, vol: 0.12, attack: 0.001, filter: { type: 'bandpass', freq: 1800, q: 2 } }
-      ];
-    case 'stage':
-      // A bright synth chord stab.
-      return [f, f * 1.26, f * 1.5].map((x): Tone => ({ wave: 'sawtooth', freq: x, at: 0.02, len: 0.26, vol: 0.06, attack: 0.008, detune: 12, filter: { type: 'lowpass', freq: 1800, to: 900 } }));
-    default:
-      return [];
-  }
-}
-
 const SOUNDS: Record<SfxName, Sound> = {
   // A soft wooden click.
   tap: { tones: () => [{ wave: 'triangle', freq: 660, to: 520, at: 0, len: 0.06, vol: 0.35 }] },
@@ -201,8 +169,8 @@ const SOUNDS: Record<SfxName, Sound> = {
       { wave: 'noise', at: 0, len: 0.02, vol: 0.05, attack: 0.001, filter: { type: 'highpass', freq: 3000 } }
     ]
   },
-  // Right: a bright two-note "ta-da" that climbs with the streak, sparkles after three in a row,
-  // and the world's own touch.
+  // Right: a bright two-note "ta-da" that climbs with the streak and sparkles after three in a
+  // row (each world's pack adds its own touch on top).
   correct: {
     tones: (o) => {
       const f = comboPitch(o.step ?? 1);
@@ -211,8 +179,7 @@ const SOUNDS: Record<SfxName, Sound> = {
         { wave: 'triangle', freq: f, at: 0, len: 0.14, vol: 0.34, detune: 7 },
         { wave: 'triangle', freq: f * 1.5, at: 0.075, len: 0.16, vol: 0.3, detune: 7 },
         { wave: 'sine', freq: f * 2, at: 0.15, len: 0.42, vol: 0.3 },
-        ...sparkle(0.2, run, 0.06, f * 4),
-        ...correctFlavor(o.flavor, f)
+        ...sparkle(0.2, run, 0.06, f * 4)
       ];
     },
     echo: { time: 0.11, feedback: 0.25, wet: 0.18 }
@@ -410,6 +377,17 @@ const SOUNDS: Record<SfxName, Sound> = {
     },
     echo: { time: 0.17, feedback: 0.32, wet: 0.22 }
   },
+  // A coin into the purse: two quick bright notes, a step higher every five coins.
+  coin: {
+    tones: (o) => {
+      const f = 1318.5 * 2 ** (Math.min(4, Math.floor((o.step ?? 0) / 5)) / 12);
+      return [
+        { wave: 'square', freq: f * 0.75, at: 0, len: 0.07, vol: 0.06, attack: 0.002, filter: { type: 'lowpass', freq: 4000 } },
+        { wave: 'triangle', freq: f, at: 0.06, len: 0.22, vol: 0.2, attack: 0.002 },
+        { wave: 'sine', freq: f * 2, at: 0.06, len: 0.12, vol: 0.05, attack: 0.002 }
+      ];
+    }
+  },
   // Fairies: two magic bells and a sparkle running up.
   'world-fairies': {
     tones: () => [
@@ -462,8 +440,43 @@ const SOUNDS: Record<SfxName, Sound> = {
 
 export const SFX_NAMES = Object.keys(SOUNDS) as SfxName[];
 
-/** The voices of a sound (for tests: every sound must build valid tones). */
-export function tonesFor(name: SfxName, opts: SfxOpts = {}): Tone[] {
+/** Teaching sounds: the content itself, the same in every world – never from a pack. */
+export const TEACHING_SOUNDS: readonly SfxName[] = ['count', 'jump', 'ten', 'whoosh'];
+
+/** A world's sounds: any shared sound but the teaching ones and the world samples. */
+export type PackSound = Exclude<SfxName, 'count' | 'jump' | 'ten' | 'whoosh' | `world-${string}`>;
+export type SoundPack = Partial<Record<PackSound, Sound>>;
+
+/** What every world's pack must have (tests/worlds/check.ts). "wrong" may stay shared: it is soft. */
+export const PACK_REQUIRED: readonly PackSound[] = ['tap', 'click', 'correct', 'hint', 'star', 'fanfare', 'step', 'unlock', 'chestOpen', 'bossAppear', 'hit', 'victory', 'coin'];
+
+let pack: SoundPack = {};
+let packId = 'shared';
+
+/** The active world's pack (worlds/index.ts applyWorld); an empty pack = the shared sounds. */
+export function setSoundPack(id: string, p: SoundPack | undefined): void {
+  pack = p ?? {};
+  packId = p ? id : 'shared';
+}
+
+/** The sound played for a name with a pack: the pack's own, or the shared one. */
+export function soundFor(name: SfxName, p: SoundPack = pack): Sound {
+  if (TEACHING_SOUNDS.includes(name)) return SOUNDS[name];
+  return p[name as PackSound] ?? SOUNDS[name];
+}
+
+/** Which pack the active world's sound for `name` comes from (its world id, or "shared"). */
+export function soundSource(name: SfxName): string {
+  return !TEACHING_SOUNDS.includes(name) && pack[name as PackSound] ? packId : 'shared';
+}
+
+/** The voices of a sound (for tests: every sound must build valid tones). With a pack: the world's. */
+export function tonesFor(name: SfxName, opts: SfxOpts = {}, p: SoundPack = {}): Tone[] {
+  return soundFor(name, p).tones(opts);
+}
+
+/** The shared sound's voices, for packs that build on it. */
+export function sharedTones(name: SfxName, opts: SfxOpts = {}): Tone[] {
   return SOUNDS[name].tones(opts);
 }
 
@@ -491,6 +504,23 @@ export function audioUnlocked(): boolean {
   return touched;
 }
 
+const unlockListeners = new Set<() => void>();
+
+/** Run `f` once the first touch has unlocked audio (at once if it already has). */
+export function onAudioUnlock(f: () => void): () => void {
+  if (touched) {
+    f();
+    return () => {};
+  }
+  unlockListeners.add(f);
+  return () => void unlockListeners.delete(f);
+}
+
+/** The shared AudioContext (the music uses it too); null before it can exist. */
+export function audioContext(): AudioContext | null {
+  return touched ? audio() : null;
+}
+
 if (typeof window !== 'undefined') {
   const unlock = () => {
     touched = true;
@@ -499,6 +529,8 @@ if (typeof window !== 'undefined') {
     if (ac?.state === 'suspended') void ac.resume().catch(() => {});
     window.removeEventListener('pointerdown', unlock, true);
     window.removeEventListener('keydown', unlock, true);
+    unlockListeners.forEach((f) => f());
+    unlockListeners.clear();
   };
   window.addEventListener('pointerdown', unlock, true);
   window.addEventListener('keydown', unlock, true);
@@ -521,7 +553,7 @@ function audio(): AudioContext | null {
 }
 
 /** One second of white noise, made once and reused by every noise voice. */
-function noise(ac: AudioContext): AudioBuffer {
+export function noise(ac: AudioContext): AudioBuffer {
   if (noiseBuf) return noiseBuf;
   const buf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
   const d = buf.getChannelData(0);
@@ -549,7 +581,8 @@ function oscillator(ac: AudioContext, t: Tone, start: number, end: number, cents
   return osc;
 }
 
-function voice(ac: AudioContext, t: Tone, t0: number, out: AudioNode): void {
+/** Schedule one voice at `t0` (+ its own `at`) into `out` (the music schedules its notes with it too). */
+export function voice(ac: AudioContext, t: Tone, t0: number, out: AudioNode): void {
   const start = t0 + t.at;
   const end = start + t.len;
   const g = ac.createGain();
@@ -594,7 +627,7 @@ export function playSfx(name: SfxName, opts: SfxOpts = {}): void {
   const ac = audio();
   if (!ac) return;
   if (ac.state === 'suspended') void ac.resume().catch(() => {});
-  const sound = SOUNDS[name];
+  const sound = soundFor(name);
   const tones = sound.tones(opts);
   const t0 = ac.currentTime + 0.01;
   const length = Math.max(...tones.map((t) => t.at + t.len));

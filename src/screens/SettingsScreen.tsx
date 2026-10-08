@@ -99,7 +99,7 @@ export function SettingsScreen({ onBack, onEdit }: Props) {
           <input type="checkbox" data-setting="music" checked={s.music} onChange={(e) => void updateSettings({ music: (e.target as HTMLInputElement).checked })} />
           <span class="toggle-text">
             <span class="toggle-title">מוזיקה</span>
-            <span class="toggle-hint">מנגינה שקטה לכל עולם (בקרוב)</span>
+            <span class="toggle-hint">מנגינה שקטה לכל עולם, יורדת כשמקריאים</span>
           </span>
         </label>
         <label class="toggle">

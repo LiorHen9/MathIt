@@ -8,6 +8,44 @@ let voice: SpeechSynthesisVoice | null = null;
 let narration = false;
 const listeners = new Set<() => void>();
 
+// Is the hero speaking right now? The music (audio/music.ts) ducks while it is.
+let speaking = false;
+let current: SpeechSynthesisUtterance | null = null;
+let speakTimer = 0;
+const speakingListeners = new Set<(on: boolean) => void>();
+
+function setSpeaking(on: boolean): void {
+  if (speaking === on) return;
+  speaking = on;
+  speakingListeners.forEach((f) => f(on));
+}
+
+/** Follow when the voice starts and stops (the music ducks under it). */
+export function onSpeaking(f: (on: boolean) => void): () => void {
+  speakingListeners.add(f);
+  return () => void speakingListeners.delete(f);
+}
+
+export function isSpeaking(): boolean {
+  return speaking;
+}
+
+/** An utterance starts: speaking until it ends, errors, is replaced, or a safety timeout. */
+function track(u: SpeechSynthesisUtterance, ms: number): void {
+  current = u;
+  clearTimeout(speakTimer);
+  const end = () => {
+    if (current !== u) return;
+    current = null;
+    clearTimeout(speakTimer);
+    setSpeaking(false);
+  };
+  u.addEventListener('end', end);
+  u.addEventListener('error', end);
+  if (typeof window !== 'undefined') speakTimer = window.setTimeout(end, ms * 2.5 + 1500);
+  setSpeaking(true);
+}
+
 function synth(): SpeechSynthesis | null {
   return typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
 }
@@ -112,6 +150,7 @@ export function speak(text: string): boolean {
   }
   u.rate = 0.92;
   s.speak(u);
+  track(u, readingMs(text));
   return true;
 }
 
@@ -123,6 +162,9 @@ export function autoSpeak(text: string): void {
 export function stopSpeaking(): void {
   pendingEnd?.();
   synth()?.cancel();
+  current = null;
+  clearTimeout(speakTimer);
+  setSpeaking(false);
 }
 
 /**
@@ -179,6 +221,7 @@ export function sayAndWait(text: string, signal?: AbortSignal): Promise<void> {
       u.onerror = finish;
       pendingEnd = finish;
       s.speak(u);
+      track(u, ms);
       // Voices sometimes never fire "end" (a known Chrome/Android bug): don't hang on them.
       timer = window.setTimeout(finish, ms * 2.5 + 1500);
     } else timer = window.setTimeout(finish, ms);

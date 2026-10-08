@@ -4,6 +4,9 @@
 // trembles, its power bar drops; a wrong answer and the boss slips aside (gently, no lost lives).
 // A question whose answer had to be shown is replaced by a new one, so the boss always falls in
 // the end. Then the big celebration and 1–3 stars by how cleanly it went. Loaded lazily.
+// The boss is the world's own (World.bosses: the fog witch, the giant goalkeeper…) – its name,
+// picture, intro and sounds – on the same station and the same battle. Every hit earns a coin,
+// and beating it wins the next collectible of the world (storage/inventory.ts).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { makeQuestion, makeRound } from '../core/generators/index';
 import { findNode, type BossNode } from '../core/quest/index';
@@ -16,7 +19,9 @@ import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components
 import { Ask, msg } from '../games/Ask';
 import { byGender, type Profile } from '../profiles/profiles';
 import { recordNodeStars } from '../storage/questProgress';
-import { useWorld } from '../worlds/index';
+import { bossOf, useWorld, type Collectible } from '../worlds/index';
+import { CoinChip, useCoins } from '../components/Coins';
+import { addItem, getInventory, nextReward } from '../storage/inventory';
 import { playSfx } from '../audio/sfx';
 import { BossArt } from './quest/art';
 
@@ -40,7 +45,12 @@ type Phase = 'intro' | 'fight' | 'won';
 export function Boss({ profile, nodeId, onMap }: Props) {
   const node = findNode(nodeId) as BossNode;
   const world = useWorld();
+  const def = bossOf(world);
+  const name = def?.name ?? node.title;
+  const Art = def?.Art ?? BossArt;
   const mood = useHeroMood();
+  const purse = useCoins(profile.id, world);
+  const [reward, setReward] = useState<Collectible | null>(null);
   const seed = useMemo(() => Math.floor(Math.random() * 0x7fffffff), []);
   const [queue, setQueue] = useState(() => battleQuestions(node, seed));
   const [idx, setIdx] = useState(0);
@@ -55,8 +65,8 @@ export function Boss({ profile, nodeId, onMap }: Props) {
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms));
   const left = node.hits - landed;
   const q = queue[idx];
-  const intro = `${node.title} מבלבל את המספרים! כל תשובה נכונה היא מכה.`;
-  const winText = `${byGender(profile, 'ניצחת', 'ניצחת', 'ניצחתם')} את ${node.title}!`;
+  const intro = def?.intro ?? `${name} מבלבל את המספרים – כל תשובה נכונה היא מכה!`;
+  const winText = `${byGender(profile, 'ניצחת', 'ניצחת', 'ניצחתם')} את ${name}!`;
   useAutoSpeak(phase === 'intro' ? intro : phase === 'won' ? winText : q.prompt.speech, phase === 'fight' ? q.id : phase);
 
   useEffect(() => {
@@ -75,6 +85,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
     setPoints(pts);
     setMessage(msg(n < node.hits ? ['פגיעה!', 'בום!', 'עוד מכה!', 'יופי!'][n % 4] : 'המכה האחרונה!', 'good'));
     emit({ type: 'bossHit', n, left: node.hits - n }, { el: bossEl.current });
+    purse.earn(1, bossEl.current);
     const asked = idx + 1;
     if (n >= node.hits) later(() => win(pts, asked), reducedMotion() ? 450 : 900);
     else later(next, reducedMotion() ? 500 : 950);
@@ -99,6 +110,13 @@ export function Boss({ profile, nodeId, onMap }: Props) {
     setPhase('won');
     setMessage(null);
     void recordNodeStars(profile.id, nodeId, s);
+    // The next collectible of this world, if any is left.
+    void getInventory(profile.id, world.id).then((inv) => {
+      const r = nextReward(world.rewards, inv);
+      if (!r) return;
+      setReward(r);
+      void addItem(profile.id, world.id, r.id);
+    });
     emit({ type: 'bossDefeated', stars: s });
     later(() => setOver(true), reducedMotion() ? 400 : 1800);
   }
@@ -116,14 +134,14 @@ export function Boss({ profile, nodeId, onMap }: Props) {
       <span class="boss-hp-text" dir="ltr" aria-hidden="true">
         {left}/{node.hits}
       </span>
-      <div class="boss-hp" role="meter" aria-label={`הכוח של ${node.title}`} aria-valuemin={0} aria-valuemax={node.hits} aria-valuenow={left} data-hp={left}>
+      <div class="boss-hp" role="meter" aria-label={`הכוח של ${name}`} aria-valuemin={0} aria-valuemax={node.hits} aria-valuenow={left} data-hp={left}>
         <span class="boss-hp-fill" style={`transform:scaleX(${left / node.hits})`} />
       </div>
     </div>
   );
 
   return (
-    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" onClick={skipParty}>
+    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" data-boss={def?.id ?? 'muddler'} onClick={skipParty}>
       <header class="topbar game-top">
         <button
           type="button"
@@ -137,8 +155,8 @@ export function Boss({ profile, nodeId, onMap }: Props) {
         >
           ✕
         </button>
-        <h1 class="topbar-title">👾 {node.title}</h1>
-        <span />
+        <h1 class="topbar-title">{name}</h1>
+        <CoinChip world={world} coins={purse.coins} chipRef={purse.chip} />
       </header>
 
       {phase !== 'won' && bar}
@@ -146,7 +164,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
       <div class="boss-arena">
         <Hero def={world.hero!} gender={profile.gender} state={mood.state} key={mood.n} class="boss-hero" />
         <div class="boss-spot" ref={bossEl} data-testid="boss-el">
-          <BossArt class="boss-big" state={phase === 'won' ? 'beaten' : 'idle'} />
+          <Art class="boss-big" state={phase === 'won' ? 'beaten' : 'idle'} />
         </div>
       </div>
 
@@ -199,6 +217,14 @@ export function Boss({ profile, nodeId, onMap }: Props) {
               </span>
             ))}
           </div>
+          {reward && (
+            <p class="boss-reward" data-testid="boss-reward" data-item={reward.id}>
+              <span class="boss-reward-icon" aria-hidden="true">
+                {reward.icon}
+              </span>{' '}
+              קיבלת לאוסף: {reward.name}
+            </p>
+          )}
           {over ? (
             <button type="button" class="btn btn-primary btn-big" data-testid="boss-to-map" onClick={onMap}>
               🗺️ חזרה למפה

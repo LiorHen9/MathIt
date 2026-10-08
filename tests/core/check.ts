@@ -8,6 +8,7 @@ import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/cor
 import { LESSONS, getLesson } from '../../src/core/lessons/index';
 import { MAX_WRONG, nextLevel, questionPoints, starsFor } from '../../src/core/round';
 import { JOURNEY, allNodes, chapterMaxStars, chapterStars, emptyProgress, findNode, journeyProblems, lockReason, maxStars, nextNode, nodeStatus, progressFromSkills, withStars, type QuestProgress } from '../../src/core/quest/index';
+import { DEFAULT_WORDS, PLACEHOLDERS, fillQuestion, fillText, hasPlaceholders, type StoryWords } from '../../src/core/story';
 import { ACTION_KINDS, actionResult, actionValid, isCorrect, pickHint, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
 
 let failures = 0;
@@ -298,15 +299,15 @@ function explanationProblem(steps: Step[], answer: Answer): string {
 // ---------- Skills, recommendations, scoring ----------
 {
   const ids = SKILLS.map((s) => s.id);
-  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10') fail('skills: ' + ids);
+  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10,story.within10') fail('skills: ' + ids);
   for (const s of SKILLS) {
     for (const p of s.prerequisites) if (!getSkill(p)) fail(`${s.id}: unknown prerequisite ${p}`);
     if (s.levels.length < 2 || s.levels.length > 3) fail(`${s.id}: ${s.levels.length} levels (2–3 wanted)`);
     s.levels.forEach((l, i) => l.level !== i + 1 && fail(`${s.id}: levels not numbered 1..n`));
   }
   if (recommendedSkills('4-5').join() !== 'count.to10,compare.to10') fail('recommended 4-5: ' + recommendedSkills('4-5'));
-  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10') fail('recommended 6-7: ' + recommendedSkills('6-7'));
-  if (recommendedSkills('10-12').join() !== 'add.within10,sub.within10') fail('recommended 10-12: ' + recommendedSkills('10-12'));
+  if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 6-7: ' + recommendedSkills('6-7'));
+  if (recommendedSkills('10-12').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 10-12: ' + recommendedSkills('10-12'));
   if (startLevel(getSkill('add.within10')!, '4-5') !== 1 || startLevel(getSkill('count.to10')!, '6-7') !== 3) fail('startLevel');
   if (MAX_WRONG !== 2) fail('two mistakes before the answer is shown');
   if (questionPoints(0, true) !== 1 || questionPoints(1, true) !== 0.5 || questionPoints(2, false) !== 0) fail('questionPoints');
@@ -418,6 +419,46 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   const odd = progressFromSkills({ 'add.within10': { level: 1, bestStars: 0, rounds: 0, lessonSeen: true } });
   if (nodeStatus(findNode('c1-add-lesson')!, odd) !== 'done' || nextNode(odd)?.id !== 'c1-count-lesson') fail('out of order: ' + JSON.stringify(odd));
   ok(`quest: ${nodes.length} stations from a lesson to the boss, ids unique, skills exist, every station reachable, opening only forward, star gates, migration from skills`);
+}
+
+// ---------- Word problems: placeholders the world fills (core/story.ts) ----------
+{
+  const words: StoryWords = { hero: 'גיבור הבדיקה', items: ['כדורים', 'פרחים'], place: ['במגרש'] };
+  if (fillText('{place} יש {items} ל{hero}', words, 1) !== 'במגרש יש פרחים לגיבור הבדיקה') fail('fillText: ' + fillText('{place} יש {items} ל{hero}', words, 1));
+  if (fillText('{items}', words, 0) !== fillText('{items}', words, 2)) fail('fillText: the pick wraps around the options');
+  if (!hasPlaceholders('{nope}') || hasPlaceholders('אין כאן כלום')) fail('hasPlaceholders');
+  if (fillText('{nope}', words) !== '{nope}') fail('an unknown placeholder stays (and the world check catches it)');
+  const used = new Set<string>();
+  let plus = 0;
+  let minus = 0;
+  for (const lv of getSkill('story.within10')!.levels) {
+    for (let seed = 0; seed < 1000; seed++) {
+      const q = makeQuestion('story.within10', lv.level, seed);
+      const where = `story L${lv.level} seed ${seed}`;
+      for (const m of q.prompt.text.matchAll(/\{([a-z]+)\}/g)) {
+        used.add(m[1]);
+        if (!(PLACEHOLDERS as readonly string[]).includes(m[1])) fail(`${where}: unknown placeholder {${m[1]}}`);
+      }
+      if (!hasPlaceholders(q.prompt.text)) fail(`${where}: a story without the world's words: ${q.prompt.text}`);
+      if (q.prompt.text !== q.prompt.speech) fail(`${where}: text and speech differ`);
+      // A noun follows a number only from 2 up ("3 כדורים", never "1 כדורים").
+      for (const m of q.prompt.text.matchAll(/(\d+) \{items\}/g)) if (Number(m[1]) < 2) fail(`${where}: "${m[0]}"`);
+      // Neutral Hebrew: no verb that agrees with the child.
+      if (/(תמצא|מצאת|תיקח|לקחת|לך |שלך)/.test(q.prompt.text)) fail(`${where}: speaks to the child by gender: ${q.prompt.text}`);
+      const filled = fillQuestion(q, DEFAULT_WORDS);
+      if (hasPlaceholders(filled.prompt.text) || hasPlaceholders(filled.prompt.speech)) fail(`${where}: placeholders left: ${filled.prompt.text}`);
+      if (filled.answer !== q.answer || filled.prompt.math !== q.prompt.math || filled.key !== q.key) fail(`${where}: filling changed the math`);
+      if (fillQuestion(q, DEFAULT_WORDS).prompt.text !== filled.prompt.text) fail(`${where}: filling is not reproducible`);
+      if (q.prompt.math?.includes('+')) plus++;
+      else minus++;
+    }
+  }
+  for (const p of PLACEHOLDERS) if (!used.has(p)) fail(`no story uses {${p}}`);
+  if (plus < 400 || minus < 400) fail(`stories: ${plus} adding, ${minus} taking away`);
+  // Other questions come back unchanged.
+  const plain = makeQuestion('add.within10', 2, 7);
+  if (fillQuestion(plain, DEFAULT_WORDS) !== plain) fail('a question without placeholders should come back as it is');
+  ok(`word problems: ${PLACEHOLDERS.length} placeholders, stories filled with no {…} left, the math unchanged, a noun only after 2 or more, neutral Hebrew`);
 }
 
 if (failures) {

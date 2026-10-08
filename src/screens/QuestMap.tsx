@@ -8,8 +8,13 @@
 // burst of light (particles + the unlock sound). With reduced motion the hero fades across and
 // there are no particles, but what opened is still marked ("חדש!" and a ring).
 // Tapping an open or done station plays it (App opens the lesson, round, chest or boss); a closed
-// one says why ("first …" / "N more stars"). Settings, "who is playing?" and free practice (the old
-// home screen) stay one tap away. Loaded lazily.
+// one says why ("first …" / "N more stars"). Settings, "who is playing?", free practice (the old
+// home screen) and "my collection" stay one tap away. Loaded lazily.
+//
+// The map wears the world's skin (World.mapSkin, phase 5): its ground and scenery (a pitch, a
+// garden, a dojo, a cave, a stage…), its station shapes and path, icons on the section banners,
+// the world's boss on the boss station, and a one-sentence story for the chapter. The world's
+// coins show beside the stars.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { JOURNEY, allNodes, chapterMaxStars, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, type QuestNode } from '../core/quest/index';
 import { getSkill } from '../core/skills/index';
@@ -19,7 +24,8 @@ import { hop, reducedMotion } from '../fx/motion';
 import { Feedback, NarrationHelp, SpeakButton, useAutoSpeak, type Message } from '../components/Speak';
 import { byGender, stageLabel, type Profile } from '../profiles/profiles';
 import { getQuestRecord, saveMapState, type QuestRecord } from '../storage/questProgress';
-import { useWorld } from '../worlds/index';
+import { bossOf, useWorld } from '../worlds/index';
+import { CoinChip, useCoins } from '../components/Coins';
 import { playSfx, type SfxName } from '../audio/sfx';
 import { BossArt, ChestArt } from './quest/art';
 import { MAP_W, heroSpot, mapLayout, type Spot } from './quest/layout';
@@ -29,6 +35,7 @@ interface Props {
   onSwitch: () => void;
   onSettings: () => void;
   onPractice: () => void;
+  onCollection: () => void;
   onNode: (node: QuestNode) => void;
 }
 
@@ -47,7 +54,7 @@ export function nodeIcon(n: QuestNode): string {
   return n.kind === 'chest' ? '🎁' : '👾';
 }
 
-export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: Props) {
+export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollection, onNode }: Props) {
   const world = useWorld();
   const mood = useHeroMood();
   const layout = useMemo(() => mapLayout(JOURNEY), []);
@@ -66,6 +73,10 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
   const timers = useRef<number[]>([]);
   const ran = useRef(false);
   const heroName = world.hero?.name(profile.gender) ?? '';
+  const skin = world.mapSkin;
+  const boss = bossOf(world);
+  const story = world.story?.chapters[0] ?? null;
+  const purse = useCoins(profile.id, world);
 
   useEffect(() => {
     setFxWorld(world.id);
@@ -100,6 +111,10 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
     const f = heroSpot(spotOf(id));
     return `translate(${(f.x * scale - HERO_W / 2).toFixed(1)}px, ${(f.y * scale - HERO_H).toFixed(1)}px)`;
   };
+  /** A station's name on this map: the boss station takes the world's boss's name. */
+  function titleOf(n: QuestNode): string {
+    return n.kind === 'boss' && boss ? boss.name : n.title;
+  }
   /** Page scroll that puts a station in the middle of the screen. */
   const scrollTop = (id: string) => {
     const box = mapRef.current?.getBoundingClientRect();
@@ -110,11 +125,14 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
 
   // What the child hears on arriving: what just opened, or where the journey goes on.
   const opened = rec ? nodes.filter((n) => status(n) !== 'locked' && !rec.revealed.includes(n.id)) : [];
+  const newcomer = !!rec && Object.keys(rec.stars).length === 0;
   const greeting = !rec
     ? null
     : opened.length
-      ? `נפתחה תחנה חדשה: ${opened.at(-1)!.title}!`
-      : current
+      ? `נפתחה תחנה חדשה: ${titleOf(opened.at(-1)!)}!`
+      : newcomer && story
+        ? story
+        : current
         ? `שלום ${profile.name}, ממשיכים במסע!`
         : `${byGender(profile, 'אלוף', 'אלופה', 'אלופים')}! סיימת את כל הפרק!`;
   useAutoSpeak(greeting, rec ? 'map' : null);
@@ -209,7 +227,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
     if (st === 'locked') {
       const why = lockReason(n, rec);
       const text = why?.before
-        ? `עוד לא! קודם: ${why.before.title}`
+        ? `עוד לא! קודם: ${titleOf(why.before)}`
         : `צריך עוד ${why?.stars} ${why?.stars === 1 ? 'כוכב' : 'כוכבים'} כדי לפתוח`;
       setMessage(say(why?.stars && !why.before ? `${text} ⭐` : text));
       emit({ type: 'locked' }, { el: nodeRefs.current[n.id] });
@@ -227,9 +245,10 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
   if (!rec) return <main class="screen loading" aria-busy="true" />;
 
   const stars = chapterStars(chapter, rec);
-  const idle = current ? byGender(profile, `גע בתחנה הבאה: ${current.title}`, `געי בתחנה הבאה: ${current.title}`, `געו בתחנה הבאה: ${current.title}`) : 'כל התחנות הושלמו! 🏆';
+  const nextTitle = current ? titleOf(current) : '';
+  const idle = current ? byGender(profile, `גע בתחנה הבאה: ${nextTitle}`, `געי בתחנה הבאה: ${nextTitle}`, `געו בתחנה הבאה: ${nextTitle}`) : 'כל התחנות הושלמו! 🏆';
   return (
-    <main class="screen quest-map" data-current={current?.id ?? ''} data-walking={walking ? 'yes' : 'no'}>
+    <main class="screen quest-map" data-current={current?.id ?? ''} data-walking={walking ? 'yes' : 'no'} data-world={world.id}>
       <header class="topbar">
         <button
           type="button"
@@ -274,6 +293,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
           <span class="chip map-stars" data-testid="chapter-stars" aria-label={`${stars} כוכבים בפרק מתוך ${chapterMaxStars(chapter)}`}>
             ⭐ <span dir="ltr">{stars}/{chapterMaxStars(chapter)}</span>
           </span>
+          <CoinChip world={world} coins={purse.coins} chipRef={purse.chip} class="map-stars" />
           <button
             type="button"
             class="btn btn-secondary map-practice"
@@ -285,12 +305,38 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
           >
             🎯 תרגול חופשי
           </button>
+          <button
+            type="button"
+            class="btn btn-secondary map-practice"
+            data-testid="open-collection"
+            onClick={() => {
+              playSfx('tap');
+              onCollection();
+            }}
+          >
+            🎒 האוסף שלי
+          </button>
         </div>
       </section>
 
       <h2 class="map-chapter">{chapter.title}</h2>
+      {story && (
+        <p class="map-story" data-testid="map-story">
+          {story} <SpeakButton text={story} class="speak-inline" />
+        </p>
+      )}
 
-      <div class="map" ref={mapRef} style={{ aspectRatio: `${MAP_W} / ${layout.height}` }}>
+      <div
+        class={`map node-${skin?.node ?? 'round'} path-${skin?.path ?? 'plain'}`}
+        data-skin={world.id}
+        ref={mapRef}
+        style={{ aspectRatio: `${MAP_W} / ${layout.height}` }}
+      >
+        {skin && (
+          <svg class="map-scenery" data-testid="map-scenery" viewBox={`0 0 ${MAP_W} ${layout.height}`} aria-hidden="true">
+            <skin.Scenery width={MAP_W} height={layout.height} />
+          </svg>
+        )}
         <svg class="map-path" viewBox={`0 0 ${MAP_W} ${layout.height}`} aria-hidden="true">
           {layout.segments.map((d, k) => {
             const target = layout.spots[k + 1].node;
@@ -304,8 +350,9 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
           })}
         </svg>
 
-        {layout.banners.map((b) => (
+        {layout.banners.map((b, i) => (
           <p key={b.id} class="map-section" style={{ top: `${(b.y / layout.height) * 100}%` }}>
+            {skin && <span aria-hidden="true">{skin.sectionIcons[i % skin.sectionIcons.length]} </span>}
             {b.title}
           </p>
         ))}
@@ -334,11 +381,15 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
                 data-kind={n.kind}
                 data-status={st}
                 data-stars={got}
-                aria-label={`${n.title} – ${what}`}
+                aria-label={`${titleOf(n)} – ${what}`}
                 onClick={() => tapNode(n)}
               >
                 {n.kind === 'boss' ? (
-                  <BossArt class="map-art" />
+                  boss ? (
+                    <boss.Art class="map-art" />
+                  ) : (
+                    <BossArt class="map-art" />
+                  )
                 ) : n.kind === 'chest' ? (
                   st === 'done' ? (
                     <span class="map-icon">{rec.chests[n.id]}</span>
@@ -370,7 +421,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onNode }: 
                   ))}
                 </span>
               )}
-              <span class="map-label">{n.title}</span>
+              <span class="map-label">{titleOf(n)}</span>
             </div>
           );
         })}

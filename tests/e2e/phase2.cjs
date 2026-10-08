@@ -2,7 +2,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // Usage: node tests/e2e/phase2.cjs <screenshots-dir> [url]
 // Phase 2 – the learning core and the first game with full feedback, at phone size (360px):
 // - an old phone's data (schema 1, one profile) is migrated to schema 2 and kept;
-// - home: four skills, the ones for the child's age recommended;
+// - home: five skills, the ones for the child's age recommended;
 // - an addition round for a 5-year-old: a wrong answer (shake, oops, "נסי שוב", a hint), right
 //   answers on bubbles and on the number pad, a combo whose sound climbs, two mistakes → the
 //   answer is shown, stars one by one with rising notes, the fanfare, the result saved;
@@ -185,22 +185,22 @@ async function stored(p) {
     await p.waitForSelector('.profiles-screen');
     must((await p.$$('.profile-pick')).length === 1, 'the old profile is not listed');
     let db = await stored(p);
-    must(db.v === 3 && db.stores.join() === 'meta,profiles,questProgress,skillStates', `migration to 3: v=${db.v} stores=${db.stores}`);
+    must(db.v === 4 && db.stores.join() === 'inventory,meta,profiles,questProgress,skillStates', `migration to 4: v=${db.v} stores=${db.stores}`);
     must(db.profiles.length === 1 && db.profiles[0].name === 'שירה' && db.profiles[0].worldId === 'fairies', 'the old profile changed: ' + JSON.stringify(db.profiles));
-    step('an old phone (schema 1) is migrated to schema 3: skillStates and questProgress added, the profile kept');
+    step('an old phone (schema 1) is migrated to schema 4: skillStates, questProgress and inventory added, the profile kept');
 
-    // --- Free practice (phase 4: one tap from the map): four skills, the ones for her age recommended ---
+    // --- Free practice (phase 4: one tap from the map): five skills (word problems from phase 5), the ones for her age recommended ---
     await p.tap('.profile-pick >> nth=0');
     await p.waitForSelector('.quest-map');
     await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const skills = await p.$$eval('.skill-btn', (els) => els.map((e) => [e.dataset.skill, e.classList.contains('is-rec')]));
-    must(skills.length === 4, 'skills on home: ' + skills.length);
-    must(JSON.stringify(skills) === JSON.stringify([['count.to10', true], ['compare.to10', true], ['add.within10', false], ['sub.within10', false]]), 'recommended for גן חובה: ' + JSON.stringify(skills));
+    must(skills.length === 5, 'skills on home: ' + skills.length);
+    must(JSON.stringify(skills) === JSON.stringify([['count.to10', true], ['compare.to10', true], ['add.within10', false], ['sub.within10', false], ['story.within10', false]]), 'recommended for גן חובה: ' + JSON.stringify(skills));
     await p.waitForTimeout(500);
     await p.screenshot({ path: `${SHOTS}/30-home-skills.png`, fullPage: true });
     await layoutOk(p, 'home');
-    step('home: four skills, counting and comparing recommended for a kindergartner');
+    step('home: five skills, counting and comparing recommended for a kindergartner');
 
     // --- An addition round ---
     await p.tap('[data-skill="add.within10"]');
@@ -380,7 +380,7 @@ async function stored(p) {
     await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const rec = await p.$$eval('.skill-btn.is-rec', (els) => els.map((e) => e.dataset.skill));
-    must(rec.join() === 'add.within10,sub.within10', 'recommended at 6: ' + rec);
+    must(rec.join() === 'add.within10,sub.within10,story.within10', 'recommended at 6: ' + rec);
     await p.screenshot({ path: `${SHOTS}/40-home-football-dark.png`, fullPage: true });
 
     await p.tap('[data-skill="sub.within10"]');

@@ -1,9 +1,10 @@
 // The active profile and its settings (adapted from ChessIt's settings.ts).
-// Activating a profile switches the real modules: sound effects (on/off, volume), narration and
-// reduced motion. With no profile ("who is playing?", the editor) the defaults apply.
+// Activating a profile switches the real modules: sound effects (on/off, volume), music (on/off,
+// the same volume), narration and reduced motion. With no profile ("who is playing?", the editor) the defaults apply.
 // Settings live inside the profile record, so changing one saves the profile.
 import { useEffect, useState } from 'preact/hooks';
 import { setSfxEnabled, setSfxVolume } from '../audio/sfx';
+import { setMusicEnabled, setMusicVolume } from '../audio/music';
 import { setNarration } from '../audio/speech';
 import { setReducedMotion } from '../fx/motion';
 import { saveProfile, type Profile, type ProfileSettings } from './profiles';
@@ -31,7 +32,8 @@ function apply(p: Profile | null): void {
   setSfxVolume(s?.volume ?? 0.8);
   setNarration(s?.narration ?? false);
   setReducedMotion(s?.reducedMotion ?? null);
-  // Music arrives in phase 5; its setting is only saved for now.
+  setMusicEnabled(s?.music ?? true);
+  setMusicVolume(s?.volume ?? 0.8);
   listeners.forEach((f) => f());
 }
 

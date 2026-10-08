@@ -5,6 +5,7 @@
 // Used by the lesson's "watch" screens and after a second mistake in a round.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { sayAndWait } from '../audio/speech';
+import { holdMusic } from '../audio/music';
 import { SpeakButton } from '../components/Speak';
 import type { Step } from '../core/types';
 import { emit } from '../fx/director';
@@ -45,6 +46,9 @@ export function Explainer({ steps, speed = 1, onDone, title, skip = false }: Pro
   useEffect(() => {
     const stop = new AbortController();
     abort.current = stop;
+    // While the hero explains, the music drops very low (the child listens).
+    const release = holdMusic();
+    stop.signal.addEventListener('abort', release);
     const pause = (ms: number) =>
       new Promise<void>((r) => {
         const t = window.setTimeout(r, ms * (reducedMotion() ? SLOW : 1));
@@ -66,6 +70,7 @@ export function Explainer({ steps, speed = 1, onDone, title, skip = false }: Pro
       if (stop.signal.aborted) return;
       setDone(true);
       if (box.current) box.current.dataset.ms = String(Math.round(performance.now() - started.current));
+      release();
       emit({ type: 'explained' });
       onDone?.();
     })();

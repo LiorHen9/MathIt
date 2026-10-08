@@ -274,9 +274,9 @@ async function playRound(p) {
     st = await status(p);
     must(st['c1-count-lesson'] === 'done' && st['c1-count-5'] === 'open' && st['c1-count-10'] === 'locked', 'after reload: ' + JSON.stringify(st));
     let d = await db(p);
-    must(d.v === 3 && d.stores.includes('questProgress'), 'schema 3: ' + d.v + ' ' + d.stores);
+    must(d.v === 4 && d.stores.includes('questProgress'), 'schema 4: ' + d.v + ' ' + d.stores);
     must(d.quest[0].stars['c1-count-lesson'] === 1 && d.quest[0].at === 'c1-count-5', 'saved: ' + JSON.stringify(d.quest[0]));
-    step('reload: progress kept (schema 3, questProgress), the hero stays, nothing replays');
+    step('reload: progress kept (schema 4, questProgress), the hero stays, nothing replays');
 
     // A practice station: plays its own level, stars go to the station, the hero walks on.
     await p.tap('.map-node[data-node="c1-count-5"]');
@@ -330,7 +330,8 @@ async function playRound(p) {
     must(await p.$('.fly-token'), 'the prize should fly out');
     await p.screenshot({ path: `${SHOTS}/85-chest-opening.png` });
     await p.waitForSelector('[data-testid=chest-to-map]');
-    await p.waitForFunction(() => document.querySelector('[data-testid=prize-slot]').textContent.trim() === '🌈');
+    // Phase 5: the prize is the world's first collectible (fairies: a magic flower).
+    await p.waitForFunction(() => document.querySelector('[data-testid=prize-slot]').textContent.trim() === '🌷');
     await p.waitForTimeout(400);
     await p.screenshot({ path: `${SHOTS}/86-chest-open.png` });
     await layoutOk(p, 'chest open');
@@ -339,8 +340,8 @@ async function playRound(p) {
     await waitFx(p, m, 'unlock');
     must((await nodeAttr(p, 'c1-chest', 'data-status')) === 'done' && (await nodeAttr(p, 'c1-sub-lesson', 'data-status')) === 'open', 'after the chest');
     d = await db(p);
-    must(d.quest[0].chests['c1-chest'] === '🌈', 'chest saved: ' + JSON.stringify(d.quest[0].chests));
-    step('chest: rattles twice, opens with sparkles, the 🌈 sticker flies to the shelf; saved; the next station opens');
+    must(d.quest[0].chests['c1-chest'] === '🌷', 'chest saved: ' + JSON.stringify(d.quest[0].chests));
+    step('chest: rattles twice, opens with sparkles, the 🌷 collectible flies to the shelf; saved; the next station opens');
 
     // ---------- The boss ----------
     await seedQuest(p, { stars: starsUpTo('c1-boss', 2), chests: { 'c1-chest': '🌈' }, at: 'c1-sub-10', revealed: ORDER.slice(0, 15), last: null });
@@ -450,10 +451,10 @@ async function playRound(p) {
     must((await p.getAttribute('.map-hero', 'data-at')) === 'c1-compare-10', 'the hero starts at the next station');
     must((await fxSince(p, m0)).every((e) => e.type !== 'unlock' && e.type !== 'walk'), 'no bursts for what was already done');
     const d = await db(p);
-    must(d.v === 3 && d.stores.join() === 'meta,profiles,questProgress,skillStates', 'migration: ' + d.v + ' ' + d.stores);
+    must(d.v === 4 && d.stores.join() === 'inventory,meta,profiles,questProgress,skillStates', 'migration: ' + d.v + ' ' + d.stores);
     must(d.profiles[0].name === 'עידו' && d.states.length === 2, 'old data kept');
     await p.screenshot({ path: `${SHOTS}/92-map-migrated-basketball.png` });
-    step('schema 2 → 3: questProgress added; watched lessons and played rounds become done stations (5), the hero at the next one, no bursts');
+    step('schema 2 → 4: questProgress and inventory added; watched lessons and played rounds become done stations (5), the hero at the next one, no bursts');
     must(errors.length === 0, 'errors: ' + errors.join('\n'));
     await ctx.close();
   }
@@ -494,7 +495,7 @@ async function playRound(p) {
     await p.waitForSelector('[data-testid=chest]');
     await p.tap('[data-testid=chest-btn]');
     await p.waitForSelector('[data-testid=chest-to-map]');
-    must((await p.textContent('[data-testid=prize-slot]')).trim() === '🌈', 'reduced: the prize is on the shelf');
+    must((await p.textContent('[data-testid=prize-slot]')).trim() === '🟨', 'reduced: the prize (the ninja first collectible) is on the shelf');
     await p.screenshot({ path: `${SHOTS}/95-chest-ninja-dark.png` });
     await layoutOk(p, 'chest (dark)');
     await seedQuest(p, { stars: starsUpTo('c1-boss', 3), chests: { 'c1-chest': '🌈' }, at: 'c1-boss', revealed: ORDER, last: null });

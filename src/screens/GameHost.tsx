@@ -8,10 +8,12 @@
 // saved for the station too (storage/questProgress.ts), and the end leads back to the map.
 //
 // Every bit of feedback goes through the Feedback Director (fx/director.ts): this screen says
-// *what happened* (correct, wrong, hint, starEarned, roundDone); the director decides how it
-// looks and sounds.
+// *what happened* (correct, wrong, hint, starEarned, roundDone, coin); the director and the
+// world decide how it looks and sounds. Every right answer earns one of the world's coins
+// (components/Coins.tsx). Word problems are filled with the world's words (core/story.ts).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { makeRound } from '../core/generators/index';
+import { fillQuestion } from '../core/story';
 import { ROUND_LENGTH, nextLevel, questionPoints, starsFor } from '../core/round';
 import { getSkill, startLevel } from '../core/skills/index';
 import type { Question, SkillId } from '../core/types';
@@ -24,7 +26,8 @@ import { Ask, msg } from '../games/Ask';
 import { ageBand, approxAge, byGender, type Profile } from '../profiles/profiles';
 import { getSkillState, saveRound } from '../storage/skillStates';
 import { recordNodeStars } from '../storage/questProgress';
-import { useWorld } from '../worlds/index';
+import { storyWords, useWorld } from '../worlds/index';
+import { CoinChip, useCoins } from '../components/Coins';
 import { playSfx } from '../audio/sfx';
 
 interface Props {
@@ -108,7 +111,11 @@ interface RoundProps {
 function Round({ profile, skillId, level, skillLevel, quest, seed, onHome, onAgain }: RoundProps) {
   const skill = getSkill(skillId)!;
   const world = useWorld();
-  const questions = useMemo(() => makeRound(skillId, level, seed, ROUND_LENGTH), [skillId, level, seed]);
+  const questions = useMemo(() => {
+    const words = storyWords(world, profile.gender);
+    return makeRound(skillId, level, seed, ROUND_LENGTH).map((x) => fillQuestion(x, words));
+  }, [skillId, level, seed]);
+  const purse = useCoins(profile.id, world);
   const [idx, setIdx] = useState(0);
   const [streak, setStreak] = useState(0);
   const [results, setResults] = useState<Result[]>([]);
@@ -147,6 +154,7 @@ function Round({ profile, skillId, level, skillLevel, quest, seed, onHome, onAga
     setResults(rs);
     setMessage(msg(praise(s), 'good', s >= 3 ? `${praise(s).split('!')[0]}!` : undefined));
     emit({ type: 'correct', streak: s }, { el: from, to });
+    purse.earn(1, from);
     // A timer keeps this render's values: hand it the new results.
     later(() => next(rs), reducedMotion() ? 500 : 950);
   }
@@ -208,12 +216,15 @@ function Round({ profile, skillId, level, skillLevel, quest, seed, onHome, onAga
         <h1 class="topbar-title">
           <span aria-hidden="true">{skill.icon}</span> {skill.title} <span class="level-chip">שלב {level}</span>
         </h1>
-        <span class={`combo ${streak >= 2 ? 'is-on' : ''}`} data-testid="combo" aria-live="polite" dir="ltr">
-          {streak >= 2 && (
-            <>
-              🔥 ×<span ref={comboNum}>{streak}</span>
-            </>
-          )}
+        <span class="game-top-end">
+          <span class={`combo ${streak >= 2 ? 'is-on' : ''}`} data-testid="combo" aria-live="polite" dir="ltr">
+            {streak >= 2 && (
+              <>
+                🔥 ×<span ref={comboNum}>{streak}</span>
+              </>
+            )}
+          </span>
+          <CoinChip world={world} coins={purse.coins} chipRef={purse.chip} />
         </span>
       </header>
 

@@ -126,6 +126,30 @@ export const LESSONS: readonly Lesson[] = [
       },
       { kind: 'try', title: 'עוד אחד', level: 2, key: '6-2' }
     ]
+  },
+  {
+    skillId: 'story.within10',
+    title: 'סיפור של חשבון',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'מוסיפים בסיפור',
+        steps: [
+          { text: 'בסיפור יש 3, ומוסיפים עוד 2.', action: { kind: 'combine', a: 3, b: 2 } },
+          { text: 'כשמוסיפים – מחברים: 3 ועוד 2 זה 5.', math: '3 + 2 = 5' }
+        ]
+      },
+      { kind: 'try', title: 'עכשיו סיפור', level: 1, key: 'story0:2+2' },
+      {
+        kind: 'watch',
+        title: 'לוקחים בסיפור',
+        steps: [
+          { text: 'היו 6, ולקחו 2.', action: { kind: 'takeAway', a: 6, b: 2 } },
+          { text: 'כשלוקחים – מחסרים: נשארו 4.', math: '6 − 2 = 4' }
+        ]
+      },
+      { kind: 'try', title: 'עוד סיפור', level: 2, key: 'story0:7-3' }
+    ]
   }
 ];
 

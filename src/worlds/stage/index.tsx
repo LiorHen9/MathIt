@@ -1,14 +1,30 @@
 // 🎤 Stage stars: a singer who fights shadow demons with song – a sparkly jacket, a neon streak
 // in the hair, and a glowing microphone held high. An original character (no band's characters
 // or names).
+// Dances along the map, sends a sound wave at the shadow demon; a synth chord, spotlights on a
+// streak, upbeat pop. Its sounds, music, feedback, boss and map are here.
 import { DefaultEyes, HERO as V, starPath, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const BANGS = 'M30 47 Q32 16 60 16 Q88 16 90 47 Q80 31 66 34 Q58 26 50 35 Q38 33 30 47Z';
 const SWOOP = 'M29 48 Q27 15 60 14 Q92 15 91 44 Q84 30 70 31 Q58 22 44 30 Q34 34 29 48Z';
 
 const hero: HeroDef = {
+  walk: 'dance',
+  attack: 'wave',
+  // A sound wave: three arcs opening toward the boss.
+  shot: (
+    <g fill="none" stroke={V.trim} stroke-width="3.5" stroke-linecap="round">
+      <path d="M2 -7 Q-4 0 2 7" />
+      <path d="M-4 -13 Q-14 0 -4 13" />
+      <path d="M-10 -19 Q-24 0 -10 19" />
+    </g>
+  ),
   name: (g) => byGender({ gender: g }, 'זמר לוחם', 'זמרת לוחמת', 'כוכב/ת הבמה'),
   parts: (g) => {
     const girl = g === 'girl';
@@ -76,6 +92,23 @@ export const world: WorldTheme = {
   icon: '🎤',
   blurb: 'שרים, רוקדים ומגרשים שדי צל',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'spot' } },
+  story: { chapters: ['שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!'] },
+  vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'] },
+  coin: { icon: '🎟️', name: 'כרטיסים' },
+  rewards: [
+    { id: 's-glasses', icon: '🕶️', name: 'משקפי כוכבים' },
+    { id: 's-light', icon: '💡', name: 'זרקור' },
+    { id: 's-guitar', icon: '🎸', name: 'גיטרה חשמלית' },
+    { id: 's-keys', icon: '🎹', name: 'קלידים' },
+    { id: 's-disc', icon: '💿', name: 'תקליט כסף' },
+    { id: 's-mic', icon: '🎤', name: 'מיקרופון זהב' }
+  ],
   light: {
     bg: '#fbf5ff',
     surface: '#ffffff',
@@ -100,7 +133,9 @@ export const world: WorldTheme = {
     'hero-trim': '#2ee6d6',
     'hero-prop': '#e9e6f5',
     'hero-ink': '#1c1530',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#f1e6fd',
+    'map-deco': '#dfc9f7'
   },
   dark: {
     bg: '#120c20',
@@ -126,6 +161,8 @@ export const world: WorldTheme = {
     'hero-trim': '#3ff0de',
     'hero-prop': '#e9e6f5',
     'hero-ink': '#1c1530',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#170f27',
+    'map-deco': '#2c1f47'
   }
 };

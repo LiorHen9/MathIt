@@ -7,7 +7,7 @@ import type { Rng } from './rng';
 export type AgeBand = '4-5' | '6-7' | '8-9' | '10-12';
 export const AGE_BANDS: readonly AgeBand[] = ['4-5', '6-7', '8-9', '10-12'];
 
-export type SkillId = 'count.to10' | 'compare.to10' | 'add.within10' | 'sub.within10';
+export type SkillId = 'count.to10' | 'compare.to10' | 'add.within10' | 'sub.within10' | 'story.within10';
 
 /** A difficulty level: every number in the question and its choices stays in [min, max]. */
 export interface DifficultyLevel {
@@ -31,7 +31,7 @@ export interface Skill {
   levels: DifficultyLevel[];
 }
 
-export type GeneratorId = 'count' | 'compare' | 'add' | 'sub';
+export type GeneratorId = 'count' | 'compare' | 'add' | 'sub' | 'story';
 
 /** A comparison sign. */
 export type Sign = '<' | '>' | '=';
@@ -54,7 +54,11 @@ export interface Visual {
 }
 
 export interface PromptParts {
-  /** One short sentence for the child: "כמה כוכבים יש?" (neutral Hebrew – no gender here). */
+  /**
+   * One short sentence for the child: "כמה כוכבים יש?" (neutral Hebrew – no gender here).
+   * A word problem may hold placeholders ({hero}, {items}, {place}) that the world fills in
+   * (core/story.ts); text and speech both.
+   */
   text: string;
   /** The exercise, left to right: "3 + 4 = ?", "8 ? 3". `?` is the slot for the answer. */
   math?: string;

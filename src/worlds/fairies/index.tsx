@@ -1,13 +1,28 @@
-// 🧚 Fairies: a young fairy (or fairy prince) with fluttering wings and a star wand.
+// 🧚 Fairies: a young fairy (or fairy prince) with fluttering wings and a star wand, in a garden
+// the fog witch has hidden. Floats instead of walking, casts sparkling spells at the boss; bells,
+// rainbows and a soft harp. Its sounds, music, feedback, boss and map are in this folder.
 import { HERO as V, starPath, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const LONG_HAIR = 'M28 52 Q26 18 60 17 Q94 18 92 52 L97 98 Q82 106 76 92 L44 92 Q38 106 23 98 Z';
 const BANGS = 'M30 46 Q34 17 60 17 Q86 17 90 46 Q78 33 68 36 Q61 27 53 36 Q41 33 30 46Z';
 const SHORT = 'M30 48 Q29 17 60 16 Q91 17 90 48 Q85 35 76 38 Q72 26 62 33 Q53 25 46 36 Q36 34 30 48Z';
 
 const hero: HeroDef = {
+  walk: 'float',
+  attack: 'spell',
+  // A spell: a star wrapped in sparkles, flying from the wand.
+  shot: (
+    <>
+      <circle cx="0" cy="0" r="11" fill={V.trim} opacity="0.35" />
+      <path d={starPath(0, 0, 8)} fill={V.trim} stroke={V.ink} stroke-width="1" stroke-linejoin="round" />
+    </>
+  ),
   name: (g) => byGender({ gender: g }, 'נסיך הפיות', 'פיית הקסם', 'פיית הקסם'),
   parts: (g) => {
     const prince = g === 'boy';
@@ -62,6 +77,23 @@ export const world: WorldTheme = {
   icon: '🧚',
   blurb: 'קסמים, נצנוצים וגינות קסומות',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'magic' } },
+  story: { chapters: ['מכשפת הערפל כיסתה את הגינה הקסומה – כל תשובה נכונה מחזירה לה צבע!'] },
+  vocabulary: { items: ['אבני קסם', 'פרחים', 'פרפרים'], place: ['בגינה הקסומה', 'על ענן הפיות'] },
+  coin: { icon: '💎', name: 'אבני קסם' },
+  rewards: [
+    { id: 'f-flower', icon: '🌷', name: 'פרח קסום' },
+    { id: 'f-wings', icon: '🦋', name: 'כנפי פרפר' },
+    { id: 'f-crown', icon: '👑', name: 'כתר פיות' },
+    { id: 'f-moon', icon: '🌙', name: 'ירח כסף' },
+    { id: 'f-mushroom', icon: '🍄', name: 'בית פטרייה' },
+    { id: 'f-unicorn', icon: '🦄', name: 'חד־קרן' }
+  ],
   light: {
     bg: '#fff5fb',
     surface: '#ffffff',
@@ -86,7 +118,9 @@ export const world: WorldTheme = {
     'hero-trim': '#ffcf33',
     'hero-prop': '#bdf0ff',
     'hero-ink': '#3a1f3f',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#fbe8f4',
+    'map-deco': '#f2cbe4'
   },
   dark: {
     bg: '#1f1226',
@@ -112,6 +146,8 @@ export const world: WorldTheme = {
     'hero-trim': '#ffcf33',
     'hero-prop': '#bdf0ff',
     'hero-ink': '#3a1f3f',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#28172f',
+    'map-deco': '#3d2649'
   }
 };

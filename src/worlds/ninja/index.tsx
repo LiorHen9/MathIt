@@ -1,9 +1,17 @@
 // 🥷 Ninja: a student in the dojo, masked, with a headband and a (soft, toy) throwing star.
+// Sneaks along the map, throws the star at the shadow master; a blade's ring, a puff of smoke on
+// a streak, taiko and flute. Its sounds, music, feedback, boss and map are here.
 import { DefaultEyes, HERO as V, starPath, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const hero: HeroDef = {
+  walk: 'sneak',
+  attack: 'throw',
   name: (g) => byGender({ gender: g }, 'נינג׳ה צעיר', 'נינג׳ה צעירה'),
   parts: (g) => {
     const girl = g === 'girl';
@@ -63,6 +71,23 @@ export const world: WorldTheme = {
   icon: '🥷',
   blurb: 'אימון בדוג׳ו, מחגורה לבנה לשחורה',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'target' } },
+  story: { chapters: ['בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!'] },
+  vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'] },
+  coin: { icon: '🍙', name: 'כדורי אורז' },
+  rewards: [
+    { id: 'n-belt-yellow', icon: '🟨', name: 'חגורה צהובה' },
+    { id: 'n-belt-orange', icon: '🟧', name: 'חגורה כתומה' },
+    { id: 'n-lantern', icon: '🏮', name: 'פנס הדוג׳ו' },
+    { id: 'n-belt-green', icon: '🟩', name: 'חגורה ירוקה' },
+    { id: 'n-scroll', icon: '📜', name: 'מגילת סודות' },
+    { id: 'n-belt-black', icon: '⬛', name: 'חגורה שחורה' }
+  ],
   light: {
     bg: '#f4f3f7',
     surface: '#ffffff',
@@ -87,7 +112,9 @@ export const world: WorldTheme = {
     'hero-trim': '#d62828',
     'hero-prop': '#c3cad6',
     'hero-ink': '#111118',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#ece8de',
+    'map-deco': '#d9d1bf'
   },
   dark: {
     bg: '#121219',
@@ -113,6 +140,8 @@ export const world: WorldTheme = {
     'hero-trim': '#ff4d4d',
     'hero-prop': '#d6dce6',
     'hero-ink': '#0b0b10',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#15161f',
+    'map-deco': '#252737'
   }
 };

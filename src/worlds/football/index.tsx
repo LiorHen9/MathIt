@@ -1,7 +1,13 @@
 // ⚽ Football: a young striker in an invented club's kit (no real team), the ball at the foot.
+// Jogs along the map, kicks the ball at the giant goalkeeper; a kick into the net, the crowd and
+// "גול!" on a streak, stadium drums and brass. Its sounds, music, feedback, boss and map are here.
 import { HERO as V, type HeroDef } from '../../fx/Hero';
 import { byGender } from '../../profiles/profiles';
 import type { WorldTheme } from '../types';
+import { boss } from './boss';
+import { fx } from './fx';
+import { mapSkin } from './skin';
+import { sounds } from './sounds';
 
 const SHORT = 'M30 48 Q29 17 60 16 Q91 17 90 48 Q85 33 74 36 Q70 25 60 31 Q50 25 46 36 Q35 33 30 48Z';
 const SMOOTH = 'M30 48 Q30 16 60 16 Q90 16 90 48 Q82 29 62 30 Q42 30 30 48Z';
@@ -18,6 +24,8 @@ function Ball() {
 }
 
 const hero: HeroDef = {
+  walk: 'jog',
+  attack: 'kick',
   name: (g) => byGender({ gender: g }, 'חלוץ', 'חלוצה'),
   parts: (g) => {
     const girl = g === 'girl';
@@ -65,6 +73,23 @@ export const world: WorldTheme = {
   icon: '⚽',
   blurb: 'בועטים, מבקיעים ועולים בליגה',
   hero,
+  fx,
+  sounds,
+  music: () => import('./music').then((m) => m.loop),
+  bosses: [boss],
+  mapSkin,
+  templateSkins: { pop: { look: 'ball' } },
+  story: { chapters: ['הליגה השכונתית מתחילה, וכל תשובה נכונה מקרבת אותנו לגביע!'] },
+  vocabulary: { items: ['כדורים', 'דגלים', 'קונוסים'], place: ['על המגרש', 'בחדר ההלבשה'] },
+  coin: { icon: '🪙', name: 'מטבעות' },
+  rewards: [
+    { id: 'fb-boots', icon: '👟', name: 'נעלי כדורגל' },
+    { id: 'fb-shirt', icon: '👕', name: 'חולצת הקבוצה' },
+    { id: 'fb-gloves', icon: '🧤', name: 'כפפות שוער' },
+    { id: 'fb-medal', icon: '🥇', name: 'מדליית זהב' },
+    { id: 'fb-ball', icon: '⚽', name: 'כדור המשחק' },
+    { id: 'fb-cup', icon: '🏆', name: 'גביע הליגה' }
+  ],
   light: {
     bg: '#f1f8ef',
     surface: '#ffffff',
@@ -89,7 +114,9 @@ export const world: WorldTheme = {
     'hero-trim': '#ffd23f',
     'hero-prop': '#ffffff',
     'hero-ink': '#1b2430',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#d8edcf',
+    'map-deco': '#c3e1b7'
   },
   dark: {
     bg: '#0f1d14',
@@ -115,6 +142,8 @@ export const world: WorldTheme = {
     'hero-trim': '#ffd23f',
     'hero-prop': '#ffffff',
     'hero-ink': '#1b2430',
-    'hero-light': '#ffffff'
+    'hero-light': '#ffffff',
+    'map-bg': '#132618',
+    'map-deco': '#1d3824'
   }
 };

@@ -241,3 +241,35 @@ export function countUp(el: Element | null | undefined, from: number, to: number
     show(to);
   };
 }
+
+/**
+ * A word that pops up where something happened and floats away ("גול!", "סוויש!") – the world's
+ * shout on a streak. Decoration only: none with reduced motion. Transform and opacity, ~800ms.
+ */
+export function popWord(at: Element | null | undefined, text: string): void {
+  if (!at || typeof document === 'undefined' || reducedMotion()) return;
+  const c = centerOf(at);
+  const el = document.createElement('span');
+  el.className = 'fx-word';
+  el.textContent = text;
+  el.setAttribute('aria-hidden', 'true');
+  el.style.left = `${c.x}px`;
+  el.style.top = `${c.y}px`;
+  document.body.append(el);
+  if (typeof el.animate !== 'function') {
+    el.remove();
+    return;
+  }
+  el.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(0.3) rotate(-8deg)', opacity: 0 },
+      { transform: 'translate(-50%, -90%) scale(1.25) rotate(4deg)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(-50%, -120%) scale(1) rotate(0deg)', opacity: 1, offset: 0.7 },
+      { transform: 'translate(-50%, -170%) scale(0.9)', opacity: 0 }
+    ],
+    { duration: 850, easing: 'ease-out', fill: 'forwards' }
+  ).finished.then(
+    () => el.remove(),
+    () => el.remove()
+  );
+}

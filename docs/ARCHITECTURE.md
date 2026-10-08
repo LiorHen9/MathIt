@@ -218,6 +218,7 @@ interface World {
 - **מצב היום (שלב 1):** `WorldTheme` = `id, name, icon, blurb, light, dark, hero`. כל עולם הוא chunk עצל. `applyWorld` מחליף משתני CSS על `<html>` בלי טעינה מחדש; `worldStyle(w, dark)` מצמיד את משתני העולם לאלמנט אחד (כרטיסים בבוחר, אריחי פרופילים).
 - **צבעי הגיבור** הם משתני עולם: `--hero-skin/hair/main/trim/prop/ink/light` (חלק מ-`REQUIRED_VARS`, כולל בבסיס וב-`styles.css`).
 - **משוב (שלב 2):** מיפוי משוב אחד משותף לכל העולמות (`fx/director.ts`), והעולם רק "צובע" את הצליל של תשובה נכונה (`flavor`: פיות – פעמון, כדורגל – בעיטה וקהל, כדורסל – סוויש, נינג׳ה – להב, קוביות – בלוק נכנס למקום, כוכבות הבמה – אקורד סינתי). `World.fx` ו-`SoundPack` מלא לכל עולם – בשלב 5.
+- **מצב היום (שלב 5):** `WorldTheme` מלא – `fx` (‏`WorldFx`: כלל לאירוע מעל המיפוי המשותף), `sounds` (‏`SoundPack`), `music` (‏`() => import('./music')`), `bosses` (‏`BossDef`: id, name, intro, Art), `mapSkin` (‏`Scenery`, `node`, `path`, `sectionIcons`), `templateSkins.pop.look`, `story.chapters`, `vocabulary` (‏`items`, `place`), `coin`, `rewards`. כל עולם בתיקייה: `index.tsx` (צבעים, גיבור, רישום), `fx.ts`, `sounds.ts`, `music.ts`, `boss.tsx`, `skin.tsx`. `applyWorld` מחליף גם את חבילת הצלילים ואת הלופ. `--map-bg`/`--map-deco` נוספו ל-`REQUIRED_VARS`.
 - אפשר להחליף עולם בפרופיל בכל זמן; ההתקדמות נשמרת (היא שייכת למיומנויות, לא לעולם). האוסף נשמר לכל עולם בנפרד.
 
 ---
@@ -258,6 +259,8 @@ interface World {
 מצבים:
 `idle` (נשימה/מצמוץ) · `think` · `happy` · `cheer` (רצף/סיום) · `oops` (טעות, עדין) · `walk` · `attack` (בוס).
 
+**מצב היום (שלב 5):** `HeroDef.walk` ו-`HeroDef.attack` (+ `shot`) – מחלקות `walk-<style>`/`atk-<style>` על ה-SVG ו-`data-walk`/`data-attack`; CSS לכל סגנון (פיה מרחפת, חלוץ בועט בכדור שבכף הרגל, שחקן מכדרר וזורק בקשת, נינג׳ה זורק את הכוכב, בנאי מניף מכוש, זמרת שולחת גל קול). הבוס משמאל לגיבור.
+
 **מצב היום (שלב 4):** `walk` (קפיצות צעד ונדנוד, כל עוד ההליכה נמשכת – `setHeroMood('walk', ms)` דרך `heroMs` של ה-director) ו-`attack` (זינוק שמאלה לעבר הבוס והאביזר מונף). בסיסיים ומשותפים לכל העולמות; בשלב 5 כל עולם מקבל את שלו.
 הגיבור מופיע במפה, בכל משחק ובשיעורים, והוא "המורה" שמדבר בהקראה.
 
@@ -267,6 +270,7 @@ interface World {
 - **אפקטים**: סינתזה ב-Web Audio בסגנון ZzFX — מתנדים, רעש, פילטרים ומעטפות. נשמע הרבה יותר עשיר מהצפצופים של ChessIt, ושוקל כמעט כלום. **לכל עולם חבילת צלילים משלו** (פיות: פעמונים ונצנוץ · כדורגל: שריקה, בעיטה, קהל · כדורסל: כדרור, רשת, באזר רך · נינג׳ה: שוש, גונג, תיפוף).
 - **צליל שמלמד**: מנייה עם סולם עולה, קפיצה על ציר עם תו לכל צעד, עשר שלם = אקורד. האוזן עוזרת לספור.
 - **מצב היום (שלב 3):** `count{step}` (סולם מז׳ורי מ-G4, `countPitch`), `jump{step}` (התו של המספר שנוחתים עליו, `jumpPitch`), `ten` (אקורד מתגלגל + פעמון), `whoosh` (רעש עם פילטר עולה).
+- **מצב היום (שלב 5):** `SoundPack` לכל עולם (`audio/packs.ts` – `buildPack(style)`), `soundFor`/`soundSource`, `PACK_REQUIRED`; הוראה ו-wrong משותפים. מוזיקה: `audio/music.ts` (‏`MusicLoop`: bpm, steps, parts עם תווים כטקסט, drums), `setMusicScene` מ-App (מפה, משחקים, תיבה, בוס, אוסף, הגדרות), `holdMusic` בהסבר, הנמכה בהקראה. **החלטה:** בשיעורים אין מוזיקה, ובהסבר בסבב היא יורדת ל-12%.
 - **מוזיקה**: לופ קצר וקליל לכל עולם, ברקע בעוצמה נמוכה, יורד אוטומטית בזמן הקראה. נטען בעצלות עם העולם.
 - **הקראה**: הגיבור "מדבר" את המשימות והמשוב (מבוסס על ChessIt).
 - **הגדרות נפרדות לפרופיל**: אפקטים · מוזיקה · הקראה · עוצמה.
@@ -289,6 +293,8 @@ interface WorldFx {
 יתרונות: משחק חדש מקבל משוב מלא בכל העולמות "בחינם"; עולם חדש מגדיר רק מיפוי אירועים; ובבדיקות אפשר לקרוא את יומן האירועים (`window.__mathitFx`, כמו `__chessitSounds`).
 
 **מצב היום (שלב 2):** האירועים `tap{key?}`, `correct{streak}`, `wrong{attempt}`, `hint`, `starEarned{n}`, `roundDone{stars, skipped?}` (`bossHit`, `unlock`, `coin`... יתווספו עם התחנות שלהם). `planFeedback(event, worldId)` היא פונקציה טהורה שמחזירה `FxPlan` (צליל + אפשרויות, מצב גיבור, תנועה, חלקיקים, אסימון שעף), ו-`emit(event, { el, to })` מבצע אותה: `el` הוא האלמנט שבו קרה הדבר (בועה, מקש, כוכב), `to` – לאן הפרס עף (נקודת ההתקדמות). `hushFeedback()` עוצר חגיגה (צלילים, חלקיקים, גיבור). יומן: `window.__mathitFx` עם `type, detail, world, sound, pitch, hero, motion, particles`. `tests/worlds/check.ts` בודק שכל אירוע ממופה בכל עולם לצליל ולמצב גיבור קיימים.
+
+**מצב היום (שלב 5):** `planFor(e, world)` = `sharedPlan(e)` + `world.fx[e.type]`; `FxPlan.word`; אירוע `coin{n}` (מלווה, בלי מצב גיבור); סוגי חלקיקים לכל עולם. ביומן: `pack`, `kind`, `fly`, `word`.
 
 **מצב היום (שלב 4):** אירועי מסע – `walk{steps, ms}` (גיבור הולך), `step{n}`, `unlock` (פיצוץ ניצוצות בתחנה + pop), `locked` (שתי דפיקות רכות ו-shake, לא "טעות"), `chestShake` (`wobble`), `chestOpen{prize}` (הפרס עף מהתיבה ל-`to`), `bossAppear`, `bossHit{n, left}` (`tremble` לבוס, `attack` לגיבור, צליל `hit` עולה – `hitPitch`), `bossDodge` (`dodge`, שקט ליד ה-`wrong` הרך), `bossDefeated{stars}` (`victory` וקונפטי – החגיגה הגדולה ביותר). `COMPANION_TYPES` (`step`, `bossDodge`) לא משנים את מצב הגיבור, כי הם מלווים אירוע אחר. ב-`FxPlan` נוסף `heroMs`; תנועות חדשות ב-`fx/motion.ts`: `wobble`, `tremble`, `dodge`.
 
@@ -392,9 +398,10 @@ DB: mathit (IndexedDB)
  ├─ profiles      Profile (כולל settings) לפי id
  ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed, lessonSeen)
  ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated }  (שלב 4, גרסה 3)
- ├─ inventory     key: profileId:worldId → collectibles, coins
+ ├─ inventory     key: profileId:worldId → { coins, items[], updated }  (שלב 5, גרסה 4)
  └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
 ```
+- גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
 - **Repository layer** אחד — ה-UI לא ניגש ל-IndexedDB ישירות.
 - **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 3 (שלב 4) מוסיפה את `questProgress` (רשומה אחת לפרופיל במקום `nodeProgress` לכל תחנה – המפה תמיד קוראת את כולה). ההמרה של מה שהיה לפני המפה קורית בקריאה הראשונה (`storage/questProgress.ts` → `progressFromSkills`), לא בתוך ה-upgrade, כך שהיא עובדת גם מגרסה 1 וגם אחרי שחזור גיבוי. מחיקת פרופיל מוחקת גם את הרשומה. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`, `deleteSkillStates` עם מחיקת פרופיל). שדות ה-`SkillState` המלא (שלב 6) יתווספו דרך `normalizeSkillState`, בלי מיגרציה נוספת.
 - שמירה אחרי כל שאלה (לא רק בסוף משחק) — סגירת אפליקציה לא מוחקת התקדמות.
@@ -412,7 +419,7 @@ MathIt/
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
 │  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog
-│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, ובהמשך Parent, Rewards
+│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), ובהמשך Parent
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
@@ -421,20 +428,22 @@ MathIt/
 │  │  ├─ mastery/     מנוע שליטה, חזרה מרווחת
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
 │  │  ├─ quest/       types, chapter1 (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates)
+│  │  ├─ story.ts     placeholders לבעיות מילוליות (fillText, fillQuestion)
 │  │  └─ rng.ts
 │  ├─ games/          Ask (שאלה אחת: רמז והסבר), תבנית לכל מיני-משחק (Pop, Jump, Build, ...)
 │  ├─ puzzles/
 │  ├─ worlds/
 │  │  ├─ base.ts      המראה לפני שנבחר עולם (= ברירות המחדל ב-styles.css)
-│  │  ├─ fairies/ football/ basketball/ ninja/
+│  │  ├─ bossParts.tsx מסגרת משותפת לבוסים ולנוף
+│  │  ├─ fairies/ football/ basketball/ ninja/ blocks/ stage/  (index, fx, sounds, music, boss, skin)
 │  │  └─ index.ts     רישום עולמות, applyWorld (טעינה עצלה)
 │  ├─ manipulatives/  אנימציות מלמדות: timeline.ts, Counters, TenFrame, Combine, TakeAway, NumberLine, Compare, Explainer (ובהמשך Blocks, Array, Pizza, Clock)
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
 │  ├─ ui/             רכיבים משותפים: NumPad, Dots (ציור Visual), ובהמשך Button, Stars, Dialog
-│  ├─ audio/          sfx.ts (סינתזה), music.ts (סקוונסר), speech.ts (הקראה)
+│  ├─ audio/          sfx.ts (סינתזה), packs.ts (בניית SoundPack), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
-│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
+│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, inventory.ts, ובהמשך backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)
