@@ -139,6 +139,8 @@ type Generator = (level: DifficultyLevel, rng: Rng) => Question;
 
 **מצב היום (שלב 3):** `Action` הוא נתונים בלבד – `count{n}`, `tenFrame{n}`, `combine{a,b}`, `takeAway{a,b}`, `jump{from,by}`, `compare{a,b}` – עם `actionResult` (הערך שבו האנימציה נגמרת) ו-`actionValid` (0–10). `Step { text, math?, visual?, action? }`: צעד בלי action משאיר את האנימציה הקודמת על המסך; הפעולה האחרונה בהסבר מגיעה לתשובה (נבדק). `Hint { text, visual?, action?, for?: ErrorTag[] }` ו-`pickHint(q, wrong)`: רמז שנבנה לסוג הטעות, אחרת ברירת המחדל (הראשון). `core/lessons/index.ts`: `Lesson { skillId, title, parts }`, כל חלק `watch { title, steps }` או `try { title, level, key }`; `findQuestion(skill, level, key)` מוצא את ה-seed הראשון עם התרגיל (כך שגם בשיעור יש מסיחים, רמזים והסבר מהמחולל).
 
+**מצב היום (שלב 7):** 17 מיומנויות (‏`core/skills/`): לכל אחת גם `templates` (התבניות שבהן משחקים בה, Pop ראשון). מחוללים חדשים: `arith20.ts` (‏`addQuestion`/`subQuestion` לפי שני מספרים – הסבר במסגרת עשר כפולה כשיש מעבר עשרת, במוטות וקוביות כשיש עשר ועוד, ומסיח `no-bridge` = 10; `add20`, `sub20`, `bridgeAdd`, `bridgeSub`), `story20` (‏`storyOf(add, sub)` מכליל את בעיות המילוליות), `numbers100`, `place`, `pattern`, `money` (מטבעות של 50 אג׳ עד 10 ₪, `coinsFor`), `clock` (‏`timeWords`, `handsSwapped`), `arith100`. `Answer = number | Sign | Time` – תמיד דרך `answerKey`/`sameAnswer`/`answerText` (מפתח `errorTags`, בחירות, DOM); כסף יכול להיות x.5 (`numeric: false` אז). `Question.unit` (₪) ו-`Question.prompts` – אותה שאלה בניסוח של תבנית (`promptFor(q, t)`), למשל שעון: Pop שואל "מה השעה?" מתחת לשעון, Clock אומר "מזיזים את המחוגים ל-3:30"; Build ו-Shop דורשים ניסוח משלהם (`templateFits`). `Visual` הוא איחוד: `dots`, `blocks{tens, ones}`, `coins{coins}`, `clock{h, m}` (‏`ui/Picture.tsx`, שרטוטים משותפים ב-`ui/art.tsx`). `ERROR_TAGS` – 14, וכל מחולל חדש נבדק שיש רמז לכל ErrorTag שהוא מייצר. `numberDistractors` מקבל `step` (0.5 לכסף), `hopsFor(from, by)` – קפיצות על הציר: עשרות ואז אחדות, מפוצלות בעשרת הבאה (38+25: +10 +10 +2 +3).
+
 ### 4.3 תבניות מיני-משחקים (Game Templates)
 כל תבנית מקבלת רצף שאלות ומציגה אותן אחרת. אותה תבנית עובדת בכל העולמות.
 
@@ -154,7 +156,11 @@ type Generator = (level: DifficultyLevel, rng: Rng) => Question;
 | **סדרות** (Pattern) | תבניות | השלמת שרשרת |
 | **בוס** (Boss) | סיכום פרק | 8–10 שאלות מעורבות, "פס כוח" של הבוס יורד |
 
+
+
 **חידות** (Puzzles): ריבוע קסם, מספר חסר, מאזניים, KenKen קטן — תחנות מיוחדות במפה.
+
+**מצב היום (שלב 7):** `games/PromptCard.tsx` (כרטיס השאלה, הרמז המונפש והמשבצת – משותף) ו-`TemplateProps` אחיד; `games/Ask.tsx` מקבל `template` ובוחר רכיב מ-`TEMPLATES` (Pop בחבילת המשחק, השאר chunks עצלים). **Jump** (חלון של 6 מספרים ברצף סביב התשובה – `jumpWindow` – עם כמה שיותר מסיחים; הגיבור קופץ בקשת, אירוע `jump`, אחרי טעות חוזר להתחלה), **Build** (מוטות וקוביות – הקובייה העשירית נצמדת למוט באירוע `ten` – או מטבעות ב-`CoinTray`), **Match** (קלף תרגיל גלוי וארבעה קלפי תוצאה: מוצגים `PEEK_MS` ומתהפכים ב-`rotateY`; `board` מ-GameHost ממלא לוח של 8), **Clock** (`ClockSet`: גרירה בפוינטר – המחוג הקרוב נתפס, הארוך נצמד ל-5 דקות ו-`turnMinutes` מזיז את השעה במעבר על 12; כפתורי ‹ › לשעה ולדקות; אירוע `tick`), **Shop** (דוכן העולם: אייקון מ-`templateSkins.shop.icons` לפי `vocabulary.thing`, תג מחיר, `CoinTray`, אירוע `clink`). `GameHost`: `roundTemplate(templates, rounds, station, asked, review)` – התבנית של תחנה (`PracticeNode.template`), אחרת `?template=` (לניסיון ולבדיקות), אחרת לפי התור (`rounds % n`); חזרה – Pop. שאלה שהתבנית לא מתאימה לה (`templateFits`) משוחקת ב-Pop. `data-template` ו-`data-answer` על המסך (לבדיקות). פרק 1 נשאר Pop.
 
 ### 4.4 מפת המסע (Quest Map)
 ```
@@ -173,6 +179,8 @@ Journey (לפי טווח גיל)
 **מצב היום (שלב 4):** `core/quest/` – נתונים ופונקציות טהורות, בלי UI. `Journey → Chapter → Section → Node`; ה-Section הוא באנר במפה ("מספרים עד 10"). סוגי תחנות: `lesson {skillId}` (כוכב אחד), `practice {skillId, level}` (0–3, רמה קבועה לתחנה), `chest {prize}` (בלי כוכבים, "נעשתה" כשנפתחה), `boss {skillIds, level, hits, bossId}` (1–3). `game`, `puzzle` ו-`review` – בשלבים 6–9. תנאי פתיחה: התחנה הקודמת נעשתה, ועוד `needStars` כוכבים בפרק אם הוגדר (תיבה, בוס). `nodeStatus` (תחנה שנעשתה מוצגת כ-done גם אם הושגה מחוץ לסדר, למשל ממיגרציה), `lockReason`, `nextNode` (הראשונה הפתוחה שלא נעשתה), `chapterStars`, `withStars` (שומר את הטוב ביותר), `progressFromSkills` (המרת `skillStates` מלפני המפה), `journeyProblems` (לבדיקות). פרק 1 – 16 תחנות, ids יציבים (`c1-…`), כי ההתקדמות נשמרת לפיהם.
 - המסך: `screens/QuestMap.tsx` + `screens/quest/layout.ts` (מיקומים ביחידות מפה, רוחב 360, שביל מתפתל לפי סינוס, מקטע SVG לכל מרווח בין תחנות; הגיבור עומד **ליד** התחנה ולא עליה, כדי שאפשר יהיה ללחוץ עליה) + `screens/quest/art.tsx` (תיבה ובוס ב-SVG, צבעים ממשתני העולם בלבד).
 - **שלב 6 – תחנת חזרה:** `ReviewNode { kind: 'review', skillIds, count }` נוצרת בזמן ריצה (`reviewNode`, id קבוע `review` שאינו של אף פרק, ולכן `normalizeQuestRecord` לא שומר לה כוכבים; `journeyProblems` אוסר אותה בתוך פרק). המפה מציגה אותה ליד הגיבור (בצד הרחוק מהתחנה) כשיש מיומנויות שהגיע זמנן (`dueSkills`), עם פיצוץ `unlock` פעם אחת (`questProgress.reviewRevealed` מול `reviewedAt`). `reviewSkills` משלים ל-2–3 מיומנויות מאלה ששוחקו. `progressFromPlacement` – תוצאת מבחן המיקום על המפה (תחנות ידועות "נעשו", תיבה שדולגה נפתחת, בוס לעולם לא).
+
+- **שלב 7 – פרקים 2–5:** `core/quest/chapters.ts` (ids יציבים `c2-…`–`c5-…`; פרק 1 לא השתנה). `PracticeNode.template` – המשחק של התחנה; `BossNode.tier` – כמה חזק הבוס (פרק N → N). **החלטה:** בוס אחד לעולם שחוזר חזק יותר (`bossOf(world, tier)`: ⚡ אחרי השם, `BossDef.comebacks` – משפט לכל חזרה, הילה `.boss-tier-N`, יותר מכות), ולא בוס חדש לכל פרק. **החלטה – המפה:** פרק אחד מצויר בכל פעם (`mapLayout` לפרק, עם `entry`/`exit` – דרכים מהשער העליון ואל התחתון), לשוניות פרקים (פרק סגור אומר אחרי איזה בוס הוא נפתח). כשהתחנה הבאה בפרק הבא: `walkRoute(…, 'out')` אל השער, `setView` לפרק הבא, `walkRoute(-1, i, 'in')` מהשער – ואז הפיצוץ; המשפט של הפרק החדש הוא הברכה. `progressFromPlacement` מעביר גם בוס של פרק שכל המיומנויות שלו ידועות (כוכב אחד), חוץ מהבוס האחרון במסע.
 - בכניסה למפה: גלילה לגיבור; אם `at` שונה מהתחנה הבאה – הליכה (WAAPI על `transform` לאורך נקודות מ-`getPointAtLength`, צעד כל 300ms); ואז `unlock` לכל תחנה פתוחה שלא ב-`revealed`. מצב המפה (`at`, `revealed`) נשמר **לפני** האנימציה, כך שיציאה באמצע לא מריצה אותה שוב. תחנה שנפתחה ועוד לא "נחשפה" נראית סגורה עד הפיצוץ.
 
 ---
@@ -219,6 +227,7 @@ interface World {
 - **מצב היום (שלב 1):** `WorldTheme` = `id, name, icon, blurb, light, dark, hero`. כל עולם הוא chunk עצל. `applyWorld` מחליף משתני CSS על `<html>` בלי טעינה מחדש; `worldStyle(w, dark)` מצמיד את משתני העולם לאלמנט אחד (כרטיסים בבוחר, אריחי פרופילים).
 - **צבעי הגיבור** הם משתני עולם: `--hero-skin/hair/main/trim/prop/ink/light` (חלק מ-`REQUIRED_VARS`, כולל בבסיס וב-`styles.css`).
 - **משוב (שלב 2):** מיפוי משוב אחד משותף לכל העולמות (`fx/director.ts`), והעולם רק "צובע" את הצליל של תשובה נכונה (`flavor`: פיות – פעמון, כדורגל – בעיטה וקהל, כדורסל – סוויש, נינג׳ה – להב, קוביות – בלוק נכנס למקום, כוכבות הבמה – אקורד סינתי). `World.fx` ו-`SoundPack` מלא לכל עולם – בשלב 5.
+- **מצב היום (שלב 7):** `templateSkins` – `TemplateSkin { look, deco?, icons? }` לכל אחת משש התבניות (מראה ייחודי לעולם, עם CSS `.skin-<look>`); `vocabulary.thing` (דברים שקונים בחנות, יחיד) ו-`shop.icons` מקבילים; `story.chapters` – משפט לכל אחד מחמשת הפרקים; `BossDef.comebacks`; משתני צבע `--coin-gold`, `--coin-silver`, `--coin-ink`.
 - **מצב היום (שלב 5):** `WorldTheme` מלא – `fx` (‏`WorldFx`: כלל לאירוע מעל המיפוי המשותף), `sounds` (‏`SoundPack`), `music` (‏`() => import('./music')`), `bosses` (‏`BossDef`: id, name, intro, Art), `mapSkin` (‏`Scenery`, `node`, `path`, `sectionIcons`), `templateSkins.pop.look`, `story.chapters`, `vocabulary` (‏`items`, `place`), `coin`, `rewards`. כל עולם בתיקייה: `index.tsx` (צבעים, גיבור, רישום), `fx.ts`, `sounds.ts`, `music.ts`, `boss.tsx`, `skin.tsx`. `applyWorld` מחליף גם את חבילת הצלילים ואת הלופ. `--map-bg`/`--map-deco` נוספו ל-`REQUIRED_VARS`.
 - אפשר להחליף עולם בפרופיל בכל זמן; ההתקדמות נשמרת (היא שייכת למיומנויות, לא לעולם). האוסף נשמר לכל עולם בנפרד.
 
@@ -297,6 +306,8 @@ interface WorldFx {
 
 **מצב היום (שלב 6):** אירוע `levelUp{level}` – שלוש נכונות ברצף העלו את הרמה בתוך הסבב: צליל `unlock`, גיבור `cheer`, pop וחלקיקים על שבב "שלב N" (בכל עולם בסוג החלקיקים של ה-`unlock` שלו). תחנת החזרה נפתחת ב-`unlock` הקיים, ורמז מוקדם הוא `hint` רגיל.
 
+**מצב היום (שלב 7):** אירועי הוראה חדשים – `leap{n}` (קפיצה של 10 על הציר, או ספירת מוט בעשרות; `leapPitch` עולה עם העשרות), `tick{n}` (מחוג שזז 5 דקות; `tickPitch` עולה), `clink{n}` (מטבע על המגש) – צליל בלבד, בלי מצב גיבור, לא מחבילת העולם (`TEACHING_SOUNDS`). `ten` משמש גם להצמדת עשר קוביות למוט ולפריטת מוט. `jumpPitch` מעל 10 – התו של האחדות.
+
 **מצב היום (שלב 5):** `planFor(e, world)` = `sharedPlan(e)` + `world.fx[e.type]`; `FxPlan.word`; אירוע `coin{n}` (מלווה, בלי מצב גיבור); סוגי חלקיקים לכל עולם. ביומן: `pack`, `kind`, `fly`, `word`.
 
 **מצב היום (שלב 4):** אירועי מסע – `walk{steps, ms}` (גיבור הולך), `step{n}`, `unlock` (פיצוץ ניצוצות בתחנה + pop), `locked` (שתי דפיקות רכות ו-shake, לא "טעות"), `chestShake` (`wobble`), `chestOpen{prize}` (הפרס עף מהתיבה ל-`to`), `bossAppear`, `bossHit{n, left}` (`tremble` לבוס, `attack` לגיבור, צליל `hit` עולה – `hitPitch`), `bossDodge` (`dodge`, שקט ליד ה-`wrong` הרך), `bossDefeated{stars}` (`victory` וקונפטי – החגיגה הגדולה ביותר). `COMPANION_TYPES` (`step`, `bossDodge`) לא משנים את מצב הגיבור, כי הם מלווים אירוע אחר. ב-`FxPlan` נוסף `heroMs`; תנועות חדשות ב-`fx/motion.ts`: `wobble`, `tremble`, `dodge`.
@@ -312,6 +323,8 @@ interface WorldFx {
 - `manipulatives/` — רכיבי האנימציה המלמדת (מסגרת עשר, קוביות, ציר, מערך, פיצה, שעון).
 
 **מצב היום (שלב 3):** `manipulatives/timeline.ts` – `Timeline` (scale לפי `speed` ותנועה מופחתת ×`SLOW`=1.6, `anim` שמחכה, שומר את המצב הסופי ב-style ומבטל, `wait`, `stop`) ו-`useRun(root, script, { speed, play, stopped, onDone })` (layout effects; `.is-final` מציג את הסוף; `data-state` = playing/done/stopped; `data-ms` = הזמן המתוכנן). שישה רכיבים: `Counters`, `TenFrame`, `Combine` (שתי קבוצות מתקרבות, הגדולה נאמרת והקטנה נספרת ממנה), `TakeAway` (עפים בקשת, "רוח" במקומם, השאר נספר), `NumberLine` (0–10 LTR, סמן קופץ, קשת מקווקוות לכל קפיצה), `Compare` (מפוזרים → שורות, זוגות מחוברים, העודף בולט). `Manipulative({ action })` בוחר לפי `Action`. הצלילים דרך ה-director. `Explainer.tsx` – הסבר צעד-צעד מסונכרן להקראה (`sayAndWait`, `readingMs` ב-`audio/speech.ts`), `skip` מציג את הצעד האחרון במצב סופי. ברמז: `speed` 0.85, בלי מספר התוצאה הגדול (הספירה היא הרמז).
+
+**מצב היום (שלב 7):** רכיבים חדשים, כל אחד chunk עצל (`lazyPart` ב-`manipulatives/index.tsx`): `TensBlocks` (`tens` – מוטות וקוביות; `plan()` מחשב מראש את כל החלקים במשבצות קבועות, והסקריפט רק מזיז ומעמעם; הצמדה – הקוביות עפות למשבצת המוט; פריטה; `ask`), `DoubleFrame` (`doubleFrame`), `LongLine` (`line`, `lineWindow` – 0–20 או חלון עשרות שלמות, תוויות לנחיתות לסירוגין), `ClockAnim` (`clock`, המחוגים ב-`transform: rotate` עם `transform-box: view-box`; המצב הסופי מ-`--hour`/`--minute`), `CoinStack` (`coins`), `CompareTens` (`compare` מעל 10). `ACTION_LIMITS` במקום `ACTION_MAX` אחד.
 
 ### 6.6 כללים
 - **רק `transform` ו-`opacity`** באנימציות, 60fps גם בטלפון ישן.
@@ -366,6 +379,8 @@ interface SkillState {
 
 **מצב היום (שלב 6):** `core/mastery/placement.ts` – `LADDER` של 10 שלבים (מיומנות × רמה, בסדר המפה של פרק 1), `startPlacement(band)` (גן → 0, א׳ → 2, ב׳+ → 4), `placementStep` (נכון בניסיון ראשון → +2 עד הטעות הראשונה ואז +1; טעות → −1; עוצר כשנמצא גבול – נכון בשלב ושגוי בבא אחריו – בנכון בראש הסולם, בטעות בתחתיתו, בשתי טעויות באותו שלב, או אחרי 10), `knownRung` (השלב הגבוה שנענה נכון בלי כישלון פתוח מתחתיו), `placementResult`. המסך `screens/Placement.tsx` (עצל): פתיח עם הגיבור, Ask מלא (רמז, הסבר), "דלג" שלא משנה דבר; בסוף `applyPlacement` (נשלטות: mastery ≥ 0.9, הרמה העליונה, `lessonSeen`, חזרה בעוד 3 ימים; חלקיות: הרמה הבאה ו-0.5) ו-`placeOnMap` (תחנות ידועות "נעשו", `revealed` כולל הכול – בלי פיצוצים, `at` = התחנה הבאה). כניסה: בפרופיל חדש ("איפה מתחילים?", ברירת מחדל "מההתחלה") ומ"הגדרות".
 
+**מצב היום (שלב 7):** `LADDER` של 22 שלבים בסדר הפרקים (פרק 1: 0–6, פרק 2: 7–12, פרק 3: 13–14, פרק 4: 15–17, פרק 5: 18–21), `startPlacement(age)` (≤5 → 0, 6 → 3, 7 → 7, 8+ → 9), `FIRST_JUMP` = 3 עד הטעות הראשונה – גם בירידה כל עוד לא הייתה תשובה נכונה, ואז 1. `IMPLIED` – בעיות מילוליות ידועות עם החשבון שלהן. "יודע הכול" מגיע לבוס של פרק 5 ב-≤10 שאלות, "יודע עד 20" נוחת בתחילת פרק 3.
+
 ---
 
 ## 8. פרופילים ואזור הורים
@@ -415,6 +430,8 @@ DB: mathit (IndexedDB)
  └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
 ```
 - גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
+
+- שלב 7 – בלי סכמה חדשה: מיומנויות חדשות הן מפתחות חדשים ב-`skillStates`, תחנות חדשות ב-`questProgress.stars` (‏`normalizeQuestRecord` מכיר אותן כי הן במסע). מי שסיים את פרק 1 ממשיך לפרק 2 (התחנה הבאה, הליכה ופיצוץ).
 - **Repository layer** אחד — ה-UI לא ניגש ל-IndexedDB ישירות.
 - **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 3 (שלב 4) מוסיפה את `questProgress` (רשומה אחת לפרופיל במקום `nodeProgress` לכל תחנה – המפה תמיד קוראת את כולה). ההמרה של מה שהיה לפני המפה קורית בקריאה הראשונה (`storage/questProgress.ts` → `progressFromSkills`), לא בתוך ה-upgrade, כך שהיא עובדת גם מגרסה 1 וגם אחרי שחזור גיבוי. מחיקת פרופיל מוחקת גם את הרשומה. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`). שדות ה-`SkillState` המלא (שלב 6) נוספו דרך `normalizeSkillState`, בלי מיגרציה (`SCHEMA_VERSION` נשאר 4), וכך גם השדות החדשים של `questProgress` (`normalizeQuestRecord`). כתיבות ל-`skillStates` עוברות בתור לכל מפתח (`recordAnswer`, `saveRound`, `saveLessonSeen`, `applyPlacement`), כך ששמירה אחרי כל שאלה לא דורסת את הסוף של הסבב. מחיקת הרשומות עם הפרופיל נמצאת ב-`profiles.ts` (כדי שהמנוע לא ייכנס לטעינה הראשונה).
 - שמירה אחרי כל שאלה (לא רק בסוף משחק) — סגירת אפליקציה לא מוחקת התקדמות.
@@ -440,19 +457,19 @@ MathIt/
 │  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
 │  │  ├─ mastery/     engine (שליטה, חזרה מרווחת), adaptive (רמה בסבב), placement (מבחן מיקום), summary (המלצות, סיכום), pick (בחירת שאלות – עם המשחק)
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
-│  │  ├─ quest/       types, chapter1 (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates)
+│  │  ├─ quest/       types, chapter1, chapters (2–5) (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates, מיקום)
 │  │  ├─ story.ts     placeholders לבעיות מילוליות (fillText, fillQuestion)
 │  │  └─ rng.ts
-│  ├─ games/          Ask (שאלה אחת: רמז והסבר), תבנית לכל מיני-משחק (Pop, Jump, Build, ...)
+│  ├─ games/          Ask (שאלה אחת: רמז והסבר), PromptCard, Pop, Jump, Build (+CoinTray), Match, ClockSet, Shop
 │  ├─ puzzles/
 │  ├─ worlds/
 │  │  ├─ base.ts      המראה לפני שנבחר עולם (= ברירות המחדל ב-styles.css)
 │  │  ├─ bossParts.tsx מסגרת משותפת לבוסים ולנוף
 │  │  ├─ fairies/ football/ basketball/ ninja/ blocks/ stage/  (index, fx, sounds, music, boss, skin)
 │  │  └─ index.ts     רישום עולמות, applyWorld (טעינה עצלה)
-│  ├─ manipulatives/  אנימציות מלמדות: timeline.ts, Counters, TenFrame, Combine, TakeAway, NumberLine, Compare, Explainer (ובהמשך Blocks, Array, Pizza, Clock)
+│  ├─ manipulatives/  אנימציות מלמדות: timeline.ts, Counters, TenFrame, Combine, TakeAway, NumberLine, Compare, Explainer; שלב 7 (עצלים): TensBlocks, DoubleFrame, LongLine, ClockAnim, CoinStack, CompareTens (ובהמשך Array, Pizza)
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
-│  ├─ ui/             רכיבים משותפים: NumPad, Dots (ציור Visual), ובהמשך Button, Stars, Dialog
+│  ├─ ui/             רכיבים משותפים: NumPad, Dots, Picture (ציור Visual), art (מוטות, קוביות, מטבעות, שעון), ובהמשך Button, Stars, Dialog
 │  ├─ audio/          sfx.ts (סינתזה), packs.ts (בניית SoundPack), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck

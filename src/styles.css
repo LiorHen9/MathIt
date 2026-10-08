@@ -4313,6 +4313,8 @@ p {
 .jp-track {
   position: relative;
   padding: 70px 0 0;
+  /* The hero standing at the start may reach past the edge: never a sideways scroll. */
+  overflow: hidden;
 }
 
 .jp-row {
@@ -4320,11 +4322,11 @@ p {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 4px;
+  gap: 3px;
 }
 
 .jp-start {
-  width: 18px;
+  width: 10px;
   height: 22px;
   align-self: flex-end;
   border-radius: 6px 6px 0 0;
