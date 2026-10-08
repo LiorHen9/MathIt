@@ -70,3 +70,31 @@ export function parentQuestion(rand = Math.random): { text: string; answer: numb
   const b = 3 + Math.floor(rand() * 7); // 3–9
   return { text: `${a} × ${b}`, answer: a * b };
 }
+
+/**
+ * The parents' own PIN (phase 8), separate from every child's: it guards the parents' area
+ * (screens/ParentGate.tsx). Kept in `meta` (profiles/parentLock.ts) the same way – a hash with
+ * its own salt, never the digits.
+ */
+export interface ParentLock {
+  hash: string;
+  salt: string;
+}
+
+export async function makeParentLock(pin: string): Promise<ParentLock> {
+  if (!validPin(pin)) throw new Error('PIN must be 4 digits');
+  const salt = newSalt();
+  return { salt, hash: await hashPin(pin, salt) };
+}
+
+export async function checkParentLock(lock: ParentLock | null | undefined, pin: string): Promise<boolean> {
+  if (!lock) return true;
+  return (await hashPin(pin, lock.salt)) === lock.hash;
+}
+
+/** A stored value as a lock, or null when it is missing or broken. */
+export function normalizeParentLock(raw: unknown): ParentLock | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const { hash, salt } = raw as Partial<ParentLock>;
+  return typeof hash === 'string' && /^([0-9a-f]{64}|fnv:[0-9a-f]{1,8})$/.test(hash) && typeof salt === 'string' && /^[0-9a-f]{8,64}$/.test(salt) ? { hash, salt } : null;
+}

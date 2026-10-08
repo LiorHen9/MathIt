@@ -14,11 +14,13 @@ interface Props {
   onPick: (p: Profile) => void;
   onCreate: () => void;
   onEdit: (p: Profile) => void;
+  /** The parents' area (phase 8, behind a door for adults). */
+  onParents: () => void;
 }
 
 const TITLE = 'מי משחק?';
 
-export function ProfilePicker({ profiles, lastId, onPick, onCreate, onEdit }: Props) {
+export function ProfilePicker({ profiles, lastId, onPick, onCreate, onEdit, onParents }: Props) {
   const [worlds, setWorlds] = useState<WorldTheme[]>([]);
   useEffect(() => {
     let alive = true;
@@ -89,6 +91,18 @@ export function ProfilePicker({ profiles, lastId, onPick, onCreate, onEdit }: Pr
         }}
       >
         + פרופיל חדש
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-ghost parent-entry"
+        data-testid="open-parents"
+        onClick={() => {
+          playSfx('tap');
+          onParents();
+        }}
+      >
+        👪 להורים
       </button>
 
       <p class="fineprint">הפרופילים נשמרים רק בטלפון הזה.</p>

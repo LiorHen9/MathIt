@@ -5,7 +5,8 @@
 //   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice);
 //   map ⇄ "my collection" (coins and collectibles of every world, phase 5);
 //   map ⇄ a review station (made on the fly from skills due for review, phase 6);
-//   a new profile (if asked) or settings → the placement game → the map (phase 6).
+//   a new profile (if asked) or settings → the placement game → the map (phase 6);
+//   "who is playing?" or settings → the parents' door → the parents' area → back where it came from (phase 8).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 // Music (audio/music.ts) plays the world's loop on the profile's own screens only; lessons are
@@ -42,11 +43,17 @@ const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost
 const Lesson = lazy(() => import('../screens/Lesson').then((m) => m.Lesson));
 // The placement game (with the game's parts).
 const Placement = lazy(() => import('../screens/Placement').then((m) => m.Placement));
+// The parents' area (phase 8): a door for adults, then the parents' own screens.
+const ParentGate = lazy(() => import('../screens/ParentGate').then((m) => m.ParentGate));
+const ParentHome = lazy(() => import('../screens/ParentHome').then((m) => m.ParentHome));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
 /** Where a round or a lesson goes back to: the map (a station) or free practice. */
 type From = 'map' | 'practice';
+/** Where the parents' area was opened from, and where "exit" goes back to. */
+type ParentFrom = 'profiles' | 'settings';
+const PARENT_EXIT: Record<ParentFrom, string> = { profiles: 'למי משחק?', settings: 'להגדרות' };
 
 type Screen =
   | { name: 'loading' }
@@ -63,7 +70,12 @@ type Screen =
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
   | { name: 'chest'; nodeId: string }
   | { name: 'boss'; nodeId: string }
-  | { name: 'collection' };
+  | { name: 'collection' }
+  | { name: 'parentGate'; from: ParentFrom }
+  | { name: 'parentHome'; from: ParentFrom };
+
+/** The parents' screens: the neutral base look, whoever's profile is open behind them. */
+const PARENT_SCREENS: Screen['name'][] = ['parentGate', 'parentHome'];
 
 /** Screens with the world's music (the rest are quiet). */
 const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'review', 'placement', 'chest', 'boss', 'collection', 'settings'];
@@ -103,6 +115,8 @@ export function App() {
       void applyWorld('base');
       if (screen.name !== 'pin') activateProfile(null);
     }
+    // The parents' area keeps the open profile (if any) to go back to its settings.
+    if (PARENT_SCREENS.includes(screen.name)) void applyWorld('base');
   }, [screen.name]);
 
   // Moving to another screen stops anything still being read aloud; each screen starts at the top
@@ -158,6 +172,18 @@ export function App() {
     setScreen(list.length === 0 ? { name: 'edit', from: 'first' } : { name: 'profiles' });
   }
 
+  /** Out of the parents' area, back to where it was opened. */
+  function leaveParents(from: ParentFrom) {
+    const p = activeProfile();
+    if (from === 'settings' && p) {
+      void applyWorld(p.worldId);
+      setScreen({ name: 'settings' });
+    } else {
+      void refresh();
+      setScreen({ name: 'profiles' });
+    }
+  }
+
   function leaveEditor(from: EditFrom) {
     if (from === 'settings' && active) {
       // Back to the profile's own skin.
@@ -180,6 +206,7 @@ export function App() {
           onPick={(p) => openProfile(p, 'home')}
           onEdit={(p) => openProfile(p, 'edit')}
           onCreate={() => setScreen({ name: 'edit', from: 'profiles' })}
+          onParents={() => setScreen({ name: 'parentGate', from: 'profiles' })}
         />
       );
     case 'edit':
@@ -277,7 +304,12 @@ export function App() {
           }}
           onEdit={() => active && setScreen({ name: 'edit', profile: active, from: 'settings' })}
           onPlacement={() => setScreen({ name: 'placement' })}
+          onParents={() => setScreen({ name: 'parentGate', from: 'settings' })}
         />
       );
+    case 'parentGate':
+      return <ParentGate exitLabel={PARENT_EXIT[screen.from]} onExit={() => leaveParents(screen.from)} onPass={() => setScreen({ name: 'parentHome', from: screen.from })} />;
+    case 'parentHome':
+      return <ParentHome profiles={profiles} exitLabel={PARENT_EXIT[screen.from]} onExit={() => leaveParents(screen.from)} />;
   }
 }

@@ -18,6 +18,8 @@ interface Props {
   onEdit: () => void;
   /** The placement game again ("what do I know?"). */
   onPlacement: () => void;
+  /** The parents' area (phase 8, behind a door for adults). */
+  onParents: () => void;
 }
 
 type PinStep = 'idle' | 'new' | 'confirm' | 'saved' | 'removed';
@@ -29,7 +31,7 @@ const MOTION: { id: MotionChoice; label: string; value: boolean | null }[] = [
   { id: 'off', label: 'מלאה', value: false }
 ];
 
-export function SettingsScreen({ onBack, onEdit, onPlacement }: Props) {
+export function SettingsScreen({ onBack, onEdit, onPlacement, onParents }: Props) {
   const profile = useActiveProfile();
   const voice = useHebrewVoice();
   const [pinStep, setPinStep] = useState<PinStep>('idle');
@@ -248,6 +250,22 @@ export function SettingsScreen({ onBack, onEdit, onPlacement }: Props) {
           }}
         >
           🔍 {byGender(profile, 'לבדוק שוב מה אני יודע', 'לבדוק שוב מה אני יודעת', 'לבדוק שוב מה אנחנו יודעים')}
+        </button>
+      </section>
+
+      <section class="settings-section">
+        <h2 class="section-title">👪 להורים</h2>
+        <p class="settings-note">התקדמות, יעד יומי, הגדרות נוספות וגיבוי. הכניסה למבוגרים בלבד.</p>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-testid="open-parents"
+          onClick={() => {
+            playSfx('tap');
+            onParents();
+          }}
+        >
+          👪 לאזור ההורים
         </button>
       </section>
 

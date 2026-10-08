@@ -1,0 +1,63 @@
+/* The parents' area (phase 8): loaded with its screens, not in the first load.
+   Colours: CSS variables only (the neutral base look). */
+
+.parent-gate-body.is-arming {
+  pointer-events: none;
+}
+
+.parent-gate-note {
+  text-align: center;
+}
+
+.parent-kids {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.parent-kid {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+}
+
+button.parent-kid {
+  cursor: pointer;
+}
+
+button.parent-kid:active {
+  transform: scale(0.98);
+}
+
+.parent-kid-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.parent-kid-name {
+  font-weight: 800;
+}
+
+.parent-kid-sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.parent-kid-go {
+  font-size: 1.6rem;
+  color: var(--ink-soft);
+}
