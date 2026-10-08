@@ -67,7 +67,7 @@ export interface PromptParts {
   speech: string;
 }
 
-/** Why a wrong answer is wrong, for hints now and for choosing explanations later (phase 6). */
+/** Why a wrong answer is wrong: chooses the hint, and (counted per skill, phase 6) the questions. */
 export type ErrorTag =
   | 'count-off-by-one' // one too many or too few: a counting slip
   | 'added' // added instead of subtracting
@@ -158,10 +158,15 @@ export interface Step {
   action?: Action;
 }
 
-/** The hint for a mistake: one made for that kind of mistake, else the default (the first). */
-export function pickHint(q: Pick<Question, 'hints' | 'errorTags'>, wrong?: Answer): Hint {
+/**
+ * The hint for a mistake: one made for that kind of mistake; else one for the child's most
+ * common mistake on this skill (`common`, from the mastery engine – also for a hint shown before
+ * any mistake); else the default (the first).
+ */
+export function pickHint(q: Pick<Question, 'hints' | 'errorTags'>, wrong?: Answer, common?: ErrorTag): Hint {
   const tag = wrong === undefined ? undefined : q.errorTags[String(wrong)];
-  return (tag && q.hints.find((h) => h.for?.includes(tag))) || q.hints.find((h) => !h.for) || q.hints[0];
+  const forTag = (t: ErrorTag | undefined) => (t ? q.hints.find((h) => h.for?.includes(t)) : undefined);
+  return forTag(tag) || forTag(common) || q.hints.find((h) => !h.for) || q.hints[0];
 }
 
 export interface Question {

@@ -3,7 +3,9 @@
 //   → [PIN] → the quest map (the profile's main screen, phase 4) ⇄ settings / editing;
 //   map ⇄ a station (lesson, practice round, chest, boss) – back to the map, where the hero walks on;
 //   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice);
-//   map ⇄ "my collection" (coins and collectibles of every world, phase 5).
+//   map ⇄ "my collection" (coins and collectibles of every world, phase 5);
+//   map ⇄ a review station (made on the fly from skills due for review, phase 6);
+//   a new profile (if asked) or settings → the placement game → the map (phase 6).
 // Shared screens (splash, "who is playing?", PIN) use the base look and default settings; a
 // profile's own screens use its world and its settings (applyWorld + activateProfile).
 // Music (audio/music.ts) plays the world's loop on the profile's own screens only; lessons are
@@ -38,6 +40,8 @@ const Collection = lazy(() => import('../screens/Collection').then((m) => m.Coll
 const GameHost = lazy(() => import('../screens/GameHost').then((m) => m.GameHost));
 // A lesson brings the teaching animations (shared with the game).
 const Lesson = lazy(() => import('../screens/Lesson').then((m) => m.Lesson));
+// The placement game (with the game's parts).
+const Placement = lazy(() => import('../screens/Placement').then((m) => m.Placement));
 
 /** Where "back" from the editor goes. */
 type EditFrom = 'profiles' | 'settings' | 'first';
@@ -54,13 +58,15 @@ type Screen =
   | { name: 'practice' }
   | { name: 'settings' }
   | { name: 'game'; skillId: SkillId; from: From; quest?: { nodeId: string; level: number } }
+  | { name: 'review'; skillIds: SkillId[]; count: number }
+  | { name: 'placement' }
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
   | { name: 'chest'; nodeId: string }
   | { name: 'boss'; nodeId: string }
   | { name: 'collection' };
 
 /** Screens with the world's music (the rest are quiet). */
-const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'chest', 'boss', 'collection', 'settings'];
+const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'review', 'placement', 'chest', 'boss', 'collection', 'settings'];
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -116,18 +122,19 @@ export function App() {
     setScreen(list.length === 0 ? { name: 'edit', from: 'first' } : { name: 'profiles' });
   }
 
-  async function enterHome(p: Profile) {
+  async function enterHome(p: Profile, placement = false) {
     activateProfile(p);
     void setLastProfileId(p.id);
     setLastId(p.id);
     await applyWorld(p.worldId);
-    setScreen({ name: 'map' });
+    setScreen(placement ? { name: 'placement' } : { name: 'map' });
   }
 
   /** A station on the map was tapped. */
   function openNode(n: QuestNode) {
     if (n.kind === 'lesson') setScreen({ name: 'lesson', skillId: n.skillId, from: 'map', nodeId: n.id });
     else if (n.kind === 'practice') setScreen({ name: 'game', skillId: n.skillId, from: 'map', quest: { nodeId: n.id, level: n.level } });
+    else if (n.kind === 'review') setScreen({ name: 'review', skillIds: n.skillIds, count: n.count });
     else if (n.kind === 'chest') setScreen({ name: 'chest', nodeId: n.id });
     else setScreen({ name: 'boss', nodeId: n.id });
   }
@@ -138,10 +145,10 @@ export function App() {
     else setScreen({ name: 'edit', profile: p, from: 'profiles' });
   }
 
-  async function handleSave(p: Profile) {
+  async function handleSave(p: Profile, placement = false) {
     await saveProfile(p);
     await refresh();
-    await enterHome(p);
+    await enterHome(p, placement);
   }
 
   async function handleDelete(p: Profile) {
@@ -180,7 +187,7 @@ export function App() {
         <ProfileEditor
           key={screen.profile?.id ?? 'new'}
           profile={screen.profile}
-          onSave={(p) => void handleSave(p)}
+          onSave={(p, placement) => void handleSave(p, placement)}
           onDelete={(p) => void handleDelete(p)}
           onCancel={() => leaveEditor(screen.from)}
         />
@@ -237,6 +244,12 @@ export function App() {
           onHome={() => setScreen(screen.from === 'map' ? { name: 'map' } : { name: 'practice' })}
         />
       );
+    case 'review':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <GameHost key="review" profile={active} review={{ skillIds: screen.skillIds, count: screen.count }} onHome={() => setScreen({ name: 'map' })} />;
+    case 'placement':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <Placement key={active.id} profile={active} onDone={() => setScreen({ name: 'map' })} />;
     case 'lesson':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return (
@@ -263,6 +276,7 @@ export function App() {
             setScreen({ name: 'map' });
           }}
           onEdit={() => active && setScreen({ name: 'edit', profile: active, from: 'settings' })}
+          onPlacement={() => setScreen({ name: 'placement' })}
         />
       );
   }

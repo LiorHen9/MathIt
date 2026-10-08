@@ -28,6 +28,8 @@ interface Props {
   /** After two mistakes: the right answer is marked. */
   reveal: boolean;
   hint: Hint | null;
+  /** The hint came before any mistake (a struggling child). */
+  earlyHint?: boolean;
   /** The hero is explaining below: the card keeps only the exercise, no answers to pick. */
   explaining?: boolean;
   onAnswer: (a: Answer, from: Element) => void;
@@ -39,7 +41,7 @@ function say(a: Answer): string {
   return typeof a === 'number' ? String(a) : SIGN_NAME[a];
 }
 
-export function Pop({ question: q, mode, done, tried, reveal, hint, explaining = false, onAnswer }: Props) {
+export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = false, explaining = false, onAnswer }: Props) {
   const look = useWorld().templateSkins?.pop.look ?? 'magic';
   const [typed, setTyped] = useState('');
   const [replay, setReplay] = useState(0);
@@ -99,7 +101,7 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, explaining =
           ])}
         </p>
         {hint && (
-          <p class="prompt-hint" data-testid="hint">
+          <p class="prompt-hint" data-testid="hint" data-early={earlyHint ? 'yes' : 'no'}>
             💡 {hint.text} <SpeakButton text={hint.text} class="speak-inline" />
           </p>
         )}

@@ -2,7 +2,7 @@
 // Learning Core: no UI, no worlds, no sounds. The map screen (screens/QuestMap.tsx) draws it.
 import type { SkillId } from '../types';
 
-export type NodeKind = 'lesson' | 'practice' | 'chest' | 'boss';
+export type NodeKind = 'lesson' | 'practice' | 'chest' | 'boss' | 'review';
 
 interface NodeBase {
   /** Stable: saved progress is keyed by it. Never rename a shipped id. */
@@ -49,7 +49,19 @@ export interface BossNode extends NodeBase {
   bossId: 'muddler';
 }
 
-export type QuestNode = LessonNode | PracticeNode | ChestNode | BossNode;
+/**
+ * A review station (phase 6, docs/ARCHITECTURE.md §7.2): made on the fly when skills are due for
+ * review – never part of a chapter, never saved as a station (its id is not a chapter's), the
+ * quest record only remembers when one was done. A short mixed round, 0–3 stars.
+ */
+export interface ReviewNode extends NodeBase {
+  kind: 'review';
+  skillIds: SkillId[];
+  /** Questions in the review. */
+  count: number;
+}
+
+export type QuestNode = LessonNode | PracticeNode | ChestNode | BossNode | ReviewNode;
 
 export interface Section {
   id: string;

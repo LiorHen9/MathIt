@@ -290,17 +290,20 @@ async function stored(p) {
     await layoutOk(p, 'game (answer shown)');
     await p.tap('[data-testid=next]');
     await waitNext(p, 3);
-    step('two mistakes: the answer is shown, the combo resets, "next" moves on');
+    // Phase 6: a question whose answer was shown comes back later – the round grows to 9.
+    must((await p.$$('.round-dot')).length === 9, 'the shown question should come back (9 dots)');
+    step('two mistakes: the answer is shown, the combo resets, "next" moves on, the question will come back');
 
-    // Q5–Q8 right.
-    for (let i = 4; i < 8; i++) {
+    // Q5–Q9 right (Q6 is the comeback; three in a row move the level up).
+    for (let i = 4; i < 9; i++) {
       must((await qIndex(p)) === i, `question ${i + 1} expected, at ${(await qIndex(p)) + 1}`);
+      if (i === 5) must((await p.getAttribute('.game', 'data-repeat')) === 'yes', 'question 6 should be the comeback');
       await answer(p, await solve(p));
-      await waitNext(p, i, i === 7);
+      await waitNext(p, i, i === 8);
     }
 
     // --- The end: stars one by one, rising notes, then the fanfare ---
-    must((await p.getAttribute('.celebrate', 'data-stars')) === '2', '6½ of 8 should give 2 stars, got ' + (await p.getAttribute('.celebrate', 'data-stars')));
+    must((await p.getAttribute('.celebrate', 'data-stars')) === '2', '7½ of 9 should give 2 stars, got ' + (await p.getAttribute('.celebrate', 'data-stars')));
     must(!(await p.$('[data-testid=star-1].is-on')), 'stars should appear one by one, not at once');
     await p.waitForSelector('[data-testid=star-1].is-on');
     must(!(await p.$('[data-testid=star-2].is-on')), 'the second star came with the first');
@@ -322,9 +325,11 @@ async function stored(p) {
     await layoutOk(p, 'celebration');
     db = await stored(p);
     const st = db.states.find((x) => x.skillId === 'add.within10');
-    must(st && st.profileId === 'p_old' && st.bestStars === 2 && st.rounds === 1 && st.level === 1, 'saved result: ' + JSON.stringify(st));
+    // Phase 6: the level the round reached (3 right in a row at the end → 2), and the mastery engine's record.
+    must(st && st.profileId === 'p_old' && st.bestStars === 2 && st.rounds === 1 && st.level === 2, 'saved result: ' + JSON.stringify(st));
+    must(st.attempts === 9 && st.mastery > 0 && st.errorCounts && Object.values(st.errorCounts).reduce((a, b) => a + b, 0) === 3, 'mastery saved: ' + JSON.stringify(st));
     must(db.keys.includes('p_old:add.within10'), 'skillStates key: ' + db.keys);
-    step('end: 2 stars appear one by one (rising notes), fanfare + confetti + cheer, result saved (best 2, level 1)');
+    step('end: 2 stars appear one by one (rising notes), fanfare + confetti + cheer, result saved (best 2, level 2 reached, 9 answers)');
 
     // --- Again: a perfect round, the celebration skipped with a tap ---
     await p.tap('[data-testid=again]');
@@ -352,13 +357,13 @@ async function stored(p) {
     await p.waitForFunction(() => document.querySelectorAll('[data-skill="add.within10"] .skill-stars .is-on').length === 3);
     db = await stored(p);
     const st2 = db.states.find((x) => x.skillId === 'add.within10');
-    must(st2.bestStars === 3 && st2.rounds === 2 && st2.level === 2, 'after a perfect round: ' + JSON.stringify(st2));
+    must(st2.bestStars === 3 && st2.rounds === 2 && st2.level === 3, 'after a perfect round: ' + JSON.stringify(st2));
     await p.tap('[data-skill="add.within10"]');
     await p.waitForSelector('.game .pop');
-    must((await p.getAttribute('.game', 'data-level')) === '2', 'the next round should be level 2');
+    must((await p.getAttribute('.game', 'data-level')) === '3', 'the next round should be level 3');
     await p.tap('[data-testid=game-home]');
     await p.waitForSelector('.home');
-    step('home shows the best stars (3); the next addition round starts at level 2');
+    step('home shows the best stars (3); the next addition round starts at level 3 (reached inside the perfect round)');
 
     must(errors.length === 0, 'errors: ' + errors.join('\n'));
     await ctx.close();

@@ -11,24 +11,32 @@
 // one says why ("first …" / "N more stars"). Settings, "who is playing?", free practice (the old
 // home screen) and "my collection" stay one tap away. Loaded lazily.
 //
+// Phase 6 (the mastery engine): when skills are due for review, a review station appears beside
+// the hero (made on the fly – core/quest reviewNode – never saved as a station), opening once in
+// a burst like any station; a mastered skill wears a small crown on its last practice station.
+//
 // The map wears the world's skin (World.mapSkin, phase 5): its ground and scenery (a pitch, a
 // garden, a dojo, a cave, a stage…), its station shapes and path, icons on the section banners,
 // the world's boss on the boss station, and a one-sentence story for the chapter. The world's
 // coins show beside the stars.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { JOURNEY, allNodes, chapterMaxStars, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, type QuestNode } from '../core/quest/index';
+import { JOURNEY, allNodes, chapterMaxStars, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, reviewNode, reviewSkills, type QuestNode, type ReviewNode } from '../core/quest/index';
+import { dueSkills, isMastered } from '../core/mastery/index';
+import type { SkillId } from '../core/types';
+import { now } from '../app/clock';
+import { listSkillStates, type SkillState } from '../storage/skillStates';
 import { getSkill } from '../core/skills/index';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
 import { Hero, useHeroMood } from '../fx/Hero';
 import { hop, reducedMotion } from '../fx/motion';
 import { Feedback, NarrationHelp, SpeakButton, useAutoSpeak, type Message } from '../components/Speak';
 import { byGender, stageLabel, type Profile } from '../profiles/profiles';
-import { getQuestRecord, saveMapState, type QuestRecord } from '../storage/questProgress';
+import { getQuestRecord, revealReview, reviewRevealed, saveMapState, type QuestRecord } from '../storage/questProgress';
 import { bossOf, useWorld } from '../worlds/index';
 import { CoinChip, useCoins } from '../components/Coins';
 import { playSfx, type SfxName } from '../audio/sfx';
 import { BossArt, ChestArt } from './quest/art';
-import { MAP_W, heroSpot, mapLayout, type Spot } from './quest/layout';
+import { MAP_W, heroSide, heroSpot, mapLayout, type Spot } from './quest/layout';
 
 interface Props {
   profile: Profile;
@@ -48,8 +56,13 @@ const STRIDE_MS = 300;
 let msgId = 0;
 const say = (text: string, tone: Message['tone'] = 'info'): Message => ({ text, tone, id: ++msgId });
 
+/** The review station's size (map units) and how far beside the hero it stands. */
+const REVIEW_SIZE = 58;
+const REVIEW_GAP = 74;
+
 export function nodeIcon(n: QuestNode): string {
   if (n.kind === 'lesson') return '📖';
+  if (n.kind === 'review') return '🔁';
   if (n.kind === 'practice') return getSkill(n.skillId)?.icon ?? '⭐';
   return n.kind === 'chest' ? '🎁' : '👾';
 }
@@ -61,6 +74,9 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   const nodes = useMemo(() => allNodes(), []);
   const chapter = JOURNEY.chapters[0];
   const [rec, setRec] = useState<QuestRecord | null>(null);
+  const [skills, setSkills] = useState<Record<string, SkillState>>({});
+  const [reviewFresh, setReviewFresh] = useState(false);
+  const reviewRef = useRef<HTMLButtonElement>(null);
   const [heroAt, setHeroAt] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string[]>([]);
   const [walking, setWalking] = useState(false);
@@ -84,8 +100,9 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
 
   useEffect(() => {
     let alive = true;
-    void getQuestRecord(profile.id).then((r) => {
+    void Promise.all([getQuestRecord(profile.id), listSkillStates(profile.id)]).then(([r, st]) => {
       if (!alive) return;
+      setSkills(st);
       setRec(r);
       setHeroAt(r.at ?? nodes[0].id);
     });
@@ -106,6 +123,23 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
 
   const status = (n: QuestNode) => (rec ? nodeStatus(n, rec) : 'locked');
   const current = rec ? nextNode(rec) : null;
+  // Skills due for review → a review station, beside where the hero will stand.
+  const review: ReviewNode | null = useMemo(() => {
+    const due = dueSkills(skills, now());
+    if (!due.length) return null;
+    const played = (Object.values(skills) as SkillState[]).filter((s) => s.attempts > 0).sort((a, b) => b.mastery - a.mastery).map((s) => s.skillId as SkillId);
+    return reviewNode(reviewSkills(due, played));
+  }, [skills]);
+  // The crown: on the last practice station of every mastered skill.
+  const crowned = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of Object.keys(skills)) {
+      if (!isMastered(skills[id])) continue;
+      const last = nodes.filter((n) => n.kind === 'practice' && n.skillId === id).at(-1);
+      if (last) out.add(last.id);
+    }
+    return out;
+  }, [skills]);
   const spotOf = (id: string | null): Spot => layout.spots.find((s) => s.node.id === id) ?? layout.spots[0];
   const heroXY = (id: string | null) => {
     const f = heroSpot(spotOf(id));
@@ -130,6 +164,8 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
     ? null
     : opened.length
       ? `נפתחה תחנה חדשה: ${titleOf(opened.at(-1)!)}!`
+      : review && !reviewRevealed(rec)
+        ? 'נפתחה תחנת חזרה: בואו ניזכר במה שלמדנו!'
       : newcomer && story
         ? story
         : current
@@ -144,10 +180,12 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
     const from = rec.at ?? nodes[0].id;
     const to = current?.id ?? from;
     const pending = opened.map((n) => n.id);
+    const reviewNew = !!review && !reviewRevealed(rec);
     window.scrollTo({ top: scrollTop(from), behavior: 'auto' });
-    if (to === from && !pending.length) return;
+    if (to === from && !pending.length && !reviewNew) return;
     // Saved first: leaving in the middle of the walk does not replay it next time.
-    void saveMapState(profile.id, to, pending);
+    if (to !== from || pending.length) void saveMapState(profile.id, to, pending);
+    if (reviewNew) void revealReview(profile.id);
     const fi = nodes.findIndex((n) => n.id === from);
     const ti = nodes.findIndex((n) => n.id === to);
     const reveal = () => {
@@ -157,6 +195,11 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
           emit({ type: 'unlock' }, { el: nodeRefs.current[id] });
         }, k * 420)
       );
+      if (reviewNew)
+        later(() => {
+          setReviewFresh(true);
+          emit({ type: 'unlock' }, { el: reviewRef.current });
+        }, pending.length * 420 + 200);
     };
     if (ti > fi) later(() => void walk(fi, ti).then(reveal), reducedMotion() ? 150 : 450);
     else {
@@ -223,6 +266,11 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
 
   function tapNode(n: QuestNode) {
     if (!rec) return;
+    if (n.kind === 'review') {
+      playSfx('tap');
+      onNode(n);
+      return;
+    }
     const st = status(n);
     if (st === 'locked') {
       const why = lockReason(n, rec);
@@ -245,10 +293,18 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   if (!rec) return <main class="screen loading" aria-busy="true" />;
 
   const stars = chapterStars(chapter, rec);
+  // The review station stands beside the hero, on the side away from the station.
+  const reviewSpot = (() => {
+    if (!review) return null;
+    const s = spotOf(current?.id ?? nodes.at(-1)!.id);
+    const h = heroSpot(s);
+    const x = Math.max(REVIEW_SIZE / 2 + 8, Math.min(MAP_W - REVIEW_SIZE / 2 - 8, h.x + heroSide(s) * REVIEW_GAP));
+    return { x, y: s.y };
+  })();
   const nextTitle = current ? titleOf(current) : '';
   const idle = current ? byGender(profile, `גע בתחנה הבאה: ${nextTitle}`, `געי בתחנה הבאה: ${nextTitle}`, `געו בתחנה הבאה: ${nextTitle}`) : 'כל התחנות הושלמו! 🏆';
   return (
-    <main class="screen quest-map" data-current={current?.id ?? ''} data-walking={walking ? 'yes' : 'no'} data-world={world.id}>
+    <main class="screen quest-map" data-current={current?.id ?? ''} data-review={review ? review.skillIds.join(',') : ''} data-walking={walking ? 'yes' : 'no'} data-world={world.id}>
       <header class="topbar">
         <button
           type="button"
@@ -381,7 +437,8 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
                 data-kind={n.kind}
                 data-status={st}
                 data-stars={got}
-                aria-label={`${titleOf(n)} – ${what}`}
+                data-mastered={crowned.has(n.id) ? 'yes' : 'no'}
+                aria-label={`${titleOf(n)} – ${what}${crowned.has(n.id) ? ' – נשלט' : ''}`}
                 onClick={() => tapNode(n)}
               >
                 {n.kind === 'boss' ? (
@@ -412,6 +469,11 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
                   חדש!
                 </span>
               )}
+              {crowned.has(n.id) && (
+                <span class="map-crown" data-testid="map-crown" aria-hidden="true">
+                  👑
+                </span>
+              )}
               {max > 0 && (
                 <span class="map-stars-row" aria-hidden="true">
                   {Array.from({ length: max }, (_, k) => (
@@ -425,6 +487,38 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
             </div>
           );
         })}
+
+        {review && reviewSpot && (
+          <div
+            class={`map-spot k-review is-open ${reviewFresh ? 'is-new' : ''}`}
+            style={`left:${(reviewSpot.x / MAP_W) * 100}%;top:${(reviewSpot.y / layout.height) * 100}%;--size:${REVIEW_SIZE}px`}
+          >
+            <button
+              type="button"
+              class="map-node"
+              ref={reviewRef}
+              data-node={review.id}
+              data-kind="review"
+              data-status="open"
+              data-testid="review-node"
+              aria-label={`חזרה: ${review.skillIds.map((id) => getSkill(id)?.title ?? id).join(', ')}`}
+              onClick={() => tapNode(review)}
+            >
+              <span class="map-icon" aria-hidden="true">
+                {world.icon}
+              </span>
+              <span class="map-review-badge" aria-hidden="true">
+                🔁
+              </span>
+            </button>
+            {reviewFresh && (
+              <span class="map-new" aria-hidden="true">
+                חדש!
+              </span>
+            )}
+            <span class="map-label">חזרה</span>
+          </div>
+        )}
 
         {world.hero && scale > 0 && (
           <button

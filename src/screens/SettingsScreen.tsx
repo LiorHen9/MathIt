@@ -1,6 +1,6 @@
 // Per-profile settings (adapted from ChessIt): the world, effects, music, narration, volume,
-// reduced motion and the PIN. Each change is saved at once and switches the real module
-// (profiles/settings.ts). Loaded lazily (not part of the first load).
+// reduced motion, the PIN, and the placement game again (phase 6). Each change is saved at once
+// and switches the real module (profiles/settings.ts). Loaded lazily (not part of the first load).
 import { useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { speak, useHebrewVoice } from '../audio/speech';
@@ -16,6 +16,8 @@ import { applyWorld } from '../worlds/index';
 interface Props {
   onBack: () => void;
   onEdit: () => void;
+  /** The placement game again ("what do I know?"). */
+  onPlacement: () => void;
 }
 
 type PinStep = 'idle' | 'new' | 'confirm' | 'saved' | 'removed';
@@ -27,7 +29,7 @@ const MOTION: { id: MotionChoice; label: string; value: boolean | null }[] = [
   { id: 'off', label: 'מלאה', value: false }
 ];
 
-export function SettingsScreen({ onBack, onEdit }: Props) {
+export function SettingsScreen({ onBack, onEdit, onPlacement }: Props) {
   const profile = useActiveProfile();
   const voice = useHebrewVoice();
   const [pinStep, setPinStep] = useState<PinStep>('idle');
@@ -235,6 +237,17 @@ export function SettingsScreen({ onBack, onEdit }: Props) {
         <h2 class="section-title">👤 הפרופיל</h2>
         <button type="button" class="btn btn-secondary" data-testid="edit-profile" onClick={onEdit}>
           ✎ שם, דמות, כיתה ופנייה
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-testid="placement-again"
+          onClick={() => {
+            playSfx('tap');
+            onPlacement();
+          }}
+        >
+          🔍 {byGender(profile, 'לבדוק שוב מה אני יודע', 'לבדוק שוב מה אני יודעת', 'לבדוק שוב מה אנחנו יודעים')}
         </button>
       </section>
 

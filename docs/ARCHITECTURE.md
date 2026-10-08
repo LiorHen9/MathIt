@@ -172,6 +172,7 @@ Journey (לפי טווח גיל)
 
 **מצב היום (שלב 4):** `core/quest/` – נתונים ופונקציות טהורות, בלי UI. `Journey → Chapter → Section → Node`; ה-Section הוא באנר במפה ("מספרים עד 10"). סוגי תחנות: `lesson {skillId}` (כוכב אחד), `practice {skillId, level}` (0–3, רמה קבועה לתחנה), `chest {prize}` (בלי כוכבים, "נעשתה" כשנפתחה), `boss {skillIds, level, hits, bossId}` (1–3). `game`, `puzzle` ו-`review` – בשלבים 6–9. תנאי פתיחה: התחנה הקודמת נעשתה, ועוד `needStars` כוכבים בפרק אם הוגדר (תיבה, בוס). `nodeStatus` (תחנה שנעשתה מוצגת כ-done גם אם הושגה מחוץ לסדר, למשל ממיגרציה), `lockReason`, `nextNode` (הראשונה הפתוחה שלא נעשתה), `chapterStars`, `withStars` (שומר את הטוב ביותר), `progressFromSkills` (המרת `skillStates` מלפני המפה), `journeyProblems` (לבדיקות). פרק 1 – 16 תחנות, ids יציבים (`c1-…`), כי ההתקדמות נשמרת לפיהם.
 - המסך: `screens/QuestMap.tsx` + `screens/quest/layout.ts` (מיקומים ביחידות מפה, רוחב 360, שביל מתפתל לפי סינוס, מקטע SVG לכל מרווח בין תחנות; הגיבור עומד **ליד** התחנה ולא עליה, כדי שאפשר יהיה ללחוץ עליה) + `screens/quest/art.tsx` (תיבה ובוס ב-SVG, צבעים ממשתני העולם בלבד).
+- **שלב 6 – תחנת חזרה:** `ReviewNode { kind: 'review', skillIds, count }` נוצרת בזמן ריצה (`reviewNode`, id קבוע `review` שאינו של אף פרק, ולכן `normalizeQuestRecord` לא שומר לה כוכבים; `journeyProblems` אוסר אותה בתוך פרק). המפה מציגה אותה ליד הגיבור (בצד הרחוק מהתחנה) כשיש מיומנויות שהגיע זמנן (`dueSkills`), עם פיצוץ `unlock` פעם אחת (`questProgress.reviewRevealed` מול `reviewedAt`). `reviewSkills` משלים ל-2–3 מיומנויות מאלה ששוחקו. `progressFromPlacement` – תוצאת מבחן המיקום על המפה (תחנות ידועות "נעשו", תיבה שדולגה נפתחת, בוס לעולם לא).
 - בכניסה למפה: גלילה לגיבור; אם `at` שונה מהתחנה הבאה – הליכה (WAAPI על `transform` לאורך נקודות מ-`getPointAtLength`, צעד כל 300ms); ואז `unlock` לכל תחנה פתוחה שלא ב-`revealed`. מצב המפה (`at`, `revealed`) נשמר **לפני** האנימציה, כך שיציאה באמצע לא מריצה אותה שוב. תחנה שנפתחה ועוד לא "נחשפה" נראית סגורה עד הפיצוץ.
 
 ---
@@ -294,6 +295,8 @@ interface WorldFx {
 
 **מצב היום (שלב 2):** האירועים `tap{key?}`, `correct{streak}`, `wrong{attempt}`, `hint`, `starEarned{n}`, `roundDone{stars, skipped?}` (`bossHit`, `unlock`, `coin`... יתווספו עם התחנות שלהם). `planFeedback(event, worldId)` היא פונקציה טהורה שמחזירה `FxPlan` (צליל + אפשרויות, מצב גיבור, תנועה, חלקיקים, אסימון שעף), ו-`emit(event, { el, to })` מבצע אותה: `el` הוא האלמנט שבו קרה הדבר (בועה, מקש, כוכב), `to` – לאן הפרס עף (נקודת ההתקדמות). `hushFeedback()` עוצר חגיגה (צלילים, חלקיקים, גיבור). יומן: `window.__mathitFx` עם `type, detail, world, sound, pitch, hero, motion, particles`. `tests/worlds/check.ts` בודק שכל אירוע ממופה בכל עולם לצליל ולמצב גיבור קיימים.
 
+**מצב היום (שלב 6):** אירוע `levelUp{level}` – שלוש נכונות ברצף העלו את הרמה בתוך הסבב: צליל `unlock`, גיבור `cheer`, pop וחלקיקים על שבב "שלב N" (בכל עולם בסוג החלקיקים של ה-`unlock` שלו). תחנת החזרה נפתחת ב-`unlock` הקיים, ורמז מוקדם הוא `hint` רגיל.
+
 **מצב היום (שלב 5):** `planFor(e, world)` = `sharedPlan(e)` + `world.fx[e.type]`; `FxPlan.word`; אירוע `coin{n}` (מלווה, בלי מצב גיבור); סוגי חלקיקים לכל עולם. ביומן: `pack`, `kind`, `fly`, `word`.
 
 **מצב היום (שלב 4):** אירועי מסע – `walk{steps, ms}` (גיבור הולך), `step{n}`, `unlock` (פיצוץ ניצוצות בתחנה + pop), `locked` (שתי דפיקות רכות ו-shake, לא "טעות"), `chestShake` (`wobble`), `chestOpen{prize}` (הפרס עף מהתיבה ל-`to`), `bossAppear`, `bossHit{n, left}` (`tremble` לבוס, `attack` לגיבור, צליל `hit` עולה – `hitPitch`), `bossDodge` (`dodge`, שקט ליד ה-`wrong` הרך), `bossDefeated{stars}` (`victory` וקונפטי – החגיגה הגדולה ביותר). `COMPANION_TYPES` (`step`, `bossDodge`) לא משנים את מצב הגיבור, כי הם מלווים אירוע אחר. ב-`FxPlan` נוסף `heroMs`; תנועות חדשות ב-`fx/motion.ts`: `wobble`, `tremble`, `dodge`.
@@ -339,8 +342,12 @@ interface SkillState {
 - **רמת קושי**: 3 נכונות ברצף → עלייה; 2 שגויות → ירידה + רמז.
 - **שליטה ≥ 0.85** → המיומנות "נשלטת", נפתחות מיומנויות שתלויות בה.
 
+**מצב היום (שלב 6):** `core/mastery/` – טהור, בלי UI, בלי אחסון ובלי שעון (כל פונקציה מקבלת `now`). `MasteryFields` (בנוסף למה שבטבלה: `totalMs`, `reviewStep`) נשמרים בתוך רשומת `skillStates` דרך `normalizeSkillState`/`normalizeMastery`, בלי סכמה חדשה. `updateMastery` – `mastery += k·(target − mastery)`: נכון בניסיון ראשון ומהיר (≤5 שניות או ≤¾ מהממוצע של הילד) k=0.32, רגיל 0.25, איטי (≥20 שניות) 0.16, נכון אחרי רמז 0.06, תשובה שהוצגה – לעבר 0 ב-0.2. זמן מעל דקה נחשב דקה. `adaptLevel` (בתוך סבב, `adaptive.ts`): 3 → עלייה, 2 → ירידה ו-`earlyHint` (רמז אחרי 4 שניות, לפני טעות) עד 2 נכונות ברצף; תחנת מפה `fixed`. `commonError` – הטעות שחזרה הכי הרבה (לפחות פעמיים): משפיעה על `pickHint` ועל בחירת השאלות (`pick.ts`: `invites`, `pickQuestion` – מחצית מהשאלות מזמינות אותה, `makeAdaptiveRound`). `summary.ts`: `recommendByMastery` ו-`summarize` (לאזור ההורים: `getSkillSummary` ב-`storage/skillStates.ts`).
+
 ### 7.2 חזרה מרווחת (Spaced Review)
 מיומנויות נשלטות מקבלות `nextReview` שמתארך עם כל הצלחה (1 → 3 → 7 → 14 → 30 יום). תחנת "חזרה" במפה נבנית מהן.
+
+**מצב היום (שלב 6):** כל מיומנות ששוחקה מתוזמנת (לא רק נשלטות – כך גם מה שבלמידה חוזר). הצלחה בניסיון ראשון מקדמת את `reviewStep` רק כשהמיומנות "בזמן" (`nextReview ≤ now`), כך שסבב שלם באותו יום לא קופץ ל-30 יום. טעות מורידה צעד אחד ומתזמנת מעכשיו (`min` עם התאריך הקיים כשהוא בעתיד), ולכן אחרי תחנת חזרה המיומנות כבר לא "בזמן". תחנת החזרה: 6 שאלות, כל מיומנות ברמה שלה, כוכבים ומטבעות כמו בסבב, נשמרת רק כ-`reviewedAt`/`reviews`. השעון: `app/clock.ts` (`now()`); בבדיקות `?clockDays=N` או `localStorage['mathit-clock-days']`.
 
 ### 7.3 רמזים ותיקון טעויות
 1. טעות ראשונה → "נסה שוב" + רמז קל (למשל: הצגת ציר מספרים).
@@ -352,8 +359,12 @@ interface SkillState {
 **מצב היום (שלב 2):** שני ניסיונות לשאלה (`MAX_WRONG` = 2). טעות ראשונה → רעידה, `oops`, "נסה/נסי/נסו שוב" (`byGender`), ואחרי רגע רמז (טקסט + הכוכבים ממוספרים). טעות שנייה → התשובה מוצגת במקומה, הצעד האחרון של ההסבר מוקרא, וכפתור "הבא". ניקוד: בפעם הראשונה 1, בשנייה ½, אחרי הצגה 0; כוכבים לפי החלק מהמקסימום (90% → 3, 65% → 2, 35% → 1). 3 כוכבים מעלים רמה, 0 מורידים. בשלב 3 נוסף ההסבר המונפש, ובשלב 6 ההחזרה של השאלה בהמשך הסבב ומנוע השליטה.
 - סוג הטעות נשמר (למשל "שכח לפרוט"), ומשפיע על בחירת שאלות והסברים.
 
+**מצב היום (שלב 6):** `Ask` מדווח `onResult` אחד לכל שאלה (נכון/הוצג, טעויות לפני, זמן, סוגי הטעויות) ונשמר מיד (`recordAnswer`, בסבב, בחזרה, בבוס, בשיעור ובמבחן המיקום). הרמז מתאים לטעות שנעשתה, ואם אין לה רמז – לטעות הנפוצה של הילד (`pickHint(q, wrong, common)`); רמז מוקדם (`hintAfterMs`) בוחר לפי הטעות הנפוצה. שאלה שהתשובה שלה הוצגה חוזרת שתי שאלות אחר כך – "אחות" (`sisterOf`: אותה מיומנות ורמה, תרגיל אחר שמציע את אותו ErrorTag) או היא עצמה – פעם אחת, והסבב גדל לכל היותר ב-2 (8 → 10; חזרה 6 → 8). בבוס שאלה שהוצגה עדיין מוחלפת בחדשה (כמו בשלב 4).
+
 ### 7.4 התאמה לגיל
 בהגדרת הפרופיל בוחרים גיל או כיתה → נקודת התחלה במפה. אפשר להריץ **"מבחן מיקום"** קצר (משחקי, 10 שאלות) שמסמן מיומנויות כנשלטות ומדלג.
+
+**מצב היום (שלב 6):** `core/mastery/placement.ts` – `LADDER` של 10 שלבים (מיומנות × רמה, בסדר המפה של פרק 1), `startPlacement(band)` (גן → 0, א׳ → 2, ב׳+ → 4), `placementStep` (נכון בניסיון ראשון → +2 עד הטעות הראשונה ואז +1; טעות → −1; עוצר כשנמצא גבול – נכון בשלב ושגוי בבא אחריו – בנכון בראש הסולם, בטעות בתחתיתו, בשתי טעויות באותו שלב, או אחרי 10), `knownRung` (השלב הגבוה שנענה נכון בלי כישלון פתוח מתחתיו), `placementResult`. המסך `screens/Placement.tsx` (עצל): פתיח עם הגיבור, Ask מלא (רמז, הסבר), "דלג" שלא משנה דבר; בסוף `applyPlacement` (נשלטות: mastery ≥ 0.9, הרמה העליונה, `lessonSeen`, חזרה בעוד 3 ימים; חלקיות: הרמה הבאה ו-0.5) ו-`placeOnMap` (תחנות ידועות "נעשו", `revealed` כולל הכול – בלי פיצוצים, `at` = התחנה הבאה). כניסה: בפרופיל חדש ("איפה מתחילים?", ברירת מחדל "מההתחלה") ומ"הגדרות".
 
 ---
 
@@ -396,14 +407,16 @@ interface Profile {              // src/profiles/profiles.ts
 DB: mathit (IndexedDB)
  ├─ meta          { schemaVersion, deviceId, lastProfileId, errorLog }
  ├─ profiles      Profile (כולל settings) לפי id
- ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed, lessonSeen)
- ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated }  (שלב 4, גרסה 3)
+ ├─ skillStates   key: profileId:skillId  (שלב 2, גרסה 2: level, bestStars, rounds, lastPlayed, lessonSeen;
+ │                 שלב 6: mastery, attempts, recentResults, avgTimeMs, totalMs, lastPracticed, nextReview, reviewStep, errorCounts)
+ ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated,
+ │                 שלב 6: reviewedAt, reviews, reviewRevealed, placedAt }  (שלב 4, גרסה 3)
  ├─ inventory     key: profileId:worldId → { coins, items[], updated }  (שלב 5, גרסה 4)
  └─ sessions      לוג מקוצר לסטטיסטיקות (מוגבל ל-90 יום)
 ```
 - גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
 - **Repository layer** אחד — ה-UI לא ניגש ל-IndexedDB ישירות.
-- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 3 (שלב 4) מוסיפה את `questProgress` (רשומה אחת לפרופיל במקום `nodeProgress` לכל תחנה – המפה תמיד קוראת את כולה). ההמרה של מה שהיה לפני המפה קורית בקריאה הראשונה (`storage/questProgress.ts` → `progressFromSkills`), לא בתוך ה-upgrade, כך שהיא עובדת גם מגרסה 1 וגם אחרי שחזור גיבוי. מחיקת פרופיל מוחקת גם את הרשומה. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`, `deleteSkillStates` עם מחיקת פרופיל). שדות ה-`SkillState` המלא (שלב 6) יתווספו דרך `normalizeSkillState`, בלי מיגרציה נוספת.
+- **מיגרציות** לפי `schemaVersion` כבר מהיום הראשון. גרסה 3 (שלב 4) מוסיפה את `questProgress` (רשומה אחת לפרופיל במקום `nodeProgress` לכל תחנה – המפה תמיד קוראת את כולה). ההמרה של מה שהיה לפני המפה קורית בקריאה הראשונה (`storage/questProgress.ts` → `progressFromSkills`), לא בתוך ה-upgrade, כך שהיא עובדת גם מגרסה 1 וגם אחרי שחזור גיבוי. מחיקת פרופיל מוחקת גם את הרשומה. גרסה 2 (שלב 2) מוסיפה את `skillStates`; `storage/skillStates.ts` (`getSkillState`, `listSkillStates`, `saveRound`). שדות ה-`SkillState` המלא (שלב 6) נוספו דרך `normalizeSkillState`, בלי מיגרציה (`SCHEMA_VERSION` נשאר 4), וכך גם השדות החדשים של `questProgress` (`normalizeQuestRecord`). כתיבות ל-`skillStates` עוברות בתור לכל מפתח (`recordAnswer`, `saveRound`, `saveLessonSeen`, `applyPlacement`), כך ששמירה אחרי כל שאלה לא דורסת את הסוף של הסבב. מחיקת הרשומות עם הפרופיל נמצאת ב-`profiles.ts` (כדי שהמנוע לא ייכנס לטעינה הראשונה).
 - שמירה אחרי כל שאלה (לא רק בסוף משחק) — סגירת אפליקציה לא מוחקת התקדמות.
 - כפתור "ייצוא גיבוי" — כי נתונים מקומיים נמחקים בניקוי דפדפן.
 
@@ -418,14 +431,14 @@ MathIt/
 ├─ docs/ ARCHITECTURE.md · ROADMAP.md
 ├─ public/ icons, manifest, fonts/rubik.woff2
 ├─ src/
-│  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog
-│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), ובהמשך Parent
+│  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog, clock (שעון מוזרק לבדיקות)
+│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), Placement (מבחן מיקום), ובהמשך Parent
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
 │  │  ├─ skills/      הגדרות גרף המיומנויות (data)
 │  │  ├─ generators/  מחולל לכל משפחת מיומנויות, makeQuestion, makeRound
-│  │  ├─ mastery/     מנוע שליטה, חזרה מרווחת
+│  │  ├─ mastery/     engine (שליטה, חזרה מרווחת), adaptive (רמה בסבב), placement (מבחן מיקום), summary (המלצות, סיכום), pick (בחירת שאלות – עם המשחק)
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
 │  │  ├─ quest/       types, chapter1 (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates)
 │  │  ├─ story.ts     placeholders לבעיות מילוליות (fillText, fillQuestion)

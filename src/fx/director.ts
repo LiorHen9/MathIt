@@ -67,7 +67,10 @@ export type FeedbackEvent =
   | { type: 'bossDefeated'; stars: number }
   // Coins (phase 5).
   /** A coin flies into the purse; `n` = the coins there now. */
-  | { type: 'coin'; n: number };
+  | { type: 'coin'; n: number }
+  // The mastery engine (phase 6).
+  /** Three right in a row inside a round: the next questions are one level up (`level`). */
+  | { type: 'levelUp'; level: number };
 
 export type FeedbackType = FeedbackEvent['type'];
 export const FEEDBACK_TYPES: readonly FeedbackType[] = [
@@ -93,7 +96,8 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'bossHit',
   'bossDodge',
   'bossDefeated',
-  'coin'
+  'coin',
+  'levelUp'
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
@@ -136,7 +140,8 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'bossDodge' },
   { type: 'bossDefeated', stars: 3 },
   { type: 'coin', n: 1 },
-  { type: 'coin', n: 12 }
+  { type: 'coin', n: 12 },
+  { type: 'levelUp', level: 2 }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -246,6 +251,9 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
       return { sound: 'victory', hero: 'cheer', particles: { kind: 'confetti', count: 150, at: 'screen' } };
     case 'coin':
       return { sound: 'coin', soundOpts: { step: e.n }, hero: null, fly: '🪙' };
+    case 'levelUp':
+      // Like a station opening, smaller: the level chip bursts.
+      return { sound: 'unlock', hero: 'cheer', motion: 'pop', particles: { kind: 'sparkle', count: 30, at: 'el' } };
   }
 }
 

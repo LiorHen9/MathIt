@@ -1,7 +1,10 @@
 // Learning Core checks that need no browser: `bun tests/core/check.ts`
 // The seeded RNG; every generator over 1,000 seeds at every level (right answer, unique
 // distractors, everything in the level's range, no negatives, same seed = same question);
-// skills and recommendations; round scoring. Phase 6 adds the mastery engine.
+// skills and recommendations; round scoring; phase 6 the mastery engine (mastery steps, the level
+// inside a round, spaced review with an injected clock, questions weighted by the child's common
+// mistake over 1,000 seeds, comebacks, the placement game with a child who knows and one who
+// does not, placement on the map, the review station, recommendations and the summary).
 import { createRng } from '../../src/core/rng';
 import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/skills/index';
 import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
@@ -9,6 +12,34 @@ import { LESSONS, getLesson } from '../../src/core/lessons/index';
 import { MAX_WRONG, nextLevel, questionPoints, starsFor } from '../../src/core/round';
 import { JOURNEY, allNodes, chapterMaxStars, chapterStars, emptyProgress, findNode, journeyProblems, lockReason, maxStars, nextNode, nodeStatus, progressFromSkills, withStars, type QuestProgress } from '../../src/core/quest/index';
 import { DEFAULT_WORDS, PLACEHOLDERS, fillQuestion, fillText, hasPlaceholders, type StoryWords } from '../../src/core/story';
+import {
+  DAY,
+  MASTERED,
+  REVIEW_DAYS,
+  LADDER,
+  adaptLevel,
+  commonError,
+  dueSkills,
+  emptyMastery,
+  isDue,
+  isMastered,
+  knownRung,
+  normalizeMastery,
+  placementResult,
+  placementStep,
+  recommendByMastery,
+  rungKnown,
+  startLevelState,
+  startPlacement,
+  summarize,
+  updateMastery,
+  type AnswerResult,
+  type MasteryFields,
+  type PlacementState
+} from '../../src/core/mastery/index';
+import { invites, makeAdaptiveRound, pickQuestion, sisterOf } from '../../src/core/mastery/pick';
+import { REVIEW_ID, progressFromPlacement, reviewNode, reviewSkills } from '../../src/core/quest/index';
+import type { AgeBand, ErrorTag, SkillId } from '../../src/core/types';
 import { ACTION_KINDS, actionResult, actionValid, isCorrect, pickHint, type Action, type Answer, type Question, type Step, type Visual } from '../../src/core/types';
 
 let failures = 0;
@@ -459,6 +490,293 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   const plain = makeQuestion('add.within10', 2, 7);
   if (fillQuestion(plain, DEFAULT_WORDS) !== plain) fail('a question without placeholders should come back as it is');
   ok(`word problems: ${PLACEHOLDERS.length} placeholders, stories filled with no {…} left, the math unchanged, a noun only after 2 or more, neutral Hebrew`);
+}
+
+
+// ---------- Mastery engine (core/mastery) ----------
+const T0 = Date.UTC(2026, 9, 1, 8);
+const right = (ms = 8000): AnswerResult => ({ correct: true, wrongBefore: 0, ms });
+const afterHint: AnswerResult = { correct: true, wrongBefore: 1, ms: 9000, errorTags: ['count-off-by-one'] };
+const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorTags: ['added', 'count-off-by-one'] };
+{
+  let s = emptyMastery();
+  const up = updateMastery(s, right(), T0);
+  if (!(up.mastery > 0)) fail('mastery: a right answer should raise it');
+  const quick = updateMastery(s, right(2000), T0);
+  const slow = updateMastery(s, right(30000), T0);
+  if (!(quick.mastery > up.mastery && up.mastery > slow.mastery)) fail(`mastery: quick ${quick.mastery} > normal ${up.mastery} > slow ${slow.mastery}`);
+  const hinted = updateMastery(s, afterHint, T0);
+  if (!(hinted.mastery > 0 && hinted.mastery < slow.mastery)) fail(`mastery: right after a hint should raise less (${hinted.mastery})`);
+  const high = { ...emptyMastery(), mastery: 0.8, attempts: 10 };
+  const down = updateMastery(high, shownR, T0);
+  if (!(down.mastery < 0.8)) fail('mastery: a shown answer should lower it');
+  if (down.errorCounts.added !== 1 || down.errorCounts['count-off-by-one'] !== 1) fail('mastery: mistakes counted by kind ' + JSON.stringify(down.errorCounts));
+  // Steady right answers reach "mastered", never above 1; quick ones sooner.
+  let n = 0;
+  for (s = emptyMastery(); !isMastered(s) && n < 50; n++) s = updateMastery(s, right(), T0 + n);
+  let nq = 0;
+  for (s = emptyMastery(); !isMastered(s) && nq < 50; nq++) s = updateMastery(s, right(1500), T0 + nq);
+  if (n < 5 || n > 9 || nq >= n) fail(`mastery: ${n} right answers (${nq} quick) to reach ${MASTERED}`);
+  for (let i = 0; i < 100; i++) s = updateMastery(s, right(1000), T0);
+  if (s.mastery > 1 || s.mastery < 0.99) fail('mastery stays in 0..1');
+  for (let i = 0; i < 100; i++) s = updateMastery(s, shownR, T0);
+  if (s.mastery < 0 || s.mastery > 0.01) fail('mastery stays in 0..1 going down');
+  // Bookkeeping: attempts, the last 10 results, the average time, total time.
+  s = emptyMastery();
+  for (let i = 0; i < 14; i++) s = updateMastery(s, i % 2 ? right(4000) : afterHint, T0 + i);
+  if (s.attempts !== 14 || s.recentResults.length !== 10 || s.recentResults.at(-1) !== true || s.recentResults.at(-2) !== false) fail('mastery: attempts / recent results ' + JSON.stringify(s));
+  if (!(s.avgTimeMs > 4000 && s.avgTimeMs < 9000) || s.totalMs !== 7 * 4000 + 7 * 9000 || s.lastPracticed !== T0 + 13) fail(`mastery: time ${s.avgTimeMs} / ${s.totalMs}`);
+  if (updateMastery(emptyMastery(), right(10 * 60_000), T0).totalMs !== 60_000) fail('a very long answer counts as a minute');
+  if (commonError(s.errorCounts) !== 'count-off-by-one' || commonError({ added: 1 }) !== undefined || commonError({ added: 2, 'one-part': 5 }) !== 'one-part') fail('commonError');
+  // Normalizing old or broken records.
+  const norm = normalizeMastery({ mastery: 7, attempts: -1, recentResults: [true, 'x' as unknown as boolean], errorCounts: { added: 2, near: -3 } as never, reviewStep: 9 });
+  if (norm.mastery !== 0 || norm.attempts !== 0 || norm.recentResults.length !== 1 || norm.errorCounts.added !== 2 || 'near' in norm.errorCounts || norm.reviewStep !== -1) fail('normalizeMastery ' + JSON.stringify(norm));
+  if (JSON.stringify(normalizeMastery(undefined)) !== JSON.stringify(emptyMastery())) fail('normalizeMastery(undefined)');
+  ok(`mastery: right raises, wrong lowers, quick > normal > slow > after a hint; mastered after ${n} steady (${nq} quick) answers; mistakes by kind, the last 10, time`);
+}
+
+// Spaced review with an injected clock: 1 → 3 → 7 → 14 → 30 days; a mistake shortens.
+{
+  let s: MasteryFields = emptyMastery();
+  let t = T0;
+  const gaps: number[] = [];
+  for (let i = 0; i < 7; i++) {
+    s = updateMastery(s, right(), t);
+    gaps.push(Math.round((s.nextReview - t) / DAY));
+    // Right again the same day: not due, nothing moves.
+    const same = updateMastery(s, right(), t + 3600_000);
+    if (same.nextReview !== s.nextReview) fail('review: a second success before the date moves nothing');
+    if (isDue(s, t + 1000) || !isDue(s, s.nextReview)) fail('review: isDue');
+    t = s.nextReview + 3600_000;
+  }
+  if (gaps.join() !== '1,3,7,14,30,30,30') fail('review gaps ' + gaps.join());
+  // A mistake brings it closer: one gap back, from now.
+  const before = s.reviewStep;
+  const slip = updateMastery(s, shownR, t - 20 * DAY);
+  if (slip.reviewStep !== before - 1 || slip.nextReview !== t - 20 * DAY + REVIEW_DAYS[before - 1] * DAY) fail(`review: a mistake shortens (${slip.reviewStep}, ${(slip.nextReview - t) / DAY})`);
+  // A mistake on a due skill schedules it from now (it is no longer due right after a review).
+  const due = { ...emptyMastery(), attempts: 3, nextReview: T0 - DAY, reviewStep: 2 };
+  const after = updateMastery(due, shownR, T0);
+  if (isDue(after, T0) || after.nextReview !== T0 + REVIEW_DAYS[1] * DAY) fail('review: a mistake on a due skill');
+  const firstSlip = updateMastery(emptyMastery(), shownR, T0);
+  if (firstSlip.nextReview !== T0 + DAY) fail('review: the first answer, wrong, comes back tomorrow');
+  // dueSkills: the most overdue first; never-played skills are not due.
+  const states: Record<string, MasteryFields> = {
+    'add.within10': { ...emptyMastery(), attempts: 5, nextReview: T0 - 2 * DAY },
+    'sub.within10': { ...emptyMastery(), attempts: 5, nextReview: T0 - 5 * DAY },
+    'count.to10': { ...emptyMastery(), attempts: 5, nextReview: T0 + DAY },
+    'compare.to10': emptyMastery()
+  };
+  if (dueSkills(states, T0).join() !== 'sub.within10,add.within10') fail('dueSkills ' + dueSkills(states, T0).join());
+  if (dueSkills(states, T0 + 2 * DAY).length !== 3) fail('dueSkills two days later');
+  ok('spaced review: 1 → 3 → 7 → 14 → 30 days by the injected clock, only when due; a mistake shortens; due skills by date');
+}
+
+// The level inside a round: 3 right → up; 2 wrong → down + early hints; a station stays.
+{
+  let lv = startLevelState(1);
+  const seq = (answers: boolean[], max = 3, fixed = false) => {
+    const levels: number[] = [];
+    let st = lv;
+    for (const a of answers) {
+      st = adaptLevel(st, a, max, fixed);
+      levels.push(st.level);
+    }
+    return { st, levels };
+  };
+  let r = seq([true, true, true, true, true, true, true, true]);
+  if (r.levels.join() !== '1,1,2,2,2,3,3,3') fail('adaptive: up after 3 in a row ' + r.levels.join());
+  r = seq([true, true, false, true, true, true]);
+  if (r.levels.join() !== '1,1,1,1,1,2') fail('adaptive: a mistake breaks the run ' + r.levels.join());
+  lv = startLevelState(3);
+  r = seq([false, true, false, false, false]);
+  if (r.levels.join() !== '3,3,3,2,2' || !r.st.earlyHint) fail('adaptive: down after 2 wrong in a row, with early hints ' + r.levels.join());
+  const calm = adaptLevel(adaptLevel(r.st, true, 3), true, 3);
+  if (calm.earlyHint) fail('adaptive: 2 right in a row end the early hints');
+  if (!adaptLevel(r.st, true, 3).earlyHint) fail('adaptive: one right answer keeps the early hints');
+  lv = startLevelState(1);
+  r = seq([false, false]);
+  if (r.st.level !== 1 || !r.st.earlyHint) fail('adaptive: never below level 1, but hints come early');
+  lv = startLevelState(2);
+  r = seq([true, true, true, false, false], 3, true);
+  if (r.levels.some((x) => x !== 2) || !r.st.earlyHint) fail('adaptive: a station keeps its level (early hints still) ' + r.levels.join());
+  lv = startLevelState(3);
+  if (seq([true, true, true]).st.level !== 3) fail('adaptive: never above the top level');
+  ok('adaptive level: 3 right in a row → up, 2 wrong → down + early hint (2 right end it), level 1..max, a station stays');
+}
+
+// Questions weighted by the child's common mistake (1,000 seeds per case), still valid and new.
+{
+  const cases: [SkillId, number, ErrorTag][] = [
+    ['add.within10', 3, 'count-off-by-one'],
+    ['sub.within10', 3, 'added'],
+    ['add.within10', 3, 'subtracted'],
+    ['sub.within10', 2, 'one-part'],
+    ['count.to10', 3, 'count-off-by-one'],
+    ['compare.to10', 2, 'reversed-sign'],
+    ['compare.to10', 2, 'not-equal'],
+    ['story.within10', 2, 'count-off-by-one']
+  ];
+  const lines: string[] = [];
+  for (const [skill, level, tag] of cases) {
+    let plain = 0;
+    let weighted = 0;
+    let total = 0;
+    for (let seed = 0; seed < 1000; seed++) {
+      const a = makeAdaptiveRound(skill, level, seed, 8);
+      const b = makeAdaptiveRound(skill, level, seed, 8, tag);
+      for (const [round, which] of [
+        [a, 'plain'],
+        [b, 'weighted']
+      ] as const) {
+        if (new Set(round.map((q) => q.key)).size !== round.length) fail(`${skill} ${which} seed ${seed}: an exercise twice`);
+        for (let i = 1; i < round.length; i++) if (round[i].answer === round[i - 1].answer) fail(`${skill} ${which} seed ${seed}: the same answer twice in a row`);
+        for (const q of round) if (q.level !== level || q.skillId !== skill) fail(`${skill} ${which}: wrong level/skill`);
+      }
+      plain += a.filter((q) => invites(q, tag)).length;
+      weighted += b.filter((q) => invites(q, tag)).length;
+      total += 8;
+      if (JSON.stringify(makeAdaptiveRound(skill, level, seed, 8, tag).map((q) => q.id)) !== JSON.stringify(b.map((q) => q.id))) fail(`${skill}: not reproducible by seed`);
+    }
+    const p = plain / total;
+    const w = weighted / total;
+    // The pool limits it (count to 10 has only five "many to count" exercises, none twice).
+    if (!(w >= p + 0.08 || w >= 0.85)) fail(`${skill}/${tag}: weighted ${(w * 100).toFixed(0)}% vs plain ${(p * 100).toFixed(0)}%`);
+    lines.push(`${skill.split('.')[0]}/${tag} ${(p * 100).toFixed(0)}→${(w * 100).toFixed(0)}%`);
+  }
+  // invites: a few by hand.
+  const q = (key: string, tags: Record<string, ErrorTag> = {}) => ({ key, errorTags: tags, answer: 0 });
+  if (!invites(q('6+1'), 'count-off-by-one') || invites(q('4+4'), 'count-off-by-one') || !invites(q('count:8'), 'count-off-by-one') || invites(q('count:3'), 'count-off-by-one')) fail('invites: counting slips');
+  if (!invites(q('5-2', { '7': 'added' }), 'added') || invites(q('5-4', {}), 'added')) fail('invites: added');
+  if (!invites(q('3?4'), 'reversed-sign') || invites(q('4?4'), 'reversed-sign') || !invites(q('4?4'), 'not-equal')) fail('invites: signs');
+  // pickQuestion keeps away from the keys given.
+  const avoid = new Set(['1+1', '1+2', '2+1']);
+  const rng = createRng(5);
+  for (let i = 0; i < 300; i++) if (avoid.has(pickQuestion('add.within10', 1, rng, avoid).key)) fail('pickQuestion: an avoided exercise');
+  ok(`weighted questions over 1,000 seeds: ${lines.join(', ')}; no repeats, same seed = same round`);
+}
+
+// A question whose answer was shown comes back: a sister with the same kind of mistake, or itself.
+{
+  let sisters = 0;
+  let same = 0;
+  for (let seed = 0; seed < 1000; seed++) {
+    const q = makeQuestion('sub.within10', 3, seed);
+    const tag = Object.values(q.errorTags)[0];
+    const s = sisterOf(q, tag, seed, new Set([q.key]));
+    if (s.key === q.key) same++;
+    else {
+      sisters++;
+      if (!Object.values(s.errorTags).includes(tag) || s.level !== q.level || s.skillId !== q.skillId) fail(`sisterOf seed ${seed}: not a sister`);
+    }
+    if (sisterOf(q, tag, seed, new Set([q.key])).id !== s.id) fail('sisterOf: not reproducible');
+  }
+  if (sisters < 950) fail(`sisterOf: only ${sisters} sisters (${same} the same)`);
+  // Nothing else to find: the same question comes back.
+  const only = makeQuestion('compare.to10', 1, 3);
+  const all = new Set<string>();
+  for (let a = 0; a <= 5; a++) for (let b = 0; b <= 5; b++) all.add(`${a}?${b}`);
+  all.delete(only.key);
+  if (sisterOf(only, 'reversed-sign', 1, all).key !== only.key) fail('sisterOf: falls back to the same question');
+  ok(`comebacks: ${sisters}/1000 sisters with the same kind of mistake, else the same question`);
+}
+
+// pickHint by history: the child's common mistake chooses the hint when the mistake itself has none.
+{
+  const q = makeQuestion('add.within10', 3, 11);
+  const offByOne = q.hints.find((h) => h.for?.includes('count-off-by-one'))!;
+  const parts = q.hints.find((h) => h.for?.includes('subtracted'))!;
+  if (pickHint(q, undefined, 'count-off-by-one') !== offByOne) fail('pickHint: an early hint fits the common mistake');
+  if (pickHint(q, undefined) !== q.hints[0]) fail('pickHint: no history → the default');
+  const wrongSub = Object.entries(q.errorTags).find(([, t]) => t === 'subtracted');
+  if (wrongSub && pickHint(q, Number(wrongSub[0]), 'count-off-by-one') !== parts) fail('pickHint: the mistake itself first');
+  const near = { ...q, errorTags: { '99': 'near' as ErrorTag } };
+  if (pickHint(near, 99, 'count-off-by-one') !== offByOne) fail('pickHint: a mistake with no hint of its own → the common one');
+  if (pickHint(near, 99, 'reversed-sign') !== q.hints[0]) fail('pickHint: a common mistake with no hint here → the default');
+  ok('pickHint: the mistake made, else the child\'s common mistake, else the default');
+}
+
+// The placement game: a child who knows skips ahead, one who does not stays at the start.
+{
+  const levelsOf = (id: SkillId) => getSkill(id)!.levels.length;
+  const run = (band: AgeBand, knows: (rung: number) => boolean) => {
+    let st: PlacementState = startPlacement(band);
+    const asked: number[] = [];
+    while (!st.done) {
+      asked.push(st.at);
+      st = placementStep(st, knows(st.at));
+      if (asked.length > 10) break;
+    }
+    return { st, asked, r: placementResult(st, levelsOf) };
+  };
+  const top = LADDER.length - 1;
+  for (const band of ['4-5', '6-7', '8-9', '10-12'] as AgeBand[]) {
+    const knower = run(band, () => true);
+    if (knower.r.known !== top || knower.r.mastered.length !== 4 || knower.asked.length > 6) fail(`placement ${band}: the knower ${JSON.stringify(knower)}`);
+    const not = run(band, () => false);
+    if (not.r.known !== -1 || not.r.mastered.length || Object.keys(not.r.partial).length || not.asked.length > 6) fail(`placement ${band}: the beginner ${JSON.stringify(not)}`);
+  }
+  // Every edge is found: a child who knows everything up to rung k.
+  for (const band of ['4-5', '6-7', '8-9'] as AgeBand[])
+    for (let k = -1; k <= top; k++) {
+      const x = run(band, (i) => i <= k);
+      if (x.r.known !== k || x.asked.length > 10) fail(`placement ${band}, knows up to ${k}: known ${x.r.known} after ${x.asked.length} (${x.asked.join(',')})`);
+    }
+  // One slip from a knower still places far ahead (but not past the slip).
+  const slip = run('8-9', (i) => i !== 6);
+  if (slip.r.known < 5) fail('placement: one slip ' + JSON.stringify(slip));
+  // Never more than 10 questions, whatever the answers (random children).
+  const rng = createRng(3);
+  for (let i = 0; i < 1000; i++) {
+    const x = run(['4-5', '6-7', '8-9'][i % 3] as AgeBand, () => rng.next() < 0.6);
+    if (x.asked.length > 10 || !x.st.done) fail('placement: more than 10 questions');
+    if (x.r.known >= 0 && !x.st.passed.includes(x.r.known)) fail('placement: known rung was never passed');
+  }
+  if (knownRung({ passed: [4, 6], failed: [5] }) !== 4 || knownRung({ passed: [4, 5, 6], failed: [5] }) !== 6) fail('knownRung');
+  // Up to "add to 7": counting and comparing mastered, adding partly (next level 3), not taking away.
+  const mid = placementResult({ passed: [5], failed: [6] }, levelsOf);
+  if (mid.mastered.join() !== 'count.to10,compare.to10' || mid.partial['add.within10'] !== 3 || mid.partial['sub.within10']) fail('placementResult ' + JSON.stringify(mid));
+  if (!rungKnown('count.to10', 2, 1) || rungKnown('add.within10', 3, 7) || !rungKnown('add.within10', 2, 7)) fail('rungKnown');
+  // On the map: the stations known are done, a chest skipped past is open, the boss is not.
+  const known = (id: SkillId, level: number) => rungKnown(id, level, 5);
+  const p = progressFromPlacement(emptyProgress(), known);
+  const next = nextNode(p);
+  if (next?.id !== 'c1-chest' || p.stars['c1-add-7'] !== 3 || p.stars['c1-count-lesson'] !== 1 || p.chests['c1-chest']) fail('placement on the map (up to add 7): ' + JSON.stringify(p) + ' next ' + next?.id);
+  const all = progressFromPlacement(emptyProgress(), (id, level) => rungKnown(id, level, top));
+  if (nextNode(all)?.id !== 'c1-boss' || !all.chests['c1-chest'] || all.stars['c1-boss']) fail('placement on the map (everything): next ' + nextNode(all)?.id);
+  const none = progressFromPlacement(emptyProgress(), () => false);
+  if (nextNode(none)?.id !== 'c1-count-lesson' || Object.keys(none.stars).length) fail('placement on the map (nothing)');
+  // Never takes stars away.
+  const had = withStars(withStars(emptyProgress(), 'c1-count-lesson', 1), 'c1-count-5', 2);
+  if (progressFromPlacement(had, () => false).stars['c1-count-5'] !== 2) fail('placement took stars away');
+  ok(`placement: the knower skips to the boss in ≤ 6 questions, the beginner stays at the start, every edge found in ≤ 10, stations known are done on the map`);
+}
+
+// The review station: made on the fly, never a chapter's station; mixes skills.
+{
+  const r = reviewNode(['add.within10']);
+  if (r.id !== REVIEW_ID || r.kind !== 'review' || r.count !== 6 || findNode(REVIEW_ID) || maxStars(r) !== 3) fail('reviewNode');
+  if (reviewSkills(['add.within10'], ['count.to10', 'add.within10']).join() !== 'add.within10,count.to10') fail('reviewSkills fills to two skills');
+  if (reviewSkills(['a', 'b', 'c', 'd'] as SkillId[], []).length !== 3) fail('reviewSkills: at most 3');
+  const bad = { id: 'x', chapters: [{ id: 'c', title: 'c', sections: [{ id: 's', title: 's', nodes: [r] }] }] };
+  if (!journeyProblems(bad, () => true).some((x) => x.includes('review'))) fail('journeyProblems: a review station in a chapter');
+  ok('review station: made on the fly (id "review", 6 questions), not a chapter station, 2–3 skills');
+}
+
+// Recommendations by mastery and the summary for parents.
+{
+  const st = (m: number, attempts: number, nextReview = 0, errorCounts = {}): MasteryFields => ({ ...emptyMastery(), mastery: m, attempts, nextReview, errorCounts, totalMs: attempts * 5000, lastPracticed: T0 });
+  const byAge: SkillId[] = ['add.within10', 'sub.within10'];
+  if (recommendByMastery(SKILLS, {}, byAge, T0).join() !== 'add.within10,sub.within10') fail('recommend: a new child gets the age list');
+  const states = { 'count.to10': st(0.95, 20, T0 - DAY), 'compare.to10': st(0.9, 12, T0 + DAY), 'add.within10': st(0.4, 6, T0 + DAY, { 'count-off-by-one': 4, added: 1 }) };
+  const rec = recommendByMastery(SKILLS, states, byAge, T0);
+  if (rec.join() !== 'count.to10,add.within10') fail('recommend: due first, then the one being learned: ' + rec.join());
+  const later = recommendByMastery(SKILLS, { 'count.to10': st(0.95, 20, T0 + 9 * DAY), 'compare.to10': st(0.9, 12, T0 + 9 * DAY), 'add.within10': st(0.9, 30, T0 + 9 * DAY) }, byAge, T0 + 2 * DAY);
+  if (!later.includes('sub.within10')) fail('recommend: a new skill whose prerequisites are mastered: ' + later.join());
+  const sum = summarize(states, T0);
+  if (sum.mastered.join() !== 'count.to10,compare.to10' || sum.hard[0]?.skillId !== 'add.within10' || sum.hard[0].tag !== 'count-off-by-one' || sum.practiceMs !== 38 * 5000 || sum.attempts !== 38) fail('summary ' + JSON.stringify(sum));
+  if (!sum.skills.find((x) => x.skillId === 'count.to10')?.due) fail('summary: due');
+  ok('recommendations: due for review first, then what is being learned, then what is ready; summary: mastered, hard (by mistakes), time');
 }
 
 if (failures) {

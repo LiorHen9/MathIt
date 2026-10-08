@@ -2,8 +2,7 @@
 // one record per profile, with the profile's own settings inside (docs/ARCHITECTURE.md §8).
 // Records written by an older version may lack newer fields: `normalizeProfile` fills them, so
 // adding a field with a default needs no migration (a new store or key does: see storage/db.ts).
-import { dbDelete, dbGet, dbGetAll, dbPut } from '../storage/db';
-import { deleteSkillStates } from '../storage/skillStates';
+import { dbDelete, dbGet, dbGetAll, dbKeys, dbPut } from '../storage/db';
 import { deleteInventories } from '../storage/inventory';
 import type { AgeBand } from '../core/types';
 import type { WorldId } from '../worlds/types';
@@ -168,7 +167,10 @@ export function saveProfile(p: Profile): Promise<void> {
 
 export async function deleteProfile(id: string): Promise<void> {
   await dbDelete('profiles', id);
-  await deleteSkillStates(id);
+  // Results per skill (storage/skillStates.ts, key `${profileId}:${skillId}`) – deleted here, so
+  // the mastery engine stays out of the first load.
+  const keys = await dbKeys('skillStates');
+  await Promise.all(keys.filter((k) => k.startsWith(`${id}:`)).map((k) => dbDelete('skillStates', k)));
   // The way on the quest map (storage/questProgress.ts; one record per profile).
   await dbDelete('questProgress', id);
   // Coins and collectibles, every world's (storage/inventory.ts).

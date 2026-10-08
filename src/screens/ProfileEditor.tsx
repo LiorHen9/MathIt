@@ -1,6 +1,7 @@
 // Creating or editing a profile (adapted from ChessIt): name, avatar, grade or age, how to address
 // the child, and the world. Choosing a world changes the whole screen's skin at once (applyWorld),
-// with the world's sample sound and the hero hopping in its card.
+// with the world's sample sound and the hero hopping in its card. A new profile can start with
+// the placement game ("where do we start?", phase 6) instead of the first station.
 import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { WorldPicker } from '../components/WorldPicker';
@@ -22,7 +23,8 @@ import {
 interface Props {
   /** Existing profile to edit; undefined creates a new one. */
   profile?: Profile;
-  onSave: (p: Profile) => void;
+  /** `placement`: play the placement game before the map (a new profile only). */
+  onSave: (p: Profile, placement: boolean) => void;
   onDelete: (p: Profile) => void;
   onCancel: () => void;
 }
@@ -39,6 +41,7 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
   const [gender, setGender] = useState<Gender | undefined>(profile?.gender);
   const [worldId, setWorldId] = useState<PlayWorldId | null>(profile?.worldId ?? null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [placement, setPlacement] = useState(false);
 
   // Live skin: the whole screen takes the world being chosen (the base look until one is picked).
   useEffect(() => {
@@ -69,7 +72,7 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
       p.pinSalt = profile.pinSalt;
     }
     playSfx('start');
-    onSave(p);
+    onSave(p, !profile && placement);
   }
 
   const seg = (on: boolean) => `seg ${on ? 'is-on' : ''}`;
@@ -205,6 +208,22 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
           </legend>
           <WorldPicker value={worldId} onChange={setWorldId} gender={gender} />
         </fieldset>
+
+        {!profile && (
+          <fieldset class="field">
+            <legend class="field-label">
+              איפה מתחילים? <span class="optional">(אפשר לבדוק שוב בהגדרות)</span>
+            </legend>
+            <div class="segmented">
+              <button type="button" class={seg(!placement)} aria-pressed={!placement} data-start="first" onClick={() => setPlacement(false)}>
+                🌱 מההתחלה
+              </button>
+              <button type="button" class={seg(placement)} aria-pressed={placement} data-start="placement" onClick={() => setPlacement(true)}>
+                🔍 {byGender({ gender }, 'נבדוק מה אני יודע', 'נבדוק מה אני יודעת', 'נבדוק מה אנחנו יודעים')}
+              </button>
+            </div>
+          </fieldset>
+        )}
 
         <button class="btn btn-primary btn-big" type="submit" data-testid="save-profile" disabled={!valid}>
           {profile ? 'שמירה' : 'יצאנו לדרך!'}

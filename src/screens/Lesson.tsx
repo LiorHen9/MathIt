@@ -4,7 +4,8 @@
 // (games/Ask.tsx: animated hint, then a step-by-step explanation). At the end a star, the
 // lesson is saved as seen (skillStates.lessonSeen), and the child can go straight to practice.
 // As a quest station (phase 4) it also gives the station its star, and the end leads back to the
-// map, where the hero walks on. Loaded lazily, like the game.
+// map, where the hero walks on. Every "your turn" answer goes to the mastery engine (phase 6).
+// Loaded lazily, like the game.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { findQuestion } from '../core/generators/index';
 import { fillQuestion } from '../core/story';
@@ -18,7 +19,7 @@ import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components
 import { Ask, msg } from '../games/Ask';
 import { Explainer } from '../manipulatives/Explainer';
 import { ageBand, byGender, type Profile } from '../profiles/profiles';
-import { saveLessonSeen } from '../storage/skillStates';
+import { recordAnswer, saveLessonSeen } from '../storage/skillStates';
 import { recordNodeStars } from '../storage/questProgress';
 import { storyWords, useWorld } from '../worlds/index';
 import { playSfx } from '../audio/sfx';
@@ -180,6 +181,7 @@ export function Lesson({ profile, skillId, onHome, onPractice, nodeId }: Props) 
                 timers.current.push(window.setTimeout(next, reducedMotion() ? 700 : 1300));
               }}
               onNext={next}
+              onResult={(r) => void recordAnswer(profile.id, skillId, r, startLevel(skill, ageBand(profile)))}
               nextLabel="הבא ←"
             />
           </>

@@ -9,6 +9,7 @@ export const fx: WorldFx = {
     word: e.streak >= 3 ? 'הופעה!' : undefined
   }),
   unlock: (_e, b) => ({ particles: { kind: 'note', count: b.particles?.count ?? 40, at: 'el' } }),
+  levelUp: (_e, b) => ({ particles: { kind: 'note', count: b.particles?.count ?? 30, at: 'el' } }),
   chestOpen: () => ({ particles: { kind: 'note', count: 40, at: 'el' } }),
   bossHit: (e) => ({ particles: { kind: 'smoke', count: 12 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'הצל נעלם!' : undefined }),
   coin: () => ({ fly: '🎟️' })

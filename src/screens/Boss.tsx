@@ -6,7 +6,8 @@
 // the end. Then the big celebration and 1–3 stars by how cleanly it went. Loaded lazily.
 // The boss is the world's own (World.bosses: the fog witch, the giant goalkeeper…) – its name,
 // picture, intro and sounds – on the same station and the same battle. Every hit earns a coin,
-// and beating it wins the next collectible of the world (storage/inventory.ts).
+// and beating it wins the next collectible of the world (storage/inventory.ts). Every answer
+// goes to the mastery engine of its skill (phase 6).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { makeQuestion, makeRound } from '../core/generators/index';
 import { findNode, type BossNode } from '../core/quest/index';
@@ -19,6 +20,7 @@ import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components
 import { Ask, msg } from '../games/Ask';
 import { byGender, type Profile } from '../profiles/profiles';
 import { recordNodeStars } from '../storage/questProgress';
+import { recordAnswer } from '../storage/skillStates';
 import { bossOf, useWorld, type Collectible } from '../worlds/index';
 import { CoinChip, useCoins } from '../components/Coins';
 import { addItem, getInventory, nextReward } from '../storage/inventory';
@@ -199,6 +201,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
             onWrong={() => emit({ type: 'bossDodge' }, { el: bossEl.current })}
             onShown={shown}
             onNext={next}
+            onResult={(r) => void recordAnswer(profile.id, q.skillId, r, node.level)}
             nextLabel="הבא ←"
           />
           <div class="speech-bubble boss-bubble">
