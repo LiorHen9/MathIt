@@ -1,5 +1,6 @@
 // Profile checks that need no browser: `bun tests/profiles/check.ts`
-// byGender, grade/age helpers, default settings, reading old or damaged records, and the PIN.
+// byGender, grade/age helpers, default settings, reading old or damaged records, the PIN, and the
+// parents' settings in a profile (phase 8).
 import { ageBand, approxAge, byGender, defaultSettings, normalizeProfile, stageLabel, type Profile } from '../../src/profiles/profiles';
 import { checkPin, hasPin, hashPin, parentQuestion, validPin, withPin, withoutPin } from '../../src/profiles/pin';
 
@@ -92,6 +93,17 @@ const eq = (got: unknown, want: unknown, what: string) => {
     if (a * b !== q.answer || a < 12 || a > 48 || b < 3 || b > 9) fail(`parent question ${q.text} = ${q.answer}`);
   }
   ok('PIN: hashed with salt, checked, removed; parent question');
+}
+
+// The parents' settings (phase 8): filled for old records, broken values dropped.
+{
+  const old = normalizeProfile({ id: 'p1', name: 'דנה', worldId: 'ninja', age: 6 } as never);
+  eq(old.parent, { goal: null, breakAfter: null, blocked: [], lockAhead: false }, 'an old record gets parent defaults');
+  const set = normalizeProfile({ id: 'p2', name: 'דנה', worldId: 'ninja', age: 6, parent: { goal: { kind: 'minutes', amount: 15 }, breakAfter: 20, blocked: ['match', 'pop', 'match', 'nope'], lockAhead: true } } as never);
+  eq(set.parent, { goal: { kind: 'minutes', amount: 15 }, breakAfter: 20, blocked: ['match'], lockAhead: true }, 'parent settings kept (Pop never blocked, unknown games dropped)');
+  const bad = normalizeProfile({ id: 'p3', name: 'דנה', worldId: 'ninja', age: 6, parent: { goal: { kind: 'laps', amount: 3 }, breakAfter: 2, blocked: 'match', lockAhead: 'yes' } } as never);
+  eq(bad.parent, { goal: null, breakAfter: null, blocked: [], lockAhead: false }, 'broken parent settings dropped');
+  ok("parents' settings in the profile: defaults for old records, kept, broken values dropped");
 }
 
 if (failures) {

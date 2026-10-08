@@ -4,6 +4,8 @@
 // for review first, then what to learn next – not only by age.
 // Since phase 4 the quest map is the main screen and this is one tap away from it ("תרגול חופשי");
 // rounds and lessons from here do not move the map.
+// Phase 8: a parent can keep free practice to what the journey has opened (`parent.lockAhead`):
+// skills of chapters not reached yet are left out, with a note.
 import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { SpeakButton, useAutoSpeak } from '../components/Speak';
@@ -13,6 +15,8 @@ import { now } from '../app/clock';
 import type { SkillId } from '../core/types';
 import { ageBand, type Profile } from '../profiles/profiles';
 import { listSkillStates, type SkillState } from '../storage/skillStates';
+import { getQuestRecord } from '../storage/questProgress';
+import { practiceSkills } from '../core/parents/settings';
 
 interface Props {
   profile: Profile;
@@ -24,6 +28,8 @@ interface Props {
 
 export function Home({ profile, onBack, onPlay, onLesson }: Props) {
   const [states, setStates] = useState<Record<string, SkillState> | null>(null);
+  /** The skills offered (all, unless a parent keeps practice to the journey). */
+  const [open, setOpen] = useState<SkillId[] | null>(profile.parent.lockAhead ? null : SKILLS.map((s) => s.id));
   const ask = 'מה נתרגל היום?';
   // Ages 5–7: one sentence to hear.
   const speech = ask;
@@ -35,6 +41,7 @@ export function Home({ profile, onBack, onPlay, onLesson }: Props) {
   useEffect(() => {
     let alive = true;
     void listSkillStates(profile.id).then((s) => alive && setStates(s));
+    if (profile.parent.lockAhead) void getQuestRecord(profile.id).then((r) => alive && setOpen(practiceSkills(r, true)));
     return () => {
       alive = false;
     };
@@ -63,7 +70,7 @@ export function Home({ profile, onBack, onPlay, onLesson }: Props) {
           {ask} <SpeakButton text={speech} class="speak-inline" />
         </h2>
         <div class="skill-grid">
-          {SKILLS.map((s) => {
+          {SKILLS.filter((s) => open?.includes(s.id)).map((s) => {
             const st = states?.[s.id];
             const rec = recommended.includes(s.id);
             const crown = isMastered(st);
@@ -123,6 +130,11 @@ export function Home({ profile, onBack, onPlay, onLesson }: Props) {
             );
           })}
         </div>
+        {open && open.length < SKILLS.length && (
+          <p class="settings-note practice-more" data-testid="practice-locked">
+            🔒 עוד {SKILLS.length - open.length} נושאים ייפתחו בהמשך המסע
+          </p>
+        )}
       </section>
 
     </main>

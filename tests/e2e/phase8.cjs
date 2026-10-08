@@ -7,6 +7,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 // - a child's dashboard after a real round: journey, today's time (the new `sessions` store,
 //   schema 5), the common mistake in parents' words (by gender), mastery by chapter; "practise
 //   this" opens a round of that skill aimed at that mistake, in the child's world;
+// - a parent's settings for a child: a daily goal (a meter on the map, a celebration once a day via
+//   goalReached), a gentle break after N minutes, a game turned off (never in a round), free
+//   practice kept to the journey, a chapter opened by hand, reading aloud off;
 // - transform/opacity only, touch targets ≥ 48px, no sideways scroll, light and dark.
 const SHOTS = process.argv[2] || '.';
 const URL = process.argv[3] || 'http://localhost:4173/';
@@ -66,7 +69,7 @@ async function onlyTransformOpacity(p, where) {
 
 async function solve(p) {
   const said = await p.$eval('.game', (e) => e.dataset.answer).catch(() => undefined);
-  if (said !== undefined && !(await p.$('.pop .numpad'))) return said;
+  if (said !== undefined) return said;
   const math = (await p.textContent('[data-testid=prompt-math]')).replace(/\s+/g, ' ').trim();
   let m;
   if ((m = /^(\d+) \+ (\d+) =/.exec(math))) return String(Number(m[1]) + Number(m[2]));
@@ -228,7 +231,7 @@ async function enterParents(p) {
             };
           })
       );
-      must(lock && /^[0-9a-f]{64}$/.test(lock.hash) && lock.salt && !JSON.stringify(lock).includes('2468'), 'the parents PIN is a salted hash: ' + JSON.stringify(lock));
+      must(lock && /^[0-9a-f]{64}$/.test(lock.hash) && lock.salt && !Object.values(lock).includes('2468') && !('pin' in lock), 'the parents PIN is a salted hash: ' + JSON.stringify(lock));
       await p.tap('[data-testid=parent-exit]');
       await p.waitForSelector('.settings-screen');
       await p.tap('[data-testid=open-parents]');
@@ -321,6 +324,8 @@ async function enterParents(p) {
       must(hardText.includes('מתבלבלת באחד') && hardText.includes('5 פעמים'), "in parents' words, for a girl: " + hardText);
       must((await p.getAttribute('[data-testid=dash-skills] [data-skill="add.within10"]', 'data-status')) === 'learning', 'adding: being learned');
       must((await p.textContent('[data-testid=dash-placed]')).includes('עוד לא'), 'no placement yet');
+      // The chosen chips pop in (a scale): measure after it.
+      await p.waitForTimeout(400);
       await layoutOk(p, 'dashboard');
       await onlyTransformOpacity(p, 'dashboard');
       await p.screenshot({ path: `${SHOTS}/p8-dashboard-light.png`, fullPage: true });
@@ -340,6 +345,109 @@ async function enterParents(p) {
       must((await p.getAttribute('.game', 'data-skill')) === 'add.within10' && (await p.getAttribute('.game', 'data-common')) === 'count-off-by-one', 'an aimed round');
       must((await p.getAttribute('html', 'data-world')) === 'fairies', "in the child's world");
       step('"practise this" opens a round of adding aimed at that mistake, in the child\'s world');
+      must(errors.length === 0, 'errors: ' + errors.join('\n'));
+      await ctx.close();
+    }
+
+    // ================= A parent's settings for a child (light) =================
+    {
+      const { ctx, p, errors } = await phone(b, { colorScheme: 'light', reducedMotion: 'no-preference' });
+      await newProfile(p, { name: 'איתי', age: 7, gender: 'boy', world: 'basketball' });
+      await toPicker(p);
+      await enterParents(p);
+      await p.tap('[data-testid=parent-home] [data-kid]');
+      await p.waitForSelector('[data-testid=dash-settings]');
+      await p.tap('[data-goal="questions:10"]');
+      await p.tap('[data-break="10"]');
+      await p.uncheck('[data-template-toggle=jump]', { force: true });
+      await p.check('[data-kid-setting=lockAhead]', { force: true });
+      await p.uncheck('[data-kid-setting=narration]', { force: true });
+      await p.tap('[data-open-chapter=c3]');
+      await p.waitForSelector('[data-open-chapter=c3][aria-pressed=true]');
+      await p.waitForTimeout(400);
+      const [prof, quest] = await idb(p, (db, getAll) => Promise.all([getAll(db, 'profiles'), getAll(db, 'questProgress')]));
+      const par = prof[0].parent;
+      must(
+        par.goal && par.goal.kind === 'questions' && par.goal.amount === 10 && par.breakAfter === 10 && par.blocked.join() === 'jump' && par.lockAhead === true && prof[0].settings.narration === false,
+        'parent settings saved: ' + JSON.stringify(prof[0])
+      );
+      must(quest[0].opened.join() === 'c3', 'chapter 3 opened by hand: ' + JSON.stringify(quest[0].opened));
+      await p.waitForTimeout(400);
+      await layoutOk(p, 'dashboard with settings');
+      await p.screenshot({ path: `${SHOTS}/p8-settings-light.png`, fullPage: true });
+      step('settings saved at once: goal 10 questions, break after 10 minutes, jump off, practice kept to the journey, chapter 3 opened, reading aloud off');
+
+      // The child's side: the goal meter, chapter 3 open, free practice kept to the journey.
+      await p.tap('[data-testid=parent-dash-back]');
+      await p.tap('[data-testid=parent-exit]');
+      await p.waitForSelector('.profile-pick');
+      await p.tap('.profile-pick >> nth=0');
+      await p.waitForSelector('.quest-map .map-node');
+      await p.waitForSelector('[data-testid=goal-meter]');
+      must((await p.getAttribute('[data-testid=goal-meter]', 'data-done')) === '0' && (await p.getAttribute('[data-testid=goal-meter]', 'data-target')) === '10', 'the goal meter: 0/10');
+      must(!(await p.getAttribute('[data-testid=chapter-tab-3]', 'class')).includes('is-locked') && (await p.getAttribute('[data-testid=chapter-tab-2]', 'class')).includes('is-locked'), 'chapter 3 open, chapter 2 still locked');
+      await layoutOk(p, 'map with the goal meter');
+      await p.tap('[data-testid=open-practice]');
+      await p.waitForSelector('.home .skill-btn');
+      must(!(await p.$('[data-skill="add.within20"]')) && (await p.$('[data-skill="numbers.to100"]')) && (await p.$('[data-skill="add.within10"]')) && (await p.$('[data-testid=practice-locked]')), 'free practice: chapter 1 and the opened chapter 3, not chapter 2');
+      step('the map: a goal meter 0/10, chapter 3 open by hand (2 still locked); free practice keeps to chapters 1 and 3');
+
+      // Five questions already today; a round asked to be "jump" plays another game; 5 more reach the goal.
+      await idb(p, (db) =>
+        new Promise((res) => {
+          const tx = db.transaction(['profiles', 'sessions'], 'readwrite');
+          const g = tx.objectStore('profiles').getAll();
+          g.onsuccess = () => {
+            const id = g.result[0].id;
+            const d = new Date();
+            const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            tx.objectStore('sessions').put({ profileId: id, day, ms: 120000, questions: 5, right: 5, goalAt: 0 }, `${id}:${day}`);
+          };
+          tx.oncomplete = () => res(true);
+        })
+      );
+      await p.goto(URL + '?template=jump');
+      await p.waitForSelector('.splash');
+      await p.tap('.splash-go', { force: true });
+      await p.waitForSelector('.profile-pick');
+      await p.tap('.profile-pick >> nth=0');
+      await p.waitForSelector('[data-testid=goal-meter][data-done="5"]');
+      await p.tap('[data-testid=open-practice]');
+      await p.tap('[data-skill="numbers.to100"]');
+      await p.waitForSelector('.game');
+      must((await p.getAttribute('.game', 'data-template')) !== 'jump', 'a game turned off is never played: ' + (await p.getAttribute('.game', 'data-template')));
+      for (let i = 0; i < 5; i++) {
+        await answer(p, await solve(p));
+        await waitDot(p, i + 1);
+      }
+      step('a game turned off (jump, even asked for in the address) is not played');
+      await p.tap('[data-testid=game-home]');
+      await p.waitForSelector('.home .skill-btn');
+      const m0 = await mark(p);
+      await p.tap('[data-testid=practice-back]');
+      await p.waitForSelector('[data-testid=goal-meter][data-reached=yes]');
+      const g = (await waitFx(p, m0, 'goalReached'))[0];
+      must(g && g.sound, 'goalReached with a sound: ' + JSON.stringify(g));
+      await p.screenshot({ path: `${SHOTS}/p8-goal-light.png` });
+      const days = await idb(p, (db, getAll) => getAll(db, 'sessions'));
+      must(days[0].questions === 10 && days[0].goalAt > 0, 'the goal is marked for today: ' + JSON.stringify(days));
+      step('the goal fills (5 + 5 = 10) and the map celebrates once (goalReached, saved for the day)');
+
+      // A break after 10 minutes of play (the clock moved 11 minutes), offered gently.
+      await p.tap('[data-testid=open-practice]');
+      await p.waitForSelector('.home .skill-btn');
+      await p.evaluate(() => localStorage.setItem('mathit-clock-days', String(11 / 1440)));
+      const m1 = await mark(p);
+      await p.tap('[data-testid=practice-back]');
+      await p.waitForSelector('[data-testid=break-card]');
+      await p.waitForTimeout(600);
+      must(!(await fx(p)).slice(m1).some((e) => e.type === 'goalReached'), 'the goal is celebrated once a day');
+      await layoutOk(p, 'map with the break offer');
+      await onlyTransformOpacity(p, 'map with the break offer');
+      await p.screenshot({ path: `${SHOTS}/p8-break-light.png` });
+      await p.tap('[data-testid=break-more]');
+      must(!(await p.$('[data-testid=break-card]')), '"a bit more" closes the offer');
+      step('after 10 minutes of play the map offers a break; "a bit more" closes it; no second goal celebration');
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
       await ctx.close();
     }

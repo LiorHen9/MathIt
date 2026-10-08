@@ -77,7 +77,10 @@ export type FeedbackEvent =
   | { type: 'coin'; n: number }
   // The mastery engine (phase 6).
   /** Three right in a row inside a round: the next questions are one level up (`level`). */
-  | { type: 'levelUp'; level: number };
+  | { type: 'levelUp'; level: number }
+  // The parents' area (phase 8).
+  /** Today's goal a parent set is reached (once a day, on the map's goal meter). */
+  | { type: 'goalReached' };
 
 export type FeedbackType = FeedbackEvent['type'];
 export const FEEDBACK_TYPES: readonly FeedbackType[] = [
@@ -107,7 +110,8 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'bossDodge',
   'bossDefeated',
   'coin',
-  'levelUp'
+  'levelUp',
+  'goalReached'
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
@@ -158,7 +162,8 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'bossDefeated', stars: 3 },
   { type: 'coin', n: 1 },
   { type: 'coin', n: 12 },
-  { type: 'levelUp', level: 2 }
+  { type: 'levelUp', level: 2 },
+  { type: 'goalReached' }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -277,6 +282,9 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
     case 'levelUp':
       // Like a station opening, smaller: the level chip bursts.
       return { sound: 'unlock', hero: 'cheer', motion: 'pop', particles: { kind: 'sparkle', count: 30, at: 'el' } };
+    case 'goalReached':
+      // A small celebration at the goal meter: the stars' rising notes, not the round's fanfare.
+      return { sound: 'star', soundOpts: { step: 3 }, hero: 'cheer', motion: 'pop', particles: { kind: 'confetti', count: 40, at: 'el' } };
   }
 }
 

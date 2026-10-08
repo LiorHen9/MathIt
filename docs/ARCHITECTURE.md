@@ -429,6 +429,7 @@ DB: mathit (IndexedDB)
  ├─ inventory     key: profileId:worldId → { coins, items[], updated }  (שלב 5, גרסה 4)
  └─ sessions      key: profileId:yyyy-mm-dd → { ms, questions, right, goalAt }  (שלב 8, גרסה 5; עד 90 יום)
 ```
+- שלב 8 – הגדרות הורים בלי סכמה חדשה: `Profile.parent` (‏goal, breakAfter, blocked, lockAhead; `normalizeParentSettings`) ו-`QuestRecord.opened` (פרקים שהורה פתח; `setChapterOpen`).
 - גרסה 5 (שלב 8) מוסיפה את `sessions` (‏`storage/sessions.ts`: `recordDay` – נקרא מתוך `recordAnswer` בתור משלו לכל מפתח, `markGoal`, `getDayLog`, `listDayLogs`). נוצר ריק – ימים לפני השדרוג לא נרשמו, וה"סך הכול" בדשבורד בא מ-`skillStates.totalMs`. יום חדש מוחק ימים ישנים מ-90 (`staleDays`). החישובים להורים טהורים ב-`core/parents/` (‏`timeStats`, `journeyView`, `skillsByChapter`, `PARENT_ERRORS`, `goalProgress`, `breakDue`).
 - גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
 

@@ -26,10 +26,16 @@
 // the world's boss on the boss station, and a one-sentence story for the chapter. The world's
 // coins show beside the stars.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { Ref } from 'preact';
 import { JOURNEY, allNodes, chapterMaxStars, chapterNodes, chapterOf, chapterStars, lockReason, maxStars, nextNode, nodeStars, nodeStatus, reviewNode, reviewSkills, type QuestNode, type ReviewNode } from '../core/quest/index';
 import { dueSkills, isMastered } from '../core/mastery/index';
 import type { SkillId } from '../core/types';
 import { now } from '../app/clock';
+import { breakOffered, playClock, playStart } from '../app/playTime';
+import { breakDue, goalProgress, goalText } from '../core/parents/goal';
+import type { DayLog } from '../core/parents/days';
+import type { DailyGoal } from '../core/parents/goal';
+import { getDayLog, markGoal } from '../storage/sessions';
 import { listSkillStates, type SkillState } from '../storage/skillStates';
 import { getSkill } from '../core/skills/index';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
@@ -95,6 +101,12 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
   const [fresh, setFresh] = useState<string[]>([]);
   const [walking, setWalking] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  /** Today's practice, for the daily goal a parent set (phase 8). */
+  const [today, setToday] = useState<DayLog | null>(null);
+  /** A gentle break is offered (a parent set it, and the child has played long enough). */
+  const [breakTime, setBreakTime] = useState(false);
+  const goalRef = useRef<HTMLSpanElement>(null);
+  const goal = profile.parent.goal;
   const [scale, setScale] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLButtonElement>(null);
@@ -128,6 +140,33 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
       alive = false;
       timers.current.forEach(clearTimeout);
       hushFeedback();
+    };
+  }, [profile.id]);
+
+  // The parents' daily goal: today's practice, and a small celebration once a day when it is
+  // reached (on the goal meter). And a gentle break, if a parent asked for one.
+  useEffect(() => {
+    const t = now();
+    playStart(profile.id, t);
+    const c = playClock();
+    setBreakTime(breakDue(profile.parent.breakAfter, c.started, c.offered, t));
+    if (!goal) return;
+    let alive = true;
+    void getDayLog(profile.id, t).then((log) => {
+      if (!alive) return;
+      setToday(log);
+      if (!goalProgress(goal, log).reached || log.goalAt) return;
+      void markGoal(profile.id, t).then((l) => alive && setToday(l));
+      timers.current.push(
+        window.setTimeout(() => {
+          // At the speech bubble: the map has scrolled to the hero, the goal meter may be off screen.
+          emit({ type: 'goalReached' }, { el: document.querySelector('.map-bubble') ?? goalRef.current });
+          setMessage(say('🎯 יש! היעד של היום הושג!', 'good'));
+        }, 700)
+      );
+    });
+    return () => {
+      alive = false;
     };
   }, [profile.id]);
 
@@ -411,6 +450,40 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
         </button>
       </header>
 
+      {breakTime && (
+        <section class="card map-break enter" data-testid="break-card" role="status">
+          <p class="map-break-text">
+            🧃 {BREAK_SAY} <SpeakButton text={BREAK_SAY} class="speak-inline" />
+          </p>
+          <div class="row">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-testid="break-more"
+              onClick={() => {
+                playSfx('tap');
+                breakOffered(now());
+                setBreakTime(false);
+              }}
+            >
+              עוד קצת
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-testid="break-stop"
+              onClick={() => {
+                playSfx('tap');
+                breakOffered(now());
+                onSwitch();
+              }}
+            >
+              👋 הפסקה
+            </button>
+          </div>
+        </section>
+      )}
+
       <section class="map-hello enter">
         <h1 class="home-title">
           <span class="avatar avatar-md" aria-hidden="true">
@@ -429,6 +502,7 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
             ⭐ <span dir="ltr">{stars}/{chapterMaxStars(chapter)}</span>
           </span>
           <CoinChip world={world} coins={purse.coins} chipRef={purse.chip} class="map-stars" />
+          {goal && today && <GoalChip goal={goal} today={today} chipRef={goalRef} />}
           <button
             type="button"
             class="btn btn-secondary map-practice"
@@ -674,5 +748,36 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
 
       <NarrationHelp />
     </main>
+  );
+}
+
+/** The break offer: one sentence, the same for every child. */
+const BREAK_SAY = 'שיחקנו יפה! אולי הפסקה קטנה?';
+
+/** Today toward the goal a parent set: a small bar that grows by transform, and the numbers. */
+function GoalChip({ goal, today, chipRef }: { goal: DailyGoal; today: DayLog; chipRef: Ref<HTMLSpanElement> }) {
+  const g = goalProgress(goal, today);
+  return (
+    <span
+      ref={chipRef}
+      class={`chip map-goal ${g.reached ? 'is-reached' : ''}`}
+      data-testid="goal-meter"
+      data-done={g.done}
+      data-target={g.target}
+      data-reached={g.reached ? 'yes' : 'no'}
+      role="meter"
+      aria-label={`היעד של היום: ${goalText(goal)}`}
+      aria-valuemin={0}
+      aria-valuemax={g.target}
+      aria-valuenow={Math.min(g.done, g.target)}
+    >
+      <span aria-hidden="true">{g.reached ? '🏆' : '🎯'}</span>
+      <span class="map-goal-bar" aria-hidden="true">
+        <span class="map-goal-fill" style={`transform:scaleX(${g.ratio.toFixed(3)})`} />
+      </span>
+      <span dir="ltr">
+        {Math.min(g.done, g.target)}/{g.target}
+      </span>
+    </span>
   );
 }

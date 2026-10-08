@@ -19,6 +19,7 @@ import {
   type PlayWorldId,
   type Profile
 } from '../profiles/profiles';
+import { defaultParentSettings } from '../core/parents/prefs';
 
 interface Props {
   /** Existing profile to edit; undefined creates a new one. */
@@ -64,6 +65,7 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel }: Props) {
       ...stage,
       worldId: worldId!,
       settings: profile?.settings ?? defaultSettings(stage),
+      parent: profile?.parent ?? defaultParentSettings(),
       createdAt: profile?.createdAt ?? Date.now()
     };
     if (gender) p.gender = gender;

@@ -177,8 +177,11 @@ export function App() {
 
   /** Out of the parents' area, back to where it was opened. */
   function leaveParents(from: ParentFrom) {
-    const p = activeProfile();
+    // A parent may have changed this child's settings: take the saved record.
+    const was = activeProfile();
+    const p = was && (profiles.find((x) => x.id === was.id) ?? was);
     if (from === 'settings' && p) {
+      activateProfile(p);
       void applyWorld(p.worldId);
       setScreen({ name: 'settings' });
     } else {
@@ -341,6 +344,7 @@ export function App() {
           onBack={() => setScreen({ name: 'parentHome', from: screen.from })}
           onPractice={(skillId, focus) => void handOver(kid, { name: 'game', skillId, from: 'map', focus })}
           onLesson={(skillId) => void handOver(kid, { name: 'lesson', skillId, from: 'map' })}
+          onSave={(p) => void saveProfile(p).then(refresh)}
         />
       );
     }

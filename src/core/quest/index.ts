@@ -77,7 +77,10 @@ export function lockReason(n: QuestNode, p: QuestProgress, j: Journey = JOURNEY)
   const i = nodes.findIndex((x) => x.id === n.id);
   const r: LockReason = {};
   const before = i > 0 ? nodes[i - 1] : undefined;
-  if (before && !isDone(before, p)) r.before = before;
+  // A chapter a parent opened: its first station is open whatever came before (stars still count).
+  const ch = chapterOf(n.id, j);
+  const openedByHand = !!ch && !!p.opened?.includes(ch.id) && chapterNodes(ch)[0]?.id === n.id;
+  if (before && !isDone(before, p) && !openedByHand) r.before = before;
   if (n.needStars) {
     const have = chapterStars(chapterOf(n.id, j)!, p);
     if (have < n.needStars) r.stars = n.needStars - have;

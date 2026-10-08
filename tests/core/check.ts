@@ -44,6 +44,10 @@ import {
   KEEP_DAYS,
   PARENT_ERRORS,
   addAnswer,
+  allowedTemplates,
+  practiceSkills,
+  reachedChapters,
+  stationTemplate,
   breakDue,
   dayKey,
   durationText,
@@ -1074,7 +1078,23 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   const c = statusCounts(byCh);
   if (c.mastered !== 1 || c.learning !== 1 || c.new !== SKILLS.length - 2) fail('statusCounts ' + JSON.stringify(c));
   if (skillStatus(undefined) !== 'new' || skillStatus({ mastery: 0, attempts: 1 }) !== 'learning') fail('skillStatus');
-  ok(`parents: ${ERROR_TAGS.length} mistakes in parents' words (m/f + tip), days and weeks with an injected clock (90 days kept), daily goal and break, journey and skills by chapter`);
+  // The parents' settings at work: games turned off, free practice kept to the journey, a chapter opened by hand.
+  if (allowedTemplates(['pop', 'jump', 'match'], ['match']).join() !== 'pop,jump' || allowedTemplates(['jump'], ['jump']).join() !== 'pop') fail('allowedTemplates');
+  if (stationTemplate('match', ['match']) !== 'pop' || stationTemplate('jump', ['match']) !== 'jump' || stationTemplate(undefined, ['match']) !== undefined) fail('stationTemplate');
+  const fresh = emptyProgress();
+  const ch1 = JOURNEY.chapters[0];
+  const ch3 = JOURNEY.chapters[2];
+  if (reachedChapters(fresh).join() !== ch1.id) fail('reachedChapters at the start: ' + reachedChapters(fresh));
+  if (practiceSkills(fresh, false).length !== SKILLS.length) fail('practiceSkills: all when not locked');
+  const early = practiceSkills(fresh, true);
+  if (!early.includes('add.within10') || early.includes('add.within100') || early.length >= SKILLS.length) fail('practiceSkills locked at the start: ' + early.join());
+  const first3 = chapterNodes(ch3)[0];
+  if (nodeStatus(first3, fresh) !== 'locked') fail('chapter 3 starts locked');
+  const opened = { ...fresh, opened: [ch3.id] };
+  if (nodeStatus(first3, opened) !== 'open' || nodeStatus(chapterNodes(ch3)[1], opened) !== 'locked') fail('a chapter opened by hand: its first station opens, the rest follow as usual');
+  if (nextNode(opened)?.id !== allNodes()[0].id) fail('opening a chapter ahead leaves the next station where it was');
+  if (!reachedChapters(opened).includes(ch3.id) || !practiceSkills(opened, true).some((id) => chapterNodes(ch3).some((n) => (n.kind === 'practice' || n.kind === 'lesson') && n.skillId === id))) fail('an opened chapter counts as reached for practice');
+  ok(`parents: ${ERROR_TAGS.length} mistakes in parents' words (m/f + tip), days and weeks with an injected clock (90 days kept), daily goal and break, journey and skills by chapter, games turned off (Pop stays), practice kept to the journey, a chapter opened by hand`);
 }
 
 if (failures) {

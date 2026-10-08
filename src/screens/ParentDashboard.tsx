@@ -1,7 +1,8 @@
 // One child's dashboard in the parents' area (phase 8), loaded lazily: where they are on the
 // journey, what is mastered / being learned / not yet (by chapter), where it is hard (the common
 // mistakes in parents' words, with "practise this" and the lesson), and practice time – today,
-// this week (simple SVG bars), all time – with reviews due and the placement date.
+// this week (simple SVG bars), all time – with reviews due and the placement date; and the
+// parents' settings for this child (ParentKidSettings).
 // The numbers come from core/parents (pure) over the stores; the look is the neutral base one.
 import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
@@ -12,7 +13,8 @@ import { PARENT_ERRORS, durationText, journeyView, skillsByChapter, statusCounts
 import { getSkill } from '../core/skills/index';
 import type { ErrorTag, SkillId } from '../core/types';
 import { listSkillStates } from '../storage/skillStates';
-import { getQuestRecord } from '../storage/questProgress';
+import { getQuestRecord, setChapterOpen } from '../storage/questProgress';
+import { ParentKidSettings } from './ParentKidSettings';
 import { listDayLogs } from '../storage/sessions';
 import { WORLD_LIST } from '../worlds/index';
 import './parent.css';
@@ -23,6 +25,8 @@ interface Props {
   /** "Practise this": a round of the skill aimed at the mistake, in the child's world. */
   onPractice: (skillId: SkillId, focus: ErrorTag) => void;
   onLesson: (skillId: SkillId) => void;
+  /** A setting changed: save the profile. */
+  onSave: (p: Profile) => void;
 }
 
 interface Data {
@@ -32,14 +36,16 @@ interface Data {
   time: TimeStats;
   due: SkillId[];
   placedAt: number;
+  opened: string[];
 }
 
 const STATUS: Record<SkillStatus, string> = { mastered: 'נשלט', learning: 'בלמידה', new: 'עוד לא' };
 
 const dateText = (ms: number) => new Date(ms).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-export function ParentDashboard({ profile, onBack, onPractice, onLesson }: Props) {
+export function ParentDashboard({ profile, onBack, onPractice, onLesson, onSave }: Props) {
   const [data, setData] = useState<Data | null>(null);
+  const [loads, setLoads] = useState(0);
   const world = WORLD_LIST.find((w) => w.id === profile.worldId);
 
   useEffect(() => {
@@ -54,13 +60,14 @@ export function ParentDashboard({ profile, onBack, onPractice, onLesson }: Props
         summary: summarize(states, now),
         time: timeStats(days, profile.id, now),
         due: dueSkills(states, now),
-        placedAt: quest.placedAt
+        placedAt: quest.placedAt,
+        opened: quest.opened
       });
     })();
     return () => {
       alive = false;
     };
-  }, [profile.id]);
+  }, [profile.id, loads]);
 
   return (
     <main class="screen parent-area parent-dash" data-testid="parent-dash" data-kid={profile.id}>
@@ -86,7 +93,16 @@ export function ParentDashboard({ profile, onBack, onPractice, onLesson }: Props
           טוען…
         </p>
       ) : (
-        <Dashboard profile={profile} worldName={world ? `${world.icon} ${world.name}` : ''} data={data} onPractice={onPractice} onLesson={onLesson} />
+        <>
+          <Dashboard profile={profile} worldName={world ? `${world.icon} ${world.name}` : ''} data={data} onPractice={onPractice} onLesson={onLesson} />
+          <ParentKidSettings
+            profile={profile}
+            chapters={data.journey.chapters}
+            opened={data.opened}
+            onSave={onSave}
+            onChapter={(id, open) => void setChapterOpen(profile.id, id, open).then(() => setLoads((n) => n + 1))}
+          />
+        </>
       )}
     </main>
   );

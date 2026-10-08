@@ -94,6 +94,8 @@ export interface QuestProgress {
   stars: Record<string, number>;
   /** Opened chests: node id → the prize icon. */
   chests: Record<string, string>;
+  /** Chapters a parent opened by hand (phase 8): their first station needs no station before it. */
+  opened?: string[];
 }
 
 export type NodeStatus = 'locked' | 'open' | 'done';

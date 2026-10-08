@@ -10,6 +10,7 @@ export const fx: WorldFx = {
   }),
   unlock: (_e, b) => ({ particles: { kind: 'note', count: b.particles?.count ?? 40, at: 'el' } }),
   levelUp: (_e, b) => ({ particles: { kind: 'note', count: b.particles?.count ?? 30, at: 'el' } }),
+  goalReached: (_e, b) => ({ particles: { kind: 'note', count: b.particles?.count ?? 40, at: 'el' } }),
   chestOpen: () => ({ particles: { kind: 'note', count: 40, at: 'el' } }),
   bossHit: (e) => ({ particles: { kind: 'smoke', count: 12 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'הצל נעלם!' : undefined }),
   coin: () => ({ fly: '🎟️' })

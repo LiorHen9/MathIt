@@ -10,7 +10,7 @@
 // A profile that played before the map existed (schema 2: skillStates only) gets its record the
 // first time it is read: core/quest progressFromSkills turns watched lessons and played rounds into
 // done stations, and everything already open counts as celebrated (no burst of old openings).
-import { allNodes, findNode, nextNode, nodeStatus, progressFromPlacement, progressFromSkills, withStars, type QuestProgress, type SkillSummary } from '../core/quest/index';
+import { JOURNEY, allNodes, findNode, nextNode, nodeStatus, progressFromPlacement, progressFromSkills, withStars, type QuestProgress, type SkillSummary } from '../core/quest/index';
 import { now as clockNow } from '../app/clock';
 import type { SkillId } from '../core/types';
 import { dbGet, dbPut } from './db';
@@ -34,6 +34,8 @@ export interface QuestRecord extends QuestProgress {
   reviewRevealed: number;
   /** When the placement game last placed the profile (0 = never). */
   placedAt: number;
+  /** Chapters a parent opened by hand (phase 8). */
+  opened: string[];
 }
 
 /** Fill missing fields and drop broken values (older or hand-edited records). */
@@ -55,7 +57,8 @@ export function normalizeQuestRecord(raw: Partial<QuestRecord> | undefined, prof
     reviewedAt: time(raw?.reviewedAt),
     reviews: Number.isInteger(raw?.reviews) && raw!.reviews! > 0 ? raw!.reviews! : 0,
     reviewRevealed: time(raw?.reviewRevealed),
-    placedAt: time(raw?.placedAt)
+    placedAt: time(raw?.placedAt),
+    opened: Array.isArray(raw?.opened) ? [...new Set(raw!.opened.filter((c) => JOURNEY.chapters.some((x) => x.id === c)))] : []
   };
 }
 
@@ -85,8 +88,19 @@ export async function getQuestRecord(profileId: string): Promise<QuestRecord> {
     reviewedAt: 0,
     reviews: 0,
     reviewRevealed: 0,
-    placedAt: 0
+    placedAt: 0,
+    opened: []
   });
+}
+
+/**
+ * A parent opens a chapter by hand (or closes it again): its first station no longer waits for the
+ * station before it. The map shows the opening with a burst the next time the child looks.
+ */
+export async function setChapterOpen(profileId: string, chapterId: string, open: boolean): Promise<QuestRecord> {
+  const r = await getQuestRecord(profileId);
+  const opened = open ? [...new Set([...r.opened, chapterId])] : r.opened.filter((c) => c !== chapterId);
+  return put(normalizeQuestRecord({ ...r, opened }, profileId));
 }
 
 /** A station was played: keep its best stars. Returns the new record. */

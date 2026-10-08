@@ -10,6 +10,7 @@ export const fx: WorldFx = {
   }),
   unlock: (_e, b) => ({ particles: { kind: 'flame', count: b.particles?.count ?? 40, at: 'el' } }),
   levelUp: (_e, b) => ({ particles: { kind: 'flame', count: b.particles?.count ?? 30, at: 'el' } }),
+  goalReached: (_e, b) => ({ particles: { kind: 'flame', count: b.particles?.count ?? 40, at: 'el' } }),
   bossHit: (e) => ({ particles: { kind: e.n >= 4 ? 'flame' : 'spark', count: 16 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'סל!' : undefined }),
   coin: () => ({ fly: '🏅' })
 };

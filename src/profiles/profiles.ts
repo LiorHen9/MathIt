@@ -5,6 +5,7 @@
 import { dbDelete, dbGet, dbGetAll, dbKeys, dbPut } from '../storage/db';
 import { deleteInventories } from '../storage/inventory';
 import type { AgeBand } from '../core/types';
+import { normalizeParentSettings, type ParentSettings } from '../core/parents/prefs';
 import type { WorldId } from '../worlds/types';
 
 export type { AgeBand } from '../core/types';
@@ -44,6 +45,8 @@ export interface Profile {
   pinHash?: string;
   pinSalt?: string;
   settings: ProfileSettings;
+  /** What a parent set (phase 8): daily goal, break, games turned off, free practice kept to the journey. */
+  parent: ParentSettings;
   createdAt: number;
 }
 
@@ -144,6 +147,7 @@ export function normalizeProfile(raw: Partial<Profile> & { id: string }): Profil
       reducedMotion: typeof s.reducedMotion === 'boolean' ? s.reducedMotion : null,
       speechHelpSeen: s.speechHelpSeen === true
     },
+    parent: normalizeParentSettings(raw.parent),
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0
   };
   if (stage.grade !== undefined) p.grade = stage.grade;

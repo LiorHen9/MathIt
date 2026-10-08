@@ -22,6 +22,7 @@
 // (components/Coins.tsx). Word problems are filled with the world's words (core/story.ts).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { pickQuestion, sisterOf } from '../core/mastery/pick';
+import { allowedTemplates, stationTemplate } from '../core/parents/settings';
 import { adaptLevel, commonError, startLevelState, type AnswerResult, type LevelState } from '../core/mastery/index';
 import { createRng } from '../core/rng';
 import { fillQuestion } from '../core/story';
@@ -205,7 +206,9 @@ function Round({ profile, skills, setup, quest, review, seed, onHome, onAgain }:
 
   const P = plan.current;
   const item = P.items[idx];
-  const tpl = useMemo(() => roundTemplate(skill.templates, setup[skills[0]].rounds, quest?.template, askedTemplate(), !!review), []);
+  // Games a parent turned off are skipped (a station's own game becomes Pop).
+  const blocked = profile.parent.blocked;
+  const tpl = useMemo(() => roundTemplate(allowedTemplates(skill.templates, blocked), setup[skills[0]].rounds, stationTemplate(quest?.template, blocked), askedTemplate(), !!review), []);
   /** This question's game: the round's, if it can play it. */
   const game: TemplateId = templateFits(tpl, item.q) ? tpl : 'pop';
   const q = useMemo(() => promptFor(item.q, game), [item.q, game]);
