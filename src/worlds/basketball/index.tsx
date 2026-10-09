@@ -70,14 +70,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'hoop' }, jump: { look: 'hoops' }, build: { look: 'court' }, match: { look: 'jersey', deco: '🏀' }, clock: { look: 'shotclock' }, shop: { look: 'store', icons: ['🏀', '🎽', '🥤'] } },
+  templateSkins: { pop: { look: 'hoop' }, jump: { look: 'hoops' }, build: { look: 'court' }, match: { look: 'jersey', deco: '🏀' }, clock: { look: 'shotclock' }, shop: { look: 'store', icons: ['🏀', '🎽', '🥤'] }, slice: { look: 'slice-pie' }, pattern: { look: 'pat-scoreboard' }, speed: { look: 'speed-shotclock' } },
   story: {
     chapters: [
       'בחצר מחכה אלוף ה-1 על 1 – מתאמנים בקליעות של מספרים!',
       'עוברים לאולם הגדול, ושם קולעים מספרים עד 20!',
       'בטורניר יש מאה זריקות – סופרים אותן בעשרות!',
       'בחנות של האולם קונים במטבעות, ושעון הזריקות רץ!',
-      'משחק האליפות מתחיל – קולעים עם מספרים עד 100!'
+      'משחק האליפות מתחיל – קולעים עם מספרים עד 100!',
+      'באימון הקליעות זורקים בסדרות שוות – זה לוח הכפל!',
+      'בטבלת הנקודות של העונה מחברים מספרים גדולים במאונך!',
+      'אחרי המשחק חותכים פאי לחלקים שווים לכל השחקנים!',
+      'מד המהירות מראה מספרים עשרוניים – בואו נקרא אותם!',
+      'בונים מגרש חדש ומודדים את השטח וההיקף שלו – זו הפלייאוף!'
     ]
   },
   vocabulary: { items: ['כדורים', 'בקבוקי מים', 'מגבות'], place: ['באולם', 'בחצר'], thing: ['כדור סל', 'סרט ראש', 'בקבוק מים'] },

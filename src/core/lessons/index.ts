@@ -460,6 +460,375 @@ export const LESSONS: readonly Lesson[] = [
       },
       { kind: 'try', title: 'עוד אחד', level: 1, key: '65-20' }
     ]
+  },
+  // Phase 9: grades 3–6.
+  {
+    skillId: 'mul.table',
+    title: 'מה זה כפל?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'שורות שוות',
+        steps: [
+          { text: '3 שורות, ובכל שורה 4: סופרים 4, 8, 12.', action: { kind: 'array', rows: 3, cols: 4 } },
+          { text: 'כפל זה חיבור שחוזר: 4 + 4 + 4.', math: '3 × 4 = 12' }
+        ]
+      },
+      {
+        kind: 'watch',
+        title: 'מסובבים',
+        steps: [
+          { text: 'מסובבים את המערך: עכשיו 4 שורות של 3.', action: { kind: 'array', rows: 3, cols: 4, turn: true } },
+          { text: 'אותו מספר! 3 × 4 = 4 × 3.', math: '4 × 3 = 12' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: '4x10' },
+      {
+        kind: 'watch',
+        title: 'קופצים בכפל',
+        steps: [
+          { text: 'על ציר המספרים קופצים בקפיצות של 5.', action: { kind: 'line', from: 0, hops: [5, 5, 5, 5], max: 100 } },
+          { text: '4 קפיצות של 5 נוחתות על 20.', math: '4 × 5 = 20' }
+        ]
+      },
+      { kind: 'try', title: 'עוד אחד', level: 2, key: '8x4' }
+    ]
+  },
+  {
+    skillId: 'div',
+    title: 'מה זה חילוק?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'מחלקים לצלחות',
+        steps: [
+          { text: 'יש 12, ומחלקים שווה בשווה ל-3 צלחות.', action: { kind: 'share', total: 12, groups: 3, ask: 'each' } },
+          { text: 'בכל צלחת 4.', math: '12 : 3 = 4' }
+        ]
+      },
+      { kind: 'try', title: 'כמה בכל צלחת?', level: 1, key: '40:10' },
+      {
+        kind: 'watch',
+        title: 'שארית',
+        steps: [
+          { text: '17 ל-5 צלחות: בכל צלחת 3.', action: { kind: 'share', total: 17, groups: 5, ask: 'each' } },
+          { text: 'ו-2 לא מספיקים לסיבוב: זו השארית.', action: { kind: 'share', total: 17, groups: 5, ask: 'left' }, math: '17 : 5 = 3 (שארית 2)' }
+        ]
+      },
+      { kind: 'try', title: 'עכשיו עם שארית', level: 3, key: '23:7' }
+    ]
+  },
+  {
+    skillId: 'mul.big',
+    title: 'כפל של מספר גדול',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'עשרות',
+        steps: [
+          { text: '30 × 4: כל נקודה היא עשר.', action: { kind: 'array', rows: 4, cols: 3, unit: 10 } },
+          { text: '12 עשרות הן 120.', math: '30 × 4 = 120' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: '30x7' },
+      {
+        kind: 'watch',
+        title: 'מפרקים',
+        steps: [
+          { text: '23 × 3: קודם 20 × 3 = 60, ואז 3 × 3 = 9.', action: { kind: 'array', rows: 3, cols: 3 } },
+          { text: 'מחברים את החלקים: 60 ועוד 9.', action: { kind: 'column', a: 60, b: 9, op: '+' }, math: '23 × 3 = 69' }
+        ]
+      },
+      { kind: 'try', title: 'עוד אחד', level: 2, key: '33x2' }
+    ]
+  },
+  {
+    skillId: 'story.muldiv',
+    title: 'סיפורי כפל וחילוק',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'קבוצות שוות',
+        steps: [
+          { text: 'יש 4 שקיות, ובכל שקית 3.', action: { kind: 'array', rows: 4, cols: 3 } },
+          { text: 'קבוצות שוות – כופלים: 4 × 3.', math: '4 × 3 = 12' }
+        ]
+      },
+      { kind: 'try', title: 'כמה בסך הכול?', level: 1, key: 'smul1:4x4' },
+      {
+        kind: 'watch',
+        title: 'מחלקים שווה בשווה',
+        steps: [
+          { text: 'יש 12, ומחלקים ל-4 קבוצות.', action: { kind: 'share', total: 12, groups: 4, ask: 'each' } },
+          { text: 'מחלקים שווה בשווה – זה חילוק.', math: '12 : 4 = 3' }
+        ]
+      },
+      { kind: 'try', title: 'כמה בכל קבוצה?', level: 2, key: 'sdiv1:16:4' }
+    ]
+  },
+  {
+    skillId: 'col.add',
+    title: 'חיבור במאונך',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'טור אחרי טור',
+        steps: [
+          { text: 'כותבים אחד מתחת לשני: אחדות מתחת לאחדות.', action: { kind: 'column', a: 225, b: 322, op: '+' } },
+          { text: 'מחברים כל טור, מימין לשמאל.', math: '225 + 322 = 547' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: 'col:202+281' },
+      {
+        kind: 'watch',
+        title: 'עשר עובר הלאה',
+        steps: [
+          { text: '8 ועוד 5 זה 13: כותבים 3, והעשר עף לטור הבא.', action: { kind: 'column', a: 348, b: 275, op: '+' } },
+          { text: 'כך בכל טור שיוצא בו 10 או יותר.', math: '348 + 275 = 623' }
+        ]
+      },
+      { kind: 'try', title: 'עם המרה', level: 2, key: 'col:664+57' }
+    ]
+  },
+  {
+    skillId: 'col.sub',
+    title: 'חיסור במאונך',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'טור אחרי טור',
+        steps: [
+          { text: 'מחסרים כל טור, מימין לשמאל.', action: { kind: 'column', a: 769, b: 541, op: '-' } },
+          { text: 'יוצא 228.', math: '769 − 541 = 228' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: 'col:982-352' },
+      {
+        kind: 'watch',
+        title: 'פורטים',
+        steps: [
+          { text: 'אין מספיק אחדות: פורטים עשר מהטור שמשמאל.', action: { kind: 'column', a: 720, b: 297, op: '-' } },
+          { text: 'ממשיכים כך בכל טור.', math: '720 − 297 = 423' }
+        ]
+      },
+      { kind: 'try', title: 'עם פריטה', level: 2, key: 'col:931-299' }
+    ]
+  },
+  {
+    skillId: 'frac.part',
+    title: 'מה זה שבר?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'חלקים שווים',
+        steps: [
+          { text: 'חותכים את הפיצה ל-4 חלקים שווים.', action: { kind: 'pizza', d: 4, n: 0 } },
+          { text: 'צובעים חלק אחד: זה רבע.', action: { kind: 'pizza', d: 4, n: 1 }, math: '1/4' }
+        ]
+      },
+      { kind: 'try', title: 'איזה חלק?', level: 1, key: 'fp:1/8' },
+      {
+        kind: 'watch',
+        title: 'מונה ומכנה',
+        steps: [
+          { text: 'למטה – לכמה חלקים חתכנו. למעלה – כמה צבועים.', action: { kind: 'pizza', d: 8, n: 3 } },
+          { text: 'שלוש שמיניות.', math: '3/8' }
+        ]
+      },
+      { kind: 'try', title: 'ועכשיו?', level: 2, key: 'fp:3/8' }
+    ]
+  },
+  {
+    skillId: 'frac.compare',
+    title: 'איזה שבר גדול יותר?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'אותו מכנה',
+        steps: [
+          { text: 'החלקים באותו גודל: יותר חלקים זה יותר.', action: { kind: 'pizza', d: 8, n: 5, vs: { n: 3, d: 8 } } },
+          { text: 'חמש שמיניות גדול משלוש שמיניות.', math: '5/8 > 3/8' }
+        ]
+      },
+      { kind: 'try', title: 'איזה סימן?', level: 1, key: 'fc:3/8?4/8' },
+      {
+        kind: 'watch',
+        title: 'אותו מונה',
+        steps: [
+          { text: 'חותכים ל-8 או ל-4: כשחותכים ליותר חלקים, כל חלק קטן יותר.', action: { kind: 'pizza', d: 8, n: 1, vs: { n: 1, d: 4 } } },
+          { text: 'שמינית קטנה מרבע.', math: '1/8 < 1/4' }
+        ]
+      },
+      { kind: 'try', title: 'ועכשיו?', level: 2, key: 'fc:1/2?1/8' }
+    ]
+  },
+  {
+    skillId: 'frac.equiv',
+    title: 'שברים שווים',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'חותכים דק יותר',
+        steps: [
+          { text: 'חצי פיצה. חותכים כל חלק לשניים.', action: { kind: 'pizza', d: 2, n: 1, split: 2 } },
+          { text: 'אותה כמות פיצה: חצי שווה לשני רבעים.', math: '1/2 = 2/4' }
+        ]
+      },
+      { kind: 'try', title: 'איזה שבר שווה?', level: 1, key: 'fe:1/4=2/8' },
+      {
+        kind: 'watch',
+        title: 'מצמצמים',
+        steps: [
+          { text: 'שש שמיניות: מדביקים כל שני חלקים.', action: { kind: 'pizza', d: 8, n: 6, join: 2 } },
+          { text: 'יוצאים שלושה רבעים, באותו גודל.', math: '6/8 = 3/4' }
+        ]
+      },
+      { kind: 'try', title: 'מצמצמים', level: 2, key: 'fs:3/6=1/2' }
+    ]
+  },
+  {
+    skillId: 'frac.add',
+    title: 'חיבור שברים',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'מאותה פיצה',
+        steps: [
+          { text: 'רבע ועוד שני רבעים, מאותה פיצה.', action: { kind: 'pizza', d: 4, n: 1, add: 2 } },
+          { text: 'מחברים רק את החלקים: שלושה רבעים.', math: '1/4 + 2/4 = 3/4' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: 'fa:1/4+1/4' },
+      {
+        kind: 'watch',
+        title: 'המכנה נשאר',
+        steps: [
+          { text: 'הפיצה לא נחתכת מחדש: היא נשארת בשמיניות.', action: { kind: 'pizza', d: 8, n: 3, add: 2 } },
+          { text: 'שלוש שמיניות ועוד שתיים: חמש שמיניות.', math: '3/8 + 2/8 = 5/8' }
+        ]
+      },
+      { kind: 'try', title: 'עוד אחד', level: 1, key: 'fa:3/8+2/8' }
+    ]
+  },
+  {
+    skillId: 'dec.read',
+    title: 'מספרים עשרוניים',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'עשיריות',
+        steps: [
+          { text: 'הריבוע הוא שלם. כל טור הוא עשירית.', action: { kind: 'decimal', a: 30 } },
+          { text: 'שלוש עשיריות כותבים 0.3.', math: '0.3' }
+        ]
+      },
+      { kind: 'try', title: 'איזה מספר?', level: 1, key: 'dr:70' },
+      {
+        kind: 'watch',
+        title: 'מאיות',
+        steps: [
+          { text: 'כל משבצת היא מאית: 3 טורים ועוד 4 משבצות.', action: { kind: 'decimal', a: 34 } },
+          { text: '34 מאיות כותבים 0.34.', math: '0.34' }
+        ]
+      },
+      { kind: 'try', title: 'ועכשיו?', level: 2, key: 'dr:75' }
+    ]
+  },
+  {
+    skillId: 'dec.compare',
+    title: 'משווים עשרוניים',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'קודם עשיריות',
+        steps: [
+          { text: 'משווים טורים מלאים: 7 עשיריות ו-2 עשיריות.', action: { kind: 'decimal', a: 70, vs: 20 } },
+          { text: '0.7 גדול מ-0.2.', math: '0.7 > 0.2' }
+        ]
+      },
+      { kind: 'try', title: 'איזה סימן?', level: 1, key: 'dc:90?20' },
+      {
+        kind: 'watch',
+        title: 'יותר ספרות?',
+        steps: [
+          { text: '0.25 ארוך יותר, אבל 0.3 צובע יותר.', action: { kind: 'decimal', a: 25, vs: 30 } },
+          { text: 'משווים עשיריות לעשיריות.', math: '0.25 < 0.3' }
+        ]
+      },
+      { kind: 'try', title: 'ועכשיו?', level: 2, key: 'dc:70?33' }
+    ]
+  },
+  {
+    skillId: 'dec.add',
+    title: 'חיבור עשרוניים',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'עשיריות',
+        steps: [
+          { text: '0.5 ועוד 0.7: מוסיפים טורים.', action: { kind: 'decimal', a: 50, b: 70 } },
+          { text: 'עשר עשיריות הן שלם: יוצא 1.2.', math: '0.5 + 0.7 = 1.2' }
+        ]
+      },
+      { kind: 'try', title: 'כמה זה?', level: 1, key: 'da:70+10' },
+      {
+        kind: 'watch',
+        title: 'נקודה מתחת לנקודה',
+        steps: [
+          { text: '0.35 ועוד 0.4: עשיריות לעשיריות.', action: { kind: 'decimal', a: 35, b: 40 } },
+          { text: 'יוצא 0.75.', math: '0.35 + 0.4 = 0.75' }
+        ]
+      },
+      { kind: 'try', title: 'עוד אחד', level: 2, key: 'da:27+30' }
+    ]
+  },
+  {
+    skillId: 'geo.area',
+    title: 'מה זה שטח?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'משבצות בפנים',
+        steps: [
+          { text: 'שטח זה כמה משבצות בתוך הצורה.', action: { kind: 'grid', w: 5, h: 3, ask: 'area' } },
+          { text: '3 שורות של 5: שטח 15.', math: '5 × 3 = 15' }
+        ]
+      },
+      { kind: 'try', title: 'מה השטח?', level: 1, key: 'area:5x3' },
+      {
+        kind: 'watch',
+        title: 'צורה מורכבת',
+        steps: [
+          { text: 'לצורה הזאת חסרה פינה.', action: { kind: 'grid', w: 5, h: 4, cut: { w: 2, h: 1 }, ask: 'area' } },
+          { text: 'מלבן שלם פחות הפינה: 20 פחות 2.', math: '20 − 2 = 18' }
+        ]
+      },
+      { kind: 'try', title: 'לפי הצלעות', level: 2, key: 'area:8x4s' }
+    ]
+  },
+  {
+    skillId: 'geo.perimeter',
+    title: 'מה זה היקף?',
+    parts: [
+      {
+        kind: 'watch',
+        title: 'הקו מסביב',
+        steps: [
+          { text: 'היקף זה אורך הקו מסביב.', action: { kind: 'grid', w: 5, h: 3, ask: 'perimeter' } },
+          { text: '5 ועוד 3 ועוד 5 ועוד 3.', math: '5 + 3 + 5 + 3 = 16' }
+        ]
+      },
+      { kind: 'try', title: 'מה ההיקף?', level: 1, key: 'per:5x2' },
+      {
+        kind: 'watch',
+        title: 'שטח או היקף?',
+        steps: [
+          { text: 'שטח – המשבצות בפנים.', action: { kind: 'grid', w: 4, h: 2, ask: 'area' } },
+          { text: 'היקף – הקו מסביב.', action: { kind: 'grid', w: 4, h: 2, ask: 'perimeter' }, math: '4 + 2 + 4 + 2 = 12' }
+        ]
+      },
+      { kind: 'try', title: 'לפי הצלעות', level: 2, key: 'per:8x4s' }
+    ]
   }
 ];
 

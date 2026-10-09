@@ -13,5 +13,6 @@ export const fx: WorldFx = {
   goalReached: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 40, at: 'el' } }),
   chestOpen: () => ({ particles: { kind: 'block', count: 44, at: 'el' } }),
   bossHit: (e) => ({ particles: { kind: 'block', count: 16 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'קראק!' : undefined }),
-  coin: () => ({ fly: '💠' })
+  coin: () => ({ fly: '💠' }),
+  puzzleSolved: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 80, at: 'screen' }, word: 'נבנה!' }),
 };

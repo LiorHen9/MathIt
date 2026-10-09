@@ -76,14 +76,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'target' }, jump: { look: 'roofs' }, build: { look: 'bamboo' }, match: { look: 'scroll', deco: '📜' }, clock: { look: 'gong' }, shop: { look: 'market', icons: ['✴️', '📜', '🏮'] } },
+  templateSkins: { pop: { look: 'target' }, jump: { look: 'roofs' }, build: { look: 'bamboo' }, match: { look: 'scroll', deco: '📜' }, clock: { look: 'gong' }, shop: { look: 'market', icons: ['✴️', '📜', '🏮'] }, slice: { look: 'slice-sushi' }, pattern: { look: 'pat-scrolls' }, speed: { look: 'speed-incense' } },
   story: {
     chapters: [
       'בדוג׳ו מתאמנים לקראת מאסטר הצל, ומתחילים בחגורה לבנה!',
       'בחגורה הצהובה מתאמנים בחשבון עד 20!',
       'במקדש ההר יש מאה מדרגות – עולים אותן בעשרות!',
       'בשוק של הכפר קונים במטבעות, וגונג השעון מצלצל!',
-      'לחגורה השחורה מגיעים רק בחשבון עד 100!'
+      'לחגורה השחורה מגיעים רק בחשבון עד 100!',
+      'בחגורה הכתומה מתאמנים בשורות שוות של כוכבי נינג׳ה – זה לוח הכפל!',
+      'במגילות העתיקות כתובים מספרים גדולים אחד מתחת לשני!',
+      'בסעודת הדוג׳ו חותכים רולים לחלקים שווים!',
+      'בחגורה הירוקה מודדים קפיצות במספרים עשרוניים!',
+      'בונים דוג׳ו חדש ומודדים את השטח וההיקף שלו – זה המבחן האחרון!'
     ]
   },
   vocabulary: { items: ['כוכבי נינג׳ה', 'מגילות', 'פנסי נייר'], place: ['בדוג׳ו', 'בגן הבמבוק'], thing: ['כוכב נינג׳ה', 'מגילה', 'פנס נייר'] },

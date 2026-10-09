@@ -5,12 +5,14 @@
 // chapter holds enough stars. Nothing here depends on the order of calls or on the clock.
 import { CHAPTER_1 } from './chapter1';
 import { CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5 } from './chapters';
+import { CHAPTER_6, CHAPTER_7, CHAPTER_8, CHAPTER_9, CHAPTER_10 } from './chapters6';
+import { PUZZLE_IDS, PUZZLE_LEVELS } from '../puzzles/types';
 import type { Chapter, Journey, NodeStatus, QuestNode, QuestProgress, ReviewNode, Section } from './types';
 import type { SkillId } from '../types';
 
 export * from './types';
 
-export const JOURNEY: Journey = { id: 'main', chapters: [CHAPTER_1, CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5] };
+export const JOURNEY: Journey = { id: 'main', chapters: [CHAPTER_1, CHAPTER_2, CHAPTER_3, CHAPTER_4, CHAPTER_5, CHAPTER_6, CHAPTER_7, CHAPTER_8, CHAPTER_9, CHAPTER_10] };
 
 export function emptyProgress(): QuestProgress {
   return { stars: {}, chests: {} };
@@ -38,7 +40,7 @@ export function sectionOf(nodeId: string, j: Journey = JOURNEY): Section | undef
   return j.chapters.flatMap((c) => c.sections).find((s) => s.nodes.some((n) => n.id === nodeId));
 }
 
-/** The most stars a station can give: a lesson 1, practice, the boss and a review 3, a chest none. */
+/** The most stars a station can give: a lesson 1, practice, a puzzle, the boss and a review 3, a chest none. */
 export function maxStars(n: QuestNode): number {
   return n.kind === 'lesson' ? 1 : n.kind === 'chest' ? 0 : 3;
 }
@@ -159,7 +161,7 @@ export function reviewSkills(due: SkillId[], played: SkillId[], min = 2, max = 3
 /**
  * Progress after the placement game: every lesson and practice station whose (skill, level) the
  * child already knows counts as done (practice with 3 stars), and a chest the child skipped past
- * counts as opened – the hero goes on to the first station not yet known. A chapter's boss is
+ * counts as opened (a puzzle as solved, one star) – the hero goes on to the first station not yet known. A chapter's boss is
  * passed (one star – it can be fought later for more) when the child knows every skill it mixes
  * at its level (phase 7, so a child who knows everything to 20 starts at chapter 3); the
  * journey's last boss is always fought. Never takes stars away. Pure.
@@ -176,11 +178,15 @@ export function progressFromPlacement(p: QuestProgress, known: (skillId: SkillId
         : n.kind === 'boss'
           ? n !== lastBoss && n.skillIds.every((id) => known(id, n.level))
           : false;
+  // The way on is known: the last boss is still fought, but a child who knows its skills goes up to it.
+  const ahead = (i: number) => nodes.slice(i + 1).some((x) => knownNode(x) || (x === lastBoss && x.kind === 'boss' && x.skillIds.every((id) => known(id, x.level))));
   nodes.forEach((n, i) => {
     if (n.kind === 'lesson') knownNode(n) && (out = withStars(out, n.id, 1));
     else if (n.kind === 'practice') knownNode(n) && (out = withStars(out, n.id, 3));
     else if (n.kind === 'boss') knownNode(n) && (out = withStars(out, n.id, 1));
-    else if (n.kind === 'chest' && !out.chests[n.id] && nodes.slice(i + 1).some(knownNode)) out.chests[n.id] = n.prize.icon;
+    else if (n.kind === 'chest' && !out.chests[n.id] && ahead(i)) out.chests[n.id] = n.prize.icon;
+    // A puzzle passed on the way counts as solved, one star (it can be played for more).
+    else if (n.kind === 'puzzle' && !out.stars[n.id] && ahead(i)) out = withStars(out, n.id, 1);
   });
   return out;
 }
@@ -198,6 +204,7 @@ export function journeyProblems(j: Journey, skillExists: (id: string, level?: nu
     if (!n.title) out.push(`${n.id}: no title`);
     if (n.kind === 'lesson' && !skillExists(n.skillId)) out.push(`${n.id}: unknown skill ${n.skillId}`);
     if (n.kind === 'practice' && !skillExists(n.skillId, n.level)) out.push(`${n.id}: unknown skill/level ${n.skillId} L${n.level}`);
+    if (n.kind === 'puzzle' && (!PUZZLE_IDS.includes(n.puzzle) || !Number.isInteger(n.level) || n.level < 1 || n.level > PUZZLE_LEVELS[n.puzzle])) out.push(`${n.id}: unknown puzzle ${n.puzzle} L${n.level}`);
     if (n.kind === 'review' || n.id === REVIEW_ID) out.push(`${n.id}: a review station is made on the fly, never part of a chapter`);
     if (n.kind === 'boss') {
       if (n.skillIds.length < 2) out.push(`${n.id}: a boss mixes skills`);

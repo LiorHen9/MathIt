@@ -78,14 +78,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'ball' }, jump: { look: 'cones' }, build: { look: 'turf' }, match: { look: 'shirt', deco: '👕' }, clock: { look: 'scoreboard' }, shop: { look: 'kiosk', icons: ['⚽', '📢', '🧣'] } },
+  templateSkins: { pop: { look: 'ball' }, jump: { look: 'cones' }, build: { look: 'turf' }, match: { look: 'shirt', deco: '👕' }, clock: { look: 'scoreboard' }, shop: { look: 'kiosk', icons: ['⚽', '📢', '🧣'] }, slice: { look: 'slice-orange' }, pattern: { look: 'pat-jerseys' }, speed: { look: 'speed-stopwatch' } },
   story: {
     chapters: [
       'הליגה השכונתית מתחילה, וכל תשובה נכונה מקרבת אותנו לגביע!',
       'עולים לליגה הבאה, ושם משחקים עם מספרים עד 20!',
       'האצטדיון מתמלא במאה אוהדים – סופרים אותם בעשרות!',
       'בקיוסק של האצטדיון קונים במטבעות, ושעון המשחק מתקתק!',
-      'גמר הגביע מחכה, ושם משחקים עם מספרים עד 100!'
+      'גמר הגביע מחכה, ושם משחקים עם מספרים עד 100!',
+      'במחנה האימונים מתאמנים בשורות שוות – זה לוח הכפל!',
+      'בלוח התוצאות הענק כותבים מספרים גדולים אחד מתחת לשני!',
+      'בהפסקה חותכים תפוזים לחלקים שווים לכל הקבוצה!',
+      'השופט מודד זמנים בעשיריות שנייה – בואו נקרא מספרים עשרוניים!',
+      'מסמנים מגרש חדש ומודדים את השטח וההיקף שלו – זה הגמר הגדול!'
     ]
   },
   vocabulary: { items: ['כדורים', 'דגלים', 'קונוסים'], place: ['על המגרש', 'בחדר ההלבשה'], thing: ['כדור', 'משרוקית', 'צעיף אוהדים'] },

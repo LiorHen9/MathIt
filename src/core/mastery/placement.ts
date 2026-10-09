@@ -1,9 +1,9 @@
 // The placement game (docs/ARCHITECTURE.md §7.4), pure: up to 10 questions on a ladder of
-// (skill, level) rungs from "count to 5" to "take away within 100" (phase 7: all five chapters).
-// It starts by age, climbs three rungs after a right answer (one after the first mistake), and
-// steps down after a wrong one; it
-// stops early when it finds the edge (right on one rung, wrong on the next), when the child is
-// right on the top rung, or wrong on the bottom one.
+// (skill, level) rungs from "count to 5" to "perimeter of a compound shape" (phase 9: all ten
+// chapters). It starts by age and climbs five rungs after every right answer; after the first
+// mistake it halves the gap between the highest rung known and the lowest one failed (a beginner
+// goes down fast instead); it stops when it finds the edge (right on one rung, wrong on the next),
+// when the child is right on the top rung, or wrong on the bottom one.
 // The result: the highest rung the child knows (and nothing failed below it), which skills are
 // mastered (every level of them known), which ones are partly known, and from it the stations on
 // the quest map that count as done.
@@ -17,8 +17,8 @@ export interface Rung {
 
 /**
  * Easiest first, in the order of the quest map: chapter 1 (rungs 0–6), chapter 2 (7–12),
- * chapter 3 (13–14), chapter 4 (15–17), chapter 5 (18–21). Phase 7 made it longer: a level
- * between two rungs of a skill is known when a higher rung is, so most skills need one or two.
+ * chapter 3 (13–14), chapter 4 (15–17), chapter 5 (18–21); phase 9 chapters 6–10 (22–33). A
+ * level between two rungs of a skill is known when a higher rung is, so most skills need one or two.
  */
 export const LADDER: readonly Rung[] = [
   { skillId: 'count.to10', level: 1 },
@@ -42,17 +42,39 @@ export const LADDER: readonly Rung[] = [
   { skillId: 'add.within100', level: 2 },
   { skillId: 'sub.within100', level: 2 },
   { skillId: 'add.within100', level: 3 },
-  { skillId: 'sub.within100', level: 3 }
+  { skillId: 'sub.within100', level: 3 },
+  // Phase 9: chapter 6 (22–25), 7 (26–27), 8 (28–29), 9 (30–31), 10 (32–33).
+  { skillId: 'mul.table', level: 2 },
+  { skillId: 'mul.table', level: 3 },
+  { skillId: 'div', level: 3 },
+  { skillId: 'mul.big', level: 3 },
+  { skillId: 'col.add', level: 3 },
+  { skillId: 'col.sub', level: 3 },
+  { skillId: 'frac.compare', level: 2 },
+  { skillId: 'frac.add', level: 2 },
+  { skillId: 'dec.compare', level: 2 },
+  { skillId: 'dec.add', level: 2 },
+  { skillId: 'geo.area', level: 3 },
+  { skillId: 'geo.perimeter', level: 3 }
 ];
 
 /**
  * Skills the ladder does not ask, known with another: word problems are the same sums told as a
  * story (to 10 with taking away to 10; to 20 with crossing ten backwards).
  */
-export const IMPLIED: Partial<Record<SkillId, SkillId>> = { 'story.within10': 'sub.within10', 'story.within20': 'sub.bridge10' };
+export const IMPLIED: Partial<Record<SkillId, SkillId>> = {
+  'story.within10': 'sub.within10',
+  'story.within20': 'sub.bridge10',
+  // Phase 9: times and sharing stories with division; a part of a whole with comparing fractions;
+  // fractions worth the same with adding them; reading decimals with comparing them.
+  'story.muldiv': 'div',
+  'frac.part': 'frac.compare',
+  'frac.equiv': 'frac.add',
+  'dec.read': 'dec.compare'
+};
 
 /** The first rung of each chapter after the first (where a chapter starts on the ladder). */
-export const CHAPTER_RUNGS = [7, 13, 15, 18];
+export const CHAPTER_RUNGS = [7, 13, 15, 18, 22, 26, 28, 30, 32];
 
 export const PLACEMENT_MAX = 10;
 
@@ -70,15 +92,17 @@ export interface PlacementState {
 
 /**
  * Where a child starts, by age (or an age band): kindergarten (≤ 5) at the bottom, first grade
- * (6) at adding to 10, second grade (7) at the start of chapter 2, older ones at crossing ten.
+ * (6) at adding to 10, second grade (7) at the start of chapter 2; phase 9: third grade (8) at
+ * chapter 3, fourth (9) at chapter 5, fifth (10) at the times table (chapter 6), older ones at
+ * columns (chapter 7). The bands: 8–9 as eight, 10–12 as ten.
  */
 export function placementStart(age: number | AgeBand): number {
   const a = typeof age === 'number' ? age : [5, 6, 8, 10][AGE_BANDS.indexOf(age)] ?? 6;
-  return a <= 5 ? 0 : a === 6 ? 3 : a === 7 ? 7 : 9;
+  return a <= 5 ? 0 : a === 6 ? 3 : a === 7 ? 7 : a === 8 ? 13 : a === 9 ? 18 : a === 10 ? 22 : 26;
 }
 
 /** How far a right answer climbs before the first mistake (bigger steps on the long ladder). */
-export const FIRST_JUMP = 3;
+export const FIRST_JUMP = 5;
 
 export function startPlacement(age: number | AgeBand, ladder: readonly Rung[] = LADDER): PlacementState {
   return { at: Math.min(placementStart(age), ladder.length - 1), jump: FIRST_JUMP, passed: [], failed: [], asked: 0, done: false };
@@ -94,18 +118,23 @@ export function placementStep(s: PlacementState, right: boolean, ladder: readonl
   let at = s.at;
   let jump = s.jump;
   let done = asked >= PLACEMENT_MAX;
-  if (right) {
-    if (s.at >= top || failed.includes(s.at + 1)) done = true;
+  if (!failed.length) {
+    // Climbing: big steps while everything is right.
+    if (s.at >= top) done = true;
     else at = Math.min(top, s.at + jump);
-    // Never jump over a rung that was failed.
-    const wall = failed.filter((f) => f > s.at).sort((a, b) => a - b)[0];
-    if (wall !== undefined && at >= wall) at = wall - 1 > s.at ? wall - 1 : s.at + 1;
-  } else {
+  } else if (!passed.length) {
+    // Nothing right yet: down fast – half the way, at least a first jump (a beginner is not asked ten times).
     jump = 1;
-    // Nothing right yet: down as fast as it came up (a beginner is not asked ten times).
-    const down = s.passed.length ? 1 : FIRST_JUMP;
-    if (s.at <= 0 || passed.includes(s.at - 1) || failed.filter((f) => f === s.at).length >= 2) done = true;
-    else at = Math.max(0, s.at - down);
+    if (s.at <= 0) done = true;
+    else at = Math.max(0, s.at - Math.max(FIRST_JUMP, Math.ceil(s.at / 2)));
+  } else {
+    // The edge is between the highest rung known and the lowest one failed above it: halve the gap.
+    jump = 1;
+    const lo = knownRung({ passed, failed });
+    const above = failed.filter((f) => f > lo);
+    const hi = above.length ? Math.min(...above) : top + 1;
+    if (hi - lo <= 1 || lo >= top) done = true;
+    else at = hi > top ? Math.min(top, lo + FIRST_JUMP) : Math.floor((lo + hi) / 2);
   }
   return { at, jump, passed, failed, asked, done };
 }

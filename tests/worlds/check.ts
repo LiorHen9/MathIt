@@ -446,6 +446,35 @@ function badVoice(tones: Tone[]): Tone | null {
   console.log(`✓ ${PLAY.length} worlds in full: own feedback (particles, token, streak word), complete sound packs, music loops, walks and attacks, bosses, map and Pop skins, story, coins, rewards, word problems for every gender`);
 }
 
+// ---------- Phase 9: puzzles, the new teaching sounds, times and sharing stories ----------
+{
+  const PLAY = WORLDS.slice(1);
+  const words = new Set<string>();
+  for (const w of PLAY) {
+    const plan = planFor({ type: 'puzzleSolved', stars: 3 }, w);
+    if (!w.fx?.puzzleSolved) fail(`${w.id}: no puzzleSolved mapping of its own`);
+    if (!plan.word || plan.particles?.at !== 'screen' || plan.hero !== 'cheer') fail(`${w.id}: puzzleSolved should be a party with a word ${JSON.stringify(plan)}`);
+    if (plan.word) words.add(plan.word);
+    // Times and sharing stories in the world's words, for every gender.
+    for (const g of ['boy', 'girl', 'other'] as const) {
+      for (let seed = 0; seed < 200; seed++) {
+        const f = fillQuestion(makeQuestion('story.muldiv', 1 + (seed % 2), seed), storyWords(w, g));
+        if (hasPlaceholders(f.prompt.text) || hasPlaceholders(f.prompt.speech)) {
+          fail(`${w.id}/${g}: placeholders left in "${f.prompt.text}"`);
+          break;
+        }
+      }
+    }
+  }
+  if (words.size !== PLAY.length) fail(`worlds share the puzzle word: ${[...words]}`);
+  for (const n of ['slice', 'carry'] as const) if (!TEACHING_SOUNDS.includes(n)) fail(`${n} is a teaching sound`);
+  const cutF = (step: number) => tonesFor('slice', { step }).find((t) => t.wave !== 'noise')!.freq!;
+  for (let n = 1; n < 10; n++) if (!(cutF(n + 1) > cutF(n))) fail(`the slice sound does not climb at ${n + 1}`);
+  // The boss's flames from chapter 6, every chapter's own sentence (checked above per world).
+  if (!bossOf(fairies, 10)?.name.includes('🔥') || bossOf(fairies, 5)?.name.includes('🔥')) fail('boss marks: bolts to chapter 5, flames from 6');
+  console.log(`✓ phase 9: a puzzle party with its own word in ${PLAY.length} worlds, times and sharing stories filled for every gender, the knife and the carried ten climb, bosses to tier 10`);
+}
+
 // Narration text.
 const SPEECH: [string, string][] = [
   ['7 + 5 = 12', '7 ועוד 5 שווה 12'],

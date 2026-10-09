@@ -14,6 +14,13 @@ import { pattern } from './pattern';
 import { money } from './money';
 import { clock } from './clock';
 import { add100, sub100 } from './arith100';
+import { mulBig, mulTable } from './mul';
+import { div } from './div';
+import { storyMulDiv } from './story';
+import { colAdd, colSub } from './column';
+import { fracAdd, fracCompare, fracEquiv, fracPart } from './fractions';
+import { decAdd, decCompare, decRead } from './decimal';
+import { area, perimeter } from './geometry';
 import { answerKey } from '../types';
 
 export const GENERATORS: Record<GeneratorId, Generator> = {
@@ -33,7 +40,22 @@ export const GENERATORS: Record<GeneratorId, Generator> = {
   money,
   clock,
   add100,
-  sub100
+  sub100,
+  mulTable,
+  div,
+  mulBig,
+  storyMulDiv,
+  colAdd,
+  colSub,
+  fracPart,
+  fracCompare,
+  fracEquiv,
+  fracAdd,
+  decRead,
+  decCompare,
+  decAdd,
+  area,
+  perimeter
 };
 
 /** The question for (skill, level, seed): always the same for the same three. */

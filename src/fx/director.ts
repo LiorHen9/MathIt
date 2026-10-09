@@ -47,6 +47,11 @@ export type FeedbackEvent =
   | { type: 'tick'; n: number }
   /** A coin lands on the stack (n = which coin). */
   | { type: 'clink'; n: number }
+  // Teaching, phase 9.
+  /** A cut through the pizza (n = which cut). */
+  | { type: 'slice'; n: number }
+  /** A carried ten flies to the next column (or a borrowed one comes back from it). */
+  | { type: 'carry' }
   /** The hero explains step n (1, 2…) of an explanation. */
   | { type: 'explain'; step: number }
   /** An explanation is over. */
@@ -80,7 +85,10 @@ export type FeedbackEvent =
   | { type: 'levelUp'; level: number }
   // The parents' area (phase 8).
   /** Today's goal a parent set is reached (once a day, on the map's goal meter). */
-  | { type: 'goalReached' };
+  | { type: 'goalReached' }
+  // Puzzles (phase 9).
+  /** A puzzle is solved (`stars` 1–3: fewer hints and slips, more stars). */
+  | { type: 'puzzleSolved'; stars: number };
 
 export type FeedbackType = FeedbackEvent['type'];
 export const FEEDBACK_TYPES: readonly FeedbackType[] = [
@@ -97,6 +105,8 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'leap',
   'tick',
   'clink',
+  'slice',
+  'carry',
   'explain',
   'explained',
   'walk',
@@ -111,11 +121,12 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'bossDefeated',
   'coin',
   'levelUp',
-  'goalReached'
+  'goalReached',
+  'puzzleSolved'
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
-export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink'];
+export const TEACHING_TYPES: readonly FeedbackType[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink', 'slice', 'carry'];
 /** The hero's explaining moods: no sound of their own (the hero is speaking). */
 export const EXPLAIN_TYPES: readonly FeedbackType[] = ['explain', 'explained'];
 /** Sounds that go along with another event, which already set the hero's mood (walk, wrong, correct). */
@@ -146,6 +157,9 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'tick', n: 12 },
   { type: 'clink', n: 1 },
   { type: 'clink', n: 6 },
+  { type: 'slice', n: 1 },
+  { type: 'slice', n: 8 },
+  { type: 'carry' },
   { type: 'explain', step: 1 },
   { type: 'explained' },
   { type: 'walk', steps: 6, ms: 1800 },
@@ -163,7 +177,9 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'coin', n: 1 },
   { type: 'coin', n: 12 },
   { type: 'levelUp', level: 2 },
-  { type: 'goalReached' }
+  { type: 'goalReached' },
+  { type: 'puzzleSolved', stars: 3 },
+  { type: 'puzzleSolved', stars: 1 }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -252,6 +268,10 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
       return { sound: 'tick', soundOpts: { step: e.n }, hero: null };
     case 'clink':
       return { sound: 'clink', soundOpts: { step: e.n }, hero: null };
+    case 'slice':
+      return { sound: 'slice', soundOpts: { step: e.n }, hero: null };
+    case 'carry':
+      return { sound: 'carry', hero: null };
     case 'explain':
       return { sound: null, hero: 'think' };
     case 'explained':
@@ -285,6 +305,9 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
     case 'goalReached':
       // A small celebration at the goal meter: the stars' rising notes, not the round's fanfare.
       return { sound: 'star', soundOpts: { step: 3 }, hero: 'cheer', motion: 'pop', particles: { kind: 'confetti', count: 40, at: 'el' } };
+    case 'puzzleSolved':
+      // Like a chest opening: the solved puzzle bursts, more for more stars.
+      return { sound: 'chestOpen', hero: 'cheer', motion: 'pop', particles: { kind: 'confetti', count: 50 + e.stars * 20, at: 'screen' } };
   }
 }
 
@@ -342,7 +365,7 @@ export function emit(e: FeedbackEvent, at: FxTargets = {}): FxPlan {
     world,
     sound: plan.sound,
     pitch:
-      e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : e.type === 'count' ? countPitch(e.n) : e.type === 'jump' ? jumpPitch(e.n) : e.type === 'leap' ? leapPitch(e.n) : e.type === 'tick' ? tickPitch(e.n) : e.type === 'bossHit' ? hitPitch(e.n) : undefined,
+      e.type === 'correct' ? comboPitch(e.streak) : e.type === 'starEarned' ? starPitch(e.n) : e.type === 'count' ? countPitch(e.n) : e.type === 'jump' ? jumpPitch(e.n) : e.type === 'leap' ? leapPitch(e.n) : e.type === 'tick' ? tickPitch(e.n) : e.type === 'slice' ? countPitch(e.n) : e.type === 'bossHit' ? hitPitch(e.n) : undefined,
     hero: plan.hero,
     motion: plan.motion,
     particles,

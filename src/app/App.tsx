@@ -1,7 +1,7 @@
 // The whole app is a small state machine: one screen at a time, no router (as in ChessIt).
 // loading → splash → "who is playing?" (or straight to a new profile the first time)
 //   → [PIN] → the quest map (the profile's main screen, phase 4) ⇄ settings / editing;
-//   map ⇄ a station (lesson, practice round, chest, boss) – back to the map, where the hero walks on;
+//   map ⇄ a station (lesson, practice round, chest, boss; phase 9 a puzzle) – back to the map, where the hero walks on;
 //   map ⇄ free practice (the old home) ⇄ a round / a lesson → (practice);
 //   map ⇄ "my collection" (coins and collectibles of every world, phase 5);
 //   map ⇄ a review station (made on the fly from skills due for review, phase 6);
@@ -36,6 +36,8 @@ const Home = lazy(() => import('../screens/Home').then((m) => m.Home));
 // Map stations of their own.
 const Chest = lazy(() => import('../screens/Chest').then((m) => m.Chest));
 const Boss = lazy(() => import('../screens/Boss').then((m) => m.Boss));
+// Puzzle stations (phase 9): the host, and each kind of puzzle its own chunk behind it.
+const PuzzleHost = lazy(() => import('../screens/PuzzleHost').then((m) => m.PuzzleHost));
 const SettingsScreen = lazy(() => import('../screens/SettingsScreen').then((m) => m.SettingsScreen));
 const Collection = lazy(() => import('../screens/Collection').then((m) => m.Collection));
 // The game brings the generators and the feedback engine with it.
@@ -72,6 +74,7 @@ type Screen =
   | { name: 'lesson'; skillId: SkillId; from: From; nodeId?: string }
   | { name: 'chest'; nodeId: string }
   | { name: 'boss'; nodeId: string }
+  | { name: 'puzzle'; nodeId: string }
   | { name: 'collection' }
   | { name: 'parentGate'; from: ParentFrom }
   | { name: 'parentHome'; from: ParentFrom }
@@ -81,7 +84,7 @@ type Screen =
 const PARENT_SCREENS: Screen['name'][] = ['parentGate', 'parentHome', 'parentKid'];
 
 /** Screens with the world's music (the rest are quiet). */
-const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'review', 'placement', 'chest', 'boss', 'collection', 'settings'];
+const MUSIC_SCREENS: Screen['name'][] = ['map', 'practice', 'game', 'review', 'placement', 'chest', 'boss', 'puzzle', 'collection', 'settings'];
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'loading' });
@@ -153,6 +156,7 @@ export function App() {
     else if (n.kind === 'practice') setScreen({ name: 'game', skillId: n.skillId, from: 'map', quest: { nodeId: n.id, level: n.level, template: n.template } });
     else if (n.kind === 'review') setScreen({ name: 'review', skillIds: n.skillIds, count: n.count });
     else if (n.kind === 'chest') setScreen({ name: 'chest', nodeId: n.id });
+    else if (n.kind === 'puzzle') setScreen({ name: 'puzzle', nodeId: n.id });
     else setScreen({ name: 'boss', nodeId: n.id });
   }
 
@@ -312,6 +316,9 @@ export function App() {
     case 'boss':
       if (!active) return <main class="screen loading" aria-busy="true" />;
       return <Boss key={screen.nodeId} profile={active} nodeId={screen.nodeId} onMap={() => setScreen({ name: 'map' })} />;
+    case 'puzzle':
+      if (!active) return <main class="screen loading" aria-busy="true" />;
+      return <PuzzleHost key={screen.nodeId} profile={active} nodeId={screen.nodeId} onMap={() => setScreen({ name: 'map' })} />;
     case 'settings':
       return (
         <SettingsScreen

@@ -6,8 +6,10 @@
 // Every world dresses the answers its own way (World.templateSkins.pop, CSS `.skin-<look>`):
 // magic bubbles, balls, hoops, targets, blocks, spotlights.
 import { useRef, useState } from 'preact/hooks';
-import { answerKey, answerText, isCorrect, type Answer, type Sign } from '../core/types';
+import { answerKey, answerText, isCorrect, isFrac, type Answer, type Sign } from '../core/types';
 import { NumPad } from '../ui/NumPad';
+import { MathText } from '../ui/MathText';
+import { fracWords } from '../core/generators/fractions';
 import { useWorld } from '../worlds/index';
 import { PromptCard, type TemplateProps } from './PromptCard';
 
@@ -16,6 +18,7 @@ export type InputMode = TemplateProps['mode'];
 const SIGN_NAME: Record<Sign, string> = { '<': 'קטן מ', '>': 'גדול מ', '=': 'שווה' };
 
 function say(a: Answer, unit?: string): string {
+  if (isFrac(a)) return fracWords(a);
   return typeof a === 'string' ? SIGN_NAME[a] : answerText(a, unit);
 }
 
@@ -63,13 +66,15 @@ export function Pop({ question: q, mode, done, tried, reveal, hint, earlyHint = 
                 disabled={done || wrong || reveal}
                 onClick={(e) => onAnswer(c, e.currentTarget)}
               >
-                <span class="bubble-face">{answerText(c, q.unit)}</span>
+                <span class={`bubble-face ${answerText(c, q.unit).length > 3 && !isFrac(c) ? `is-long len-${Math.min(5, answerText(c, q.unit).length)}` : ''}`}>
+                  <MathText text={answerText(c, q.unit)} />
+                </span>
               </button>
             );
           })}
         </div>
       ) : (
-        <NumPad value={typed} onChange={setTyped} disabled={done || reveal} onSubmit={submitTyped} maxLength={3} />
+        <NumPad value={typed} onChange={setTyped} disabled={done || reveal} onSubmit={submitTyped} maxLength={Math.max(3, String(q.answer).length)} />
       )}
     </div>
   );

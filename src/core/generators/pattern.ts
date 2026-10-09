@@ -51,6 +51,8 @@ export const pattern: Generator = (level, rng) => {
       { text: `המספר החסר הוא ${answer}.`, math: terms.join(', ') }
     ],
     numeric: true,
-    key: `pat:${terms.join(',')}:${gap}`
+    key: `pat:${terms.join(',')}:${gap}`,
+    // Phase 9: the Pattern game places a tile in the gap.
+    prompts: { pattern: { text: 'משלימים את הסדרה.', math: shown, speech: last ? `איזה מספר בא אחרי ${terms.slice(0, gap).join(', ')}?` : text } }
   };
 };

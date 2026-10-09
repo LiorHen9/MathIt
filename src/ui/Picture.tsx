@@ -1,9 +1,12 @@
 // A question's picture (core/types Visual): stars (ui/Dots.tsx), tens rods and ones cubes, coins,
-// or a clock. Static – the animated versions are the manipulatives.
+// a clock; phase 9 a pizza, a shape on squared paper, a square of 100. Static – the animated versions are the manipulatives.
 import type { Visual } from '../core/types';
 import { Dots } from './Dots';
 import { ClockFace, Coin, Cube, Rod, coinName } from './art';
 import { timeWords } from '../core/generators/clock';
+import { PizzaPic } from './Pizza';
+import { GridShape } from './Grid';
+import './phase9.css';
 
 export function Picture({ visual, class: cls = '' }: { visual: Visual; class?: string }) {
   switch (visual.kind) {
@@ -40,5 +43,33 @@ export function Picture({ visual, class: cls = '' }: { visual: Visual; class?: s
           <ClockFace h={visual.h} m={visual.m} label={`שעון שמראה ${timeWords(visual)}`} />
         </div>
       );
+    // Phase 9.
+    case 'pizza':
+      return (
+        <div class={`pic-pizza ${cls}`}>
+          <PizzaPic n={visual.n} d={visual.d} />
+        </div>
+      );
+    case 'grid': {
+      const cell = Math.max(14, Math.min(28, Math.floor(250 / visual.w), Math.floor(170 / visual.h)));
+      return (
+        <div class={`pic-grid ${cls}`} role="img" aria-label={visual.cut ? 'צורה על דף משבצות' : `מלבן ${visual.w} על ${visual.h}`} dir="ltr">
+          <GridShape w={visual.w} h={visual.h} cut={visual.cut} cell={cell} sides={visual.sides} squares={!visual.sides} hideFill={false} />
+        </div>
+      );
+    }
+    case 'hundred':
+      return (
+        <div class={`pic-hundred ${cls}`} role="img" aria-label={`ריבוע של מאה, ${visual.n} משבצות צבועות`} dir="ltr">
+          <span class="dc-square">
+            {Array.from({ length: 100 }, (_, i) => (
+              <span key={i} class={`dc-cell ${i < visual.n ? 'is-1' : ''}`} style={`grid-column:${Math.floor(i / 10) + 1}; grid-row:${(i % 10) + 1}`} />
+            ))}
+          </span>
+        </div>
+      );
+    case 'column':
+      // Drawn by the question card in place of the exercise line (games/PromptCard.tsx).
+      return null;
   }
 }

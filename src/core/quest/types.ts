@@ -1,8 +1,9 @@
 // The quest map as data (docs/ARCHITECTURE.md §4.4): Journey → Chapter → Section → Node.
 // Learning Core: no UI, no worlds, no sounds. The map screen (screens/QuestMap.tsx) draws it.
 import type { SkillId, TemplateId } from '../types';
+import type { PuzzleId } from '../puzzles/types';
 
-export type NodeKind = 'lesson' | 'practice' | 'chest' | 'boss' | 'review';
+export type NodeKind = 'lesson' | 'practice' | 'chest' | 'boss' | 'review' | 'puzzle';
 
 interface NodeBase {
   /** Stable: saved progress is keyed by it. Never rename a shipped id. */
@@ -68,7 +69,18 @@ export interface ReviewNode extends NodeBase {
   count: number;
 }
 
-export type QuestNode = LessonNode | PracticeNode | ChestNode | BossNode | ReviewNode;
+/**
+ * A puzzle station (phase 9): one puzzle (core/puzzles) – a magic square, a balance, a missing
+ * number, a small KenKen – made from a seed each time it is played; 0–3 stars like practice
+ * (fewer hints and slips, more stars), done from one star. Saved like any station (no new store).
+ */
+export interface PuzzleNode extends NodeBase {
+  kind: 'puzzle';
+  puzzle: PuzzleId;
+  level: number;
+}
+
+export type QuestNode = LessonNode | PracticeNode | ChestNode | BossNode | ReviewNode | PuzzleNode;
 
 export interface Section {
   id: string;

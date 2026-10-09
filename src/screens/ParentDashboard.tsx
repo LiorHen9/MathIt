@@ -125,6 +125,12 @@ function Dashboard({ profile, worldName, data, onPractice, onLesson }: { profile
           {journey.station && <p class="settings-note">התחנה הבאה: {journey.station}</p>}
           <p class="settings-note">
             {worldName && <>עולם: {worldName} · </>}בוסים שנוצחו: {journey.bossesBeaten}
+            {journey.puzzles.total > 0 && (
+              <span data-testid="dash-puzzles" data-solved={journey.puzzles.solved}>
+                {' '}
+                · 🧩 חידות שנפתרו: {journey.puzzles.solved} מתוך {journey.puzzles.total}
+              </span>
+            )}
           </p>
           <ul class="dash-chapters">
             {journey.chapters.map((c) => (

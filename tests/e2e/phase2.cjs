@@ -195,8 +195,8 @@ async function stored(p) {
     await p.tap('[data-testid=open-practice]');
     await p.waitForSelector('.home .skill-btn');
     const skills = await p.$$eval('.skill-btn', (els) => els.map((e) => [e.dataset.skill, e.classList.contains('is-rec')]));
-    // Phase 7: 17 skills (grades 1–2 joined); the first five as before.
-    must(skills.length === 17, 'skills on home: ' + skills.length);
+    // Phase 7: 17 skills (grades 1–2 joined), phase 9: 32 (grades 3–6); the first five as before.
+    must(skills.length === 32, 'skills on home: ' + skills.length);
     must(JSON.stringify(skills.slice(0, 5)) === JSON.stringify([['count.to10', true], ['compare.to10', true], ['add.within10', false], ['sub.within10', false], ['story.within10', false]]), 'recommended for גן חובה: ' + JSON.stringify(skills));
     must(skills.slice(5).every(([, rec]) => !rec), 'nothing of grades 1–2 recommended for a kindergartner');
     await p.waitForTimeout(500);

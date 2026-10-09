@@ -177,7 +177,7 @@ export const SKILLS: readonly Skill[] = [
     band: '6-7',
     prerequisites: ['numbers.to100'],
     generatorId: 'pattern',
-    templates: ['pop', 'jump'],
+    templates: ['pop', 'jump', 'pattern'],
     levels: [
       { level: 1, label: 'קדימה', min: 0, max: 50 },
       { level: 2, label: 'גם אחורה', min: 0, max: 50 },
@@ -238,6 +238,209 @@ export const SKILLS: readonly Skill[] = [
       { level: 1, label: 'עשרות שלמות', min: 0, max: 100 },
       { level: 2, label: 'בלי פריטה', min: 0, max: 99 },
       { level: 3, label: 'עם פריטה', min: 0, max: 100 }
+    ]
+  },
+  // Phase 9 – grades 3–6 (chapters 6–10 of the journey).
+  {
+    id: 'mul.table',
+    title: 'לוח הכפל',
+    icon: '✖️',
+    band: '8-9',
+    prerequisites: ['add.within100', 'pattern'],
+    generatorId: 'mulTable',
+    templates: ['pop', 'pattern', 'speed', 'match'],
+    levels: [
+      { level: 1, label: 'כפול 2, 5, 10', min: 0, max: 100 },
+      { level: 2, label: 'כפול 3, 4', min: 0, max: 100 },
+      { level: 3, label: 'כפול 6–9', min: 0, max: 100 }
+    ]
+  },
+  {
+    id: 'div',
+    title: 'חילוק',
+    icon: '➗',
+    band: '8-9',
+    prerequisites: ['mul.table'],
+    generatorId: 'div',
+    templates: ['pop', 'speed', 'match'],
+    levels: [
+      { level: 1, label: 'חלקי 2, 5, 10', min: 0, max: 100 },
+      { level: 2, label: 'כל הלוח', min: 0, max: 100 },
+      { level: 3, label: 'עם שארית', min: 0, max: 90 }
+    ]
+  },
+  {
+    id: 'mul.big',
+    title: 'כפל דו-ספרתי',
+    icon: '🔢',
+    band: '8-9',
+    prerequisites: ['mul.table'],
+    generatorId: 'mulBig',
+    templates: ['pop', 'match'],
+    levels: [
+      { level: 1, label: 'עשרות שלמות', min: 0, max: 1000 },
+      { level: 2, label: 'בלי המרה', min: 0, max: 1000 },
+      { level: 3, label: 'עם המרה', min: 0, max: 1000 }
+    ]
+  },
+  {
+    id: 'story.muldiv',
+    title: 'סיפורי כפל וחילוק',
+    icon: '📦',
+    band: '8-9',
+    prerequisites: ['mul.table', 'div'],
+    generatorId: 'storyMulDiv',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'כפל', min: 0, max: 100 },
+      { level: 2, label: 'חילוק', min: 0, max: 100 }
+    ]
+  },
+  {
+    id: 'col.add',
+    title: 'חיבור במאונך',
+    icon: '🧾',
+    band: '8-9',
+    prerequisites: ['add.within100'],
+    generatorId: 'colAdd',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'בלי המרה', min: 0, max: 1000 },
+      { level: 2, label: 'עד 1,000', min: 0, max: 1000 },
+      { level: 3, label: 'עד 10,000', min: 0, max: 10000 }
+    ]
+  },
+  {
+    id: 'col.sub',
+    title: 'חיסור במאונך',
+    icon: '📝',
+    band: '8-9',
+    prerequisites: ['sub.within100', 'col.add'],
+    generatorId: 'colSub',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'בלי פריטה', min: 0, max: 1000 },
+      { level: 2, label: 'עד 1,000', min: 0, max: 1000 },
+      { level: 3, label: 'עד 10,000', min: 0, max: 10000 }
+    ]
+  },
+  {
+    id: 'frac.part',
+    title: 'חלק משלם',
+    icon: '🍕',
+    band: '8-9',
+    prerequisites: ['div'],
+    generatorId: 'fracPart',
+    templates: ['pop', 'slice'],
+    levels: [
+      { level: 1, label: 'חלק אחד', min: 0, max: 12 },
+      { level: 2, label: 'כמה חלקים', min: 0, max: 12 }
+    ]
+  },
+  {
+    id: 'frac.compare',
+    title: 'משווים שברים',
+    icon: '⚖️',
+    band: '10-12',
+    prerequisites: ['frac.part'],
+    generatorId: 'fracCompare',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'אותו מכנה', min: 0, max: 12 },
+      { level: 2, label: 'אותו מונה', min: 0, max: 12 }
+    ]
+  },
+  {
+    id: 'frac.equiv',
+    title: 'שברים שווים',
+    icon: '🟰',
+    band: '10-12',
+    prerequisites: ['frac.compare', 'mul.table'],
+    generatorId: 'fracEquiv',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'חותכים דק יותר', min: 0, max: 12 },
+      { level: 2, label: 'מצמצמים', min: 0, max: 12 }
+    ]
+  },
+  {
+    id: 'frac.add',
+    title: 'חיבור שברים',
+    icon: '➕',
+    band: '10-12',
+    prerequisites: ['frac.equiv'],
+    generatorId: 'fracAdd',
+    templates: ['pop', 'slice'],
+    levels: [
+      { level: 1, label: 'פחות משלם', min: 0, max: 12 },
+      { level: 2, label: 'עד שלם', min: 0, max: 12 }
+    ]
+  },
+  {
+    id: 'dec.read',
+    title: 'מספרים עשרוניים',
+    icon: '🔟',
+    band: '10-12',
+    prerequisites: ['frac.part', 'place.value'],
+    generatorId: 'decRead',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'עשיריות', min: 0, max: 10 },
+      { level: 2, label: 'מאיות', min: 0, max: 100 }
+    ]
+  },
+  {
+    id: 'dec.compare',
+    title: 'משווים עשרוניים',
+    icon: '🔍',
+    band: '10-12',
+    prerequisites: ['dec.read'],
+    generatorId: 'decCompare',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'עשיריות', min: 0, max: 1 },
+      { level: 2, label: 'עשיריות ומאיות', min: 0, max: 1 }
+    ]
+  },
+  {
+    id: 'dec.add',
+    title: 'חיבור עשרוניים',
+    icon: '💧',
+    band: '10-12',
+    prerequisites: ['dec.compare', 'col.add'],
+    generatorId: 'decAdd',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'עשיריות', min: 0, max: 2 },
+      { level: 2, label: 'מאיות', min: 0, max: 2 }
+    ]
+  },
+  {
+    id: 'geo.area',
+    title: 'שטח',
+    icon: '🟩',
+    band: '8-9',
+    prerequisites: ['mul.table'],
+    generatorId: 'area',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'סופרים משבצות', min: 0, max: 100 },
+      { level: 2, label: 'לפי הצלעות', min: 0, max: 100 },
+      { level: 3, label: 'צורה מורכבת', min: 0, max: 100 }
+    ]
+  },
+  {
+    id: 'geo.perimeter',
+    title: 'היקף',
+    icon: '📏',
+    band: '8-9',
+    prerequisites: ['geo.area'],
+    generatorId: 'perimeter',
+    templates: ['pop'],
+    levels: [
+      { level: 1, label: 'סופרים צלעות', min: 0, max: 100 },
+      { level: 2, label: 'לפי הצלעות', min: 0, max: 100 },
+      { level: 3, label: 'צורה מורכבת', min: 0, max: 100 }
     ]
   }
 ];

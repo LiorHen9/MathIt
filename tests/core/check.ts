@@ -20,6 +20,7 @@ import {
   MASTERED,
   REVIEW_DAYS,
   LADDER,
+  CHAPTER_RUNGS,
   adaptLevel,
   commonError,
   dueSkills,
@@ -71,6 +72,14 @@ import { ACTION_KINDS, COIN_VALUES, ERROR_TAGS, TEMPLATE_IDS, actionResult, acti
 import { hopsFor } from '../../src/core/generators/common';
 import { coinsFor } from '../../src/core/generators/money';
 import { handsSwapped, timeWords } from '../../src/core/generators/clock';
+import { fracWords } from '../../src/core/generators/fractions';
+import { PUZZLE_IDS, PUZZLE_LEVELS, makePuzzle, puzzleStars, type Puzzle } from '../../src/core/puzzles/index';
+import { isMagic, magicSolutions } from '../../src/core/puzzles/magic';
+import { balanceDiff } from '../../src/core/puzzles/balance';
+import { missingSolutions } from '../../src/core/puzzles/missing';
+import { kenkenOk, kenkenSolutions } from '../../src/core/puzzles/kenken';
+import { TEMPLATE_NAMES } from '../../src/core/parents/settings';
+import { isFrac, sameValue, type Frac } from '../../src/core/types';
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -169,7 +178,30 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     [{ kind: 'line', from: 38, hops: [10, 10, 2, 3], max: 100 }, 63],
     [{ kind: 'line', from: 13, hops: [-3, -2], max: 20 }, 8],
     [{ kind: 'clock', h: 3, m: 30 }, { h: 3, m: 30 }],
-    [{ kind: 'coins', coins: [10, 5, 2, 0.5] }, 17.5]
+    [{ kind: 'coins', coins: [10, 5, 2, 0.5] }, 17.5],
+    // Phase 9.
+    [{ kind: 'array', rows: 3, cols: 4 }, 12],
+    [{ kind: 'array', rows: 3, cols: 4, turn: true }, 12],
+    [{ kind: 'array', rows: 6, cols: 4, unit: 10 }, 240],
+    [{ kind: 'share', total: 12, groups: 3, ask: 'each' }, 4],
+    [{ kind: 'share', total: 17, groups: 5, ask: 'each' }, 3],
+    [{ kind: 'share', total: 17, groups: 5, ask: 'left' }, 2],
+    [{ kind: 'pizza', d: 4, n: 3 }, { n: 3, d: 4 }],
+    [{ kind: 'pizza', d: 4, n: 1, add: 2 }, { n: 3, d: 4 }],
+    [{ kind: 'pizza', d: 2, n: 1, split: 2 }, { n: 2, d: 4 }],
+    [{ kind: 'pizza', d: 8, n: 6, join: 2 }, { n: 3, d: 4 }],
+    [{ kind: 'pizza', d: 8, n: 1, vs: { n: 1, d: 4 } }, '<'],
+    [{ kind: 'pizza', d: 2, n: 1, vs: { n: 2, d: 4 } }, '='],
+    [{ kind: 'column', a: 345, b: 278, op: '+' }, 623],
+    [{ kind: 'column', a: 5003, b: 1278, op: '-' }, 3725],
+    [{ kind: 'grid', w: 5, h: 3, ask: 'area' }, 15],
+    [{ kind: 'grid', w: 5, h: 3, ask: 'perimeter' }, 16],
+    [{ kind: 'grid', w: 5, h: 4, cut: { w: 2, h: 1 }, ask: 'area' }, 18],
+    [{ kind: 'grid', w: 5, h: 4, cut: { w: 2, h: 1 }, ask: 'perimeter' }, 18],
+    [{ kind: 'decimal', a: 30 }, 0.3],
+    [{ kind: 'decimal', a: 10, b: 20 }, 0.3],
+    [{ kind: 'decimal', a: 70, b: 50 }, 1.2],
+    [{ kind: 'decimal', a: 25, vs: 30 }, '<']
   ];
   for (const [a, want] of cases) {
     if (!sameAnswer(actionResult(a), want)) fail(`actionResult(${JSON.stringify(a)}) = ${answerKey(actionResult(a))}, expected ${answerKey(want)}`);
@@ -202,7 +234,24 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     { kind: 'clock', h: 3, m: 7 },
     { kind: 'coins', coins: [3] },
     { kind: 'coins', coins: [] },
-    { kind: 'coins', coins: Array(11).fill(1) }
+    { kind: 'coins', coins: Array(11).fill(1) },
+    { kind: 'array', rows: 11, cols: 2 },
+    { kind: 'array', rows: 0, cols: 2 },
+    { kind: 'share', total: 30, groups: 2, ask: 'each' },
+    { kind: 'share', total: 2, groups: 3, ask: 'each' },
+    { kind: 'share', total: 12, groups: 1, ask: 'each' },
+    { kind: 'pizza', d: 4, n: 5 },
+    { kind: 'pizza', d: 13, n: 1 },
+    { kind: 'pizza', d: 4, n: 3, add: 2 },
+    { kind: 'pizza', d: 8, n: 3, join: 2 },
+    { kind: 'pizza', d: 8, n: 2, split: 2 },
+    { kind: 'pizza', d: 4, n: 1, add: 1, split: 2 },
+    { kind: 'column', a: 5000, b: 5000, op: '+' },
+    { kind: 'column', a: 12, b: 30, op: '-' },
+    { kind: 'grid', w: 13, h: 2, ask: 'area' },
+    { kind: 'grid', w: 4, h: 3, cut: { w: 4, h: 1 }, ask: 'area' },
+    { kind: 'decimal', a: 101 },
+    { kind: 'decimal', a: 50, b: 20, vs: 30 }
   ];
   for (const a of bad) if (actionValid(a)) fail(`${JSON.stringify(a)} should be invalid`);
   // The number line hops by tens, then by ones split at the next ten.
@@ -218,7 +267,9 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   if (coinsFor(17.5).join() !== '10,5,2,0.5' || coinsFor(3).join() !== '2,1') fail(`coinsFor: ${coinsFor(17.5)} / ${coinsFor(3)}`);
   if (answerKey(handsSwapped({ h: 3, m: 0 })) !== '12:15' || answerKey(handsSwapped({ h: 3, m: 30 })) !== '6:15') fail('handsSwapped');
   if (timeWords({ h: 3, m: 45 }) !== 'רבע לארבע' || timeWords({ h: 12, m: 30 }) !== 'שתים-עשרה וחצי') fail('timeWords');
-  ok('actions: results and limits per action (to 10, two frames to 20, tens/line/compare to 100, clock, coins); hops, coins, clock words');
+    if (!isCorrect({ answer: { n: 1, d: 2 }, equivalent: true }, { n: 2, d: 4 }) || isCorrect({ answer: { n: 1, d: 2 } }, { n: 2, d: 4 }) || answerKey({ n: 3, d: 4 }) !== '3/4') fail('fractions: an equivalent counts only when the question says so');
+  if (fracWords({ n: 3, d: 4 }) !== 'שלושה רבעים' || fracWords({ n: 1, d: 2 }) !== 'חצי' || fracWords({ n: 2, d: 5 }) !== 'שתי חמישיות' || fracWords({ n: 4, d: 4 }) !== 'שלם') fail('fracWords');
+  ok('actions: results and limits per action (to 10, two frames to 20, tens/line/compare to 100, clock, coins; phase 9 arrays, sharing, pizzas, columns, grids, hundredths); hops, coins, clock words, fractions');
 }
 
 // ---------- Generators: 1,000 seeds per skill and level ----------
@@ -229,6 +280,29 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     const m = q.prompt.math ?? '';
     const t = q.prompt.text;
     let r: RegExpExecArray | null;
+    // Phase 9: times and division (with a remainder), fractions, decimals (in hundredths), shapes.
+    if ((r = /^(\d+) × (\d+) = \?$/.exec(m))) return Number(r[1]) * Number(r[2]);
+    if ((r = /^(\d+) : (\d+) = \?$/.exec(m))) return Number(r[1]) / Number(r[2]);
+    if ((r = /^(\d+) : (\d+) = \? \(שארית (\d+)\)$/.exec(m))) return Math.floor(Number(r[1]) / Number(r[2])) + (Number(r[1]) % Number(r[2]) === Number(r[3]) ? 0 : NaN);
+    if ((r = /^(\d+) : (\d+) = (\d+) \(שארית \?\)$/.exec(m))) return Number(r[1]) % Number(r[2]) + (Math.floor(Number(r[1]) / Number(r[2])) === Number(r[3]) ? 0 : NaN);
+    if ((r = /^(\d+)\/(\d+) \? (\d+)\/(\d+)$/.exec(m))) {
+      const [x, y] = [Number(r[1]) * Number(r[4]), Number(r[3]) * Number(r[2])];
+      return x > y ? '>' : x < y ? '<' : '=';
+    }
+    if ((r = /^(\d+)\/(\d+) \+ (\d+)\/(\d+) = \?$/.exec(m)) && r[2] === r[4]) return { n: Number(r[1]) + Number(r[3]), d: Number(r[2]) };
+    if ((r = /^(\d+)\/(\d+) = \?$/.exec(m))) {
+      // A fraction worth the same: in its simplest form, or (the answer's own) cut finer.
+      const f: Frac = { n: Number(r[1]), d: Number(r[2]) };
+      const g = (a: number, b: number): number => (b ? g(b, a % b) : a);
+      if (t.includes('מצומצם')) return { n: f.n / g(f.n, f.d), d: f.d / g(f.n, f.d) };
+      if (isFrac(q.answer) && sameValue(q.answer, f) && q.answer.d > f.d) return q.answer;
+      throw new Error(`no fraction worth ${m}`);
+    }
+    if ((r = /^(\d+\.\d+|\d+) \? (\d+\.\d+|\d+)$/.exec(m)) && m.includes('.')) {
+      const [a, b] = [Math.round(Number(r[1]) * 100), Math.round(Number(r[2]) * 100)];
+      return a > b ? '>' : a < b ? '<' : '=';
+    }
+    if ((r = /^(\d+\.\d+|\d+) \+ (\d+\.\d+|\d+) = \?$/.exec(m)) && m.includes('.')) return (Math.round(Number(r[1]) * 100) + Math.round(Number(r[2]) * 100)) / 100;
     if ((r = /^(\d+) \+ (\d+) = \?$/.exec(m))) return Number(r[1]) + Number(r[2]);
     if ((r = /^(\d+) − (\d+) = \?$/.exec(m))) return Number(r[1]) - Number(r[2]);
     if ((r = /^(\d+) \? (\d+)$/.exec(m))) {
@@ -253,6 +327,12 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     if (!m && v?.kind === 'blocks') return v.tens * 10 + v.ones;
     if (!m && v?.kind === 'coins') return v.coins.reduce((a, c) => a + c, 0);
     if (!m && v?.kind === 'clock') return { h: v.h, m: v.m };
+    if (!m && v?.kind === 'pizza') return { n: v.n, d: v.d };
+    if (!m && v?.kind === 'hundred') return v.n / 100;
+    if (!m && v?.kind === 'grid') {
+      const cut = v.cut ? v.cut.w * v.cut.h : 0;
+      return t.includes('היקף') ? 2 * (v.w + v.h) : v.w * v.h - cut;
+    }
     throw new Error(`cannot read exercise "${m}" / "${t}"`);
   }
   function visualOk(v: Visual | undefined): boolean {
@@ -266,6 +346,14 @@ function explanationProblem(steps: Step[], answer: Answer): string {
         return v.coins.length > 0 && v.coins.length <= 10 && v.coins.every((c) => COIN_VALUES.includes(c));
       case 'clock':
         return actionValid({ kind: 'clock', h: v.h, m: v.m });
+      case 'pizza':
+        return actionValid({ kind: 'pizza', d: v.d, n: v.n }) && v.n > 0;
+      case 'grid':
+        return actionValid({ kind: 'grid', w: v.w, h: v.h, cut: v.cut, ask: 'area' });
+      case 'column':
+        return v.rows.length === 2 && actionValid({ kind: 'column', a: v.rows[0], b: v.rows[1], op: v.op === '+' ? '+' : '-' });
+      case 'hundred':
+        return Number.isInteger(v.n) && v.n > 0 && v.n < 100;
     }
   }
   /** Skills of phase 7: every kind of mistake they offer has its own hint. */
@@ -298,15 +386,24 @@ function explanationProblem(steps: Step[], answer: Answer): string {
         const nums = all.filter((x): x is number => typeof x === 'number');
         if (q.numeric && typeof q.answer !== 'number') err('numeric question with a non-number answer');
         if (q.numeric && nums.some((n) => !Number.isInteger(n))) err('a typed answer must be a whole number');
+        const decimals = skill.id.startsWith('dec.');
         if (nums.length) {
           if (nums.length !== all.length) err('mixed kinds of choices');
-          for (const n of nums) if (n < 0 || n < lv.min || n > lv.max || !Number.isInteger(n * 2)) err(`${n} outside ${lv.min}..${lv.max} or negative`);
+          for (const n of nums) if (n < 0 || n < lv.min || n > lv.max || (decimals ? Math.abs(n * 100 - Math.round(n * 100)) > 1e-9 : !Number.isInteger(n * 2))) err(`${n} outside ${lv.min}..${lv.max} or negative`);
+          // Decimals: written as a child reads them, never a floating-point slip (0.30000000000000004).
+          if (decimals) for (const n of nums) if (!/^\d+(\.\d{1,2})?$/.test(String(n))) err(`decimal written as ${String(n)}`);
+        } else if (all.every(isFrac)) {
+          for (const f of all as Frac[]) if (!Number.isInteger(f.n) || !Number.isInteger(f.d) || f.n < 0 || f.n > 12 || f.d < 1 || f.d > 12) err(`bad fraction ${answerKey(f)}`);
+          // When one worth the same counts, no choice may be worth the same as the answer.
+          if (q.equivalent && q.distractors.some((d) => sameValue(d as Frac, q.answer as Frac))) err('a choice worth the same as the answer');
+          if (q.equivalent && !isCorrect(q, { n: (q.answer as Frac).n * 2, d: (q.answer as Frac).d * 2 })) err('equivalent fraction not accepted');
+          if (!q.equivalent && isCorrect(q, { n: (q.answer as Frac).n * 2, d: (q.answer as Frac).d * 2 })) err('an equivalent fraction counted without the question saying so');
         } else if (sign) {
           if (all.some((x) => !SIGNS.includes(String(x)))) err('comparison choices must be signs');
         } else if (all.every(isTime)) {
           for (const x of all) if (!isTime(x) || !actionValid({ kind: 'clock', h: x.h, m: x.m })) err(`not a clock time: ${answerKey(x)}`);
         } else err('unknown kind of answer');
-        const inMath = (q.prompt.math ?? '').match(/\d+/g)?.map(Number) ?? [];
+        const inMath = (q.prompt.math ?? '').match(/\d+(\.\d+)?/g)?.map(Number) ?? [];
         for (const n of inMath) if (n < lv.min || n > lv.max || n < 0) err(`exercise number ${n} outside ${lv.min}..${lv.max}`);
         if (!visualOk(q.prompt.visual)) err('bad visual');
         for (const p of [q.prompt, ...Object.values(q.prompts ?? {})]) if (!p || !p.text || !p.speech || /[^\s]\.\s+\S.*[.?!]$/.test(p.speech)) err(`prompt should be one sentence: "${p?.speech}"`);
@@ -315,6 +412,16 @@ function explanationProblem(steps: Step[], answer: Answer): string {
         for (const t of skill.templates) if (!TEMPLATE_IDS.includes(t)) err(`unknown template ${t}`);
         if (q.unit === '₪' && !templateFits('shop', q)) err('a money question must fit the shop');
         if (isTime(q.answer) && (!templateFits('clock', q) || promptFor(q, 'clock').prompt === q.prompt)) err('a clock question must fit the clock template with its own prompt');
+        // Phase 9: a pizza question fits the Slice game, the times table the Pattern and speed games.
+        for (const t of skill.templates) if ((t === 'slice' || t === 'pattern' || (t === 'speed' && skill.id === 'mul.table')) && !templateFits(t, q)) err(`${t} is a game of ${skill.id} but does not fit`);
+        if (q.prompts?.pattern) {
+          // The sequence's gap is the answer.
+          const xs = q.prompts.pattern.math!.split(', ');
+          const gap = xs.indexOf('?');
+          const known = xs.map((x, i) => [i, Number(x)] as const).filter(([i]) => i !== gap);
+          const step = (known[1][1] - known[0][1]) / (known[1][0] - known[0][0]);
+          if (known[0][1] + step * (gap - known[0][0]) !== q.answer) err(`the sequence ${q.prompts.pattern.math} does not lead to ${answerKey(q.answer)}`);
+        }
         if (q.hints.length < 1 || !q.hints[0].text) err('no hint');
         if (q.explanation.length < 1) err('no explanation');
         // Animated explanation: valid actions, and the last one lands on the answer.
@@ -365,7 +472,30 @@ function explanationProblem(steps: Step[], answer: Answer): string {
     ['money', 1, ['one-part', 'count-off-by-one']],
     ['money', 3, ['added']],
     ['clock', 1, ['hands-swapped', 'near']],
-    ['clock', 3, ['hands-swapped']]
+    ['clock', 3, ['hands-swapped']],
+    // Phase 9.
+    ['mul.table', 2, ['times-as-plus', 'table-neighbor']],
+    ['mul.big', 3, ['no-carry', 'one-part', 'times-as-plus']],
+    ['div', 2, ['table-neighbor', 'times-as-plus', 'one-part']],
+    ['div', 3, ['remainder-dropped', 'table-neighbor']],
+    ['col.add', 2, ['no-carry', 'misaligned']],
+    ['col.sub', 2, ['no-borrow', 'added', 'misaligned']],
+    ['col.sub', 3, ['no-borrow']],
+    ['frac.part', 2, ['part-to-part', 'flipped-fraction']],
+    ['frac.compare', 1, ['reversed-sign']],
+    ['frac.compare', 2, ['bigger-denominator']],
+    ['frac.equiv', 1, ['equiv-add', 'one-part']],
+    ['frac.equiv', 2, ['equiv-add']],
+    ['frac.add', 1, ['added-denominators']],
+    ['dec.read', 1, ['decimal-as-whole']],
+    ['dec.read', 2, ['decimal-as-whole', 'swapped-digits']],
+    ['dec.compare', 2, ['longer-is-bigger']],
+    ['dec.add', 1, ['decimal-as-whole']],
+    ['dec.add', 2, ['decimal-as-whole']],
+    ['geo.area', 2, ['area-perimeter', 'times-as-plus']],
+    ['geo.area', 3, ['one-part']],
+    ['geo.perimeter', 2, ['half-perimeter', 'area-perimeter']],
+    ['story.muldiv', 1, ['times-as-plus']]
   ];
   for (const [id, lv, want] of need) {
     const got = tags(id, lv);
@@ -407,7 +537,20 @@ function explanationProblem(steps: Step[], answer: Answer): string {
       ['pattern', 'wrong-step', 'line'],
       ['money', 'added', 'line'],
       ['clock', 'hands-swapped', 'clock'],
-      ['numbers.to100', 'reversed-sign', 'compare']
+      ['numbers.to100', 'reversed-sign', 'compare'],
+      // Phase 9: the new animations, each for its own mistakes.
+      ['mul.table', 'times-as-plus', 'array'],
+      ['mul.table', 'table-neighbor', 'line'],
+      ['div', 'remainder-dropped', 'share'],
+      ['col.add', 'no-carry', 'column'],
+      ['col.sub', 'no-borrow', 'column'],
+      ['frac.part', 'part-to-part', 'pizza'],
+      ['frac.compare', 'bigger-denominator', 'pizza'],
+      ['frac.add', 'added-denominators', 'pizza'],
+      ['dec.add', 'decimal-as-whole', 'decimal'],
+      ['dec.compare', 'longer-is-bigger', 'decimal'],
+      ['geo.area', 'area-perimeter', 'grid'],
+      ['geo.perimeter', 'half-perimeter', 'grid']
     ];
     for (const [id, tag, kind] of want) {
       let seen = false;
@@ -484,7 +627,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
 // ---------- Skills, recommendations, scoring ----------
 {
   const ids = SKILLS.map((s) => s.id);
-  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10,story.within10,add.within20,sub.within20,add.bridge10,sub.bridge10,story.within20,numbers.to100,place.value,pattern,money,clock,add.within100,sub.within100') fail('skills: ' + ids);
+  if (ids.join() !== 'count.to10,compare.to10,add.within10,sub.within10,story.within10,add.within20,sub.within20,add.bridge10,sub.bridge10,story.within20,numbers.to100,place.value,pattern,money,clock,add.within100,sub.within100,mul.table,div,mul.big,story.muldiv,col.add,col.sub,frac.part,frac.compare,frac.equiv,frac.add,dec.read,dec.compare,dec.add,geo.area,geo.perimeter') fail('skills: ' + ids);
   // Prerequisites come earlier in the list (the graph has no cycles), every skill plays in Pop.
   SKILLS.forEach((s, i) => {
     for (const p of s.prerequisites) if (SKILLS.findIndex((x) => x.id === p) >= i) fail(`${s.id}: prerequisite ${p} comes later`);
@@ -497,7 +640,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   }
   if (recommendedSkills('4-5').join() !== 'count.to10,compare.to10') fail('recommended 4-5: ' + recommendedSkills('4-5'));
   if (recommendedSkills('6-7').join() !== 'add.within10,sub.within10,story.within10') fail('recommended 6-7: ' + recommendedSkills('6-7'));
-  if (recommendedSkills('10-12').join() !== 'add.within100,sub.within100') fail('recommended 10-12: ' + recommendedSkills('10-12'));
+  if (recommendedSkills('10-12').join() !== 'frac.compare,frac.equiv,frac.add') fail('recommended 10-12: ' + recommendedSkills('10-12'));
   if (startLevel(getSkill('add.within10')!, '4-5') !== 1 || startLevel(getSkill('count.to10')!, '6-7') !== 3) fail('startLevel');
   if (MAX_WRONG !== 2) fail('two mistakes before the answer is shown');
   if (questionPoints(0, true) !== 1 || questionPoints(1, true) !== 0.5 || questionPoints(2, false) !== 0) fail('questionPoints');
@@ -528,7 +671,7 @@ function explanationProblem(steps: Step[], answer: Answer): string {
   const ch = JOURNEY.chapters[0];
   const c1 = chapterNodes(ch);
   if (c1.length !== 16) fail(`chapter 1 has ${c1.length} stations (16, unchanged)`);
-  if (JOURNEY.chapters.map((c) => c.id).join() !== 'c1,c2,c3,c4,c5') fail('chapters: ' + JOURNEY.chapters.map((c) => c.id));
+  if (JOURNEY.chapters.map((c) => c.id).join() !== 'c1,c2,c3,c4,c5,c6,c7,c8,c9,c10') fail('chapters: ' + JOURNEY.chapters.map((c) => c.id));
   if (ch.sections.map((s) => s.title).join('|') !== 'מספרים עד 10|חיבור וחיסור עד 10') fail('sections: ' + ch.sections.map((s) => s.title));
   const boss = c1.at(-1)!;
   if (boss.kind === 'boss' && !(boss.skillIds.includes('add.within10') && boss.skillIds.includes('sub.within10'))) fail('the boss mixes adding and taking away');
@@ -823,7 +966,16 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
     ['place.value', 2, 'swapped-digits'],
     ['pattern', 2, 'wrong-step'],
     ['clock', 2, 'hands-swapped'],
-    ['money', 3, 'added']
+    ['money', 3, 'added'],
+    // Phase 9.
+    ['mul.table', 3, 'table-neighbor'],
+    ['div', 3, 'remainder-dropped'],
+    ['col.add', 2, 'no-carry'],
+    ['col.sub', 2, 'misaligned'],
+    ['frac.part', 2, 'part-to-part'],
+    ['frac.add', 1, 'added-denominators'],
+    ['dec.read', 2, 'swapped-digits'],
+    ['geo.area', 3, 'one-part']
   ];
   const lines: string[] = [];
   for (const [skill, level, tag] of cases) {
@@ -860,7 +1012,9 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (!invites(q('8+5'), 'no-bridge') || invites(q('8+2'), 'no-bridge') || !invites(q('13-5'), 'no-bridge') || invites(q('17-4'), 'no-bridge')) fail('invites: no-bridge');
   if (!invites(q('38+25'), 'no-carry') || invites(q('34+25'), 'no-carry') || !invites(q('52-17'), 'no-borrow') || invites(q('58-23'), 'no-borrow')) fail('invites: carry and borrow');
   // Every new kind of mistake (phase 7) a generator makes is invited by some question of its skill.
-  const NEW_TAGS: ErrorTag[] = ['no-bridge', 'swapped-digits', 'tens-as-ones', 'no-carry', 'no-borrow', 'wrong-step', 'hands-swapped'];
+  const NEW_TAGS: ErrorTag[] = ERROR_TAGS.slice(7);
+  // Phase 9: every new kind of mistake is invited by some question of a skill that makes it.
+  const invitedSomewhere = new Set<ErrorTag>();
   for (const sk of SKILLS)
     for (const lv of sk.levels) {
       const offered = new Set<ErrorTag>();
@@ -870,11 +1024,12 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
         for (const t of Object.values(x.errorTags)) {
           if (!NEW_TAGS.includes(t)) continue;
           offered.add(t);
-          if (invites(x, t)) invited.add(t);
+          if (invites(x, t)) (invited.add(t), invitedSomewhere.add(t));
         }
       }
       for (const t of offered) if (!invited.has(t)) fail(`invites: no ${sk.id} L${lv.level} question invites "${t}"`);
     }
+  for (const t of NEW_TAGS) if (!invitedSomewhere.has(t)) fail(`invites: no question anywhere invites "${t}"`);
   // pickQuestion keeps away from the keys given.
   const avoid = new Set(['1+1', '1+2', '2+1']);
   const rng = createRng(5);
@@ -944,13 +1099,13 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
     if (not.r.known !== -1 || not.r.mastered.length || Object.keys(not.r.partial).length || not.asked.length > 5) fail(`placement ${band}: the beginner ${JSON.stringify(not)}`);
   }
   // Start by age up to second grade: kindergarten at counting, first grade at adding to 10, second at chapter 2.
-  if (startPlacement(5).at !== 0 || startPlacement(6).at !== 3 || startPlacement(7).at !== 7 || startPlacement(9).at !== 9) fail('placement start by age');
-  for (const age of [5, 6, 7, 9]) {
+  if (startPlacement(5).at !== 0 || startPlacement(6).at !== 3 || startPlacement(7).at !== 7 || startPlacement(9).at !== 18 || startPlacement(10).at !== 22 || startPlacement('10-12').at !== 22) fail('placement start by age');
+  for (const age of [5, 6, 7, 9, 10, 11]) {
     const k = run(age as unknown as AgeBand, () => true);
     if (k.asked.length > 10 || k.r.known !== top) fail(`placement age ${age}: the knower took ${k.asked.length}`);
   }
   // Every edge is found: a child who knows everything up to rung k.
-  for (const band of ['4-5', '6-7', '8-9', 7] as AgeBand[])
+  for (const band of ['4-5', '6-7', '8-9', '10-12', 7, 9] as AgeBand[])
     for (let k = -1; k <= top; k++) {
       const x = run(band, (i) => i <= k);
       if (x.r.known !== k || x.asked.length > 10) fail(`placement ${band}, knows up to ${k}: known ${x.r.known} after ${x.asked.length} (${x.asked.join(',')})`);
@@ -979,7 +1134,18 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (next?.id !== 'c1-add-10' || p.stars['c1-sub-7'] !== 3 || p.stars['c1-count-lesson'] !== 1 || !p.chests['c1-chest'] || p.stars['c1-boss']) fail('placement on the map (up to taking away to 7): ' + JSON.stringify(p) + ' next ' + next?.id);
   // Everything: every chapter's boss passed (one star), the hero at the last boss of the journey.
   const all = progressFromPlacement(emptyProgress(), (id, level) => rungKnown(id, level, top));
-  if (nextNode(all)?.id !== 'c5-boss' || !all.chests['c4-chest'] || all.stars['c5-boss'] || all.stars['c1-boss'] !== 1 || all.stars['c4-boss'] !== 1) fail('placement on the map (everything): next ' + nextNode(all)?.id);
+  if (nextNode(all)?.id !== 'c10-boss' || !all.chests['c4-chest'] || all.stars['c10-boss'] || all.stars['c1-boss'] !== 1 || all.stars['c5-boss'] !== 1 || all.stars['c9-boss'] !== 1 || all.stars['c7-kenken'] !== 1) fail('placement on the map (everything): next ' + nextNode(all)?.id);
+  // Phase 9: a fourth-grader who knows the times table and columns (chapters 6–7, not fractions)
+  // starts the fractions chapter; puzzles passed on the way count as solved.
+  const grade4 = run(9 as unknown as AgeBand, (i) => i < 28);
+  if (grade4.r.known !== 27 || grade4.asked.length > 10) fail('placement: grade 4 ' + JSON.stringify(grade4));
+  const p4 = progressFromPlacement(emptyProgress(), (id, level) => rungKnown(id, level, grade4.r.known));
+  if (nextNode(p4)?.id !== 'c8-part-lesson' || p4.stars['c7-boss'] !== 1 || p4.stars['c6-magic'] !== 1 || p4.stars['c6-story-1'] !== 3) fail('placement on the map (grade 4): next ' + nextNode(p4)?.id);
+  for (let k = 0; k < CHAPTER_RUNGS.length; k++) {
+    const known = (id: SkillId, level: number) => rungKnown(id, level, CHAPTER_RUNGS[k] - 1);
+    const at = nextNode(progressFromPlacement(emptyProgress(), known));
+    if (at?.id !== chapterNodes(JOURNEY.chapters[k + 1])[0].id) fail(`placement: knowing all before rung ${CHAPTER_RUNGS[k]} should start chapter ${k + 2}, got ${at?.id}`);
+  }
   // Everything to 20 (chapters 1–2): the hero starts chapter 3.
   const to20 = run(7 as unknown as AgeBand, (i) => i <= 12);
   if (to20.r.known !== 12 || to20.asked.length > 10) fail('placement: knows to 20 ' + JSON.stringify(to20));
@@ -990,7 +1156,7 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   // Never takes stars away.
   const had = withStars(withStars(emptyProgress(), 'c1-count-lesson', 1), 'c1-count-5', 2);
   if (progressFromPlacement(had, () => false).stars['c1-count-5'] !== 2) fail('placement took stars away');
-  ok(`placement: a ladder of ${LADDER.length} through 5 chapters; the knower reaches the last boss in ≤ 10 questions, "knows to 20" lands at chapter 3, the beginner stays at the start, every edge found in ≤ 10, bosses of known chapters passed`);
+  ok(`placement: a ladder of ${LADDER.length} through 10 chapters; the knower reaches the last boss in ≤ 10 questions, "knows to 20" lands at chapter 3, grade 4 with the times table at fractions, the beginner stays at the start, every edge found in ≤ 10, bosses of known chapters passed`);
 }
 
 // The review station: made on the fly, never a chapter's station; mixes skills.
@@ -1095,6 +1261,78 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   if (nextNode(opened)?.id !== allNodes()[0].id) fail('opening a chapter ahead leaves the next station where it was');
   if (!reachedChapters(opened).includes(ch3.id) || !practiceSkills(opened, true).some((id) => chapterNodes(ch3).some((n) => (n.kind === 'practice' || n.kind === 'lesson') && n.skillId === id))) fail('an opened chapter counts as reached for practice');
   ok(`parents: ${ERROR_TAGS.length} mistakes in parents' words (m/f + tip), days and weeks with an injected clock (90 days kept), daily goal and break, journey and skills by chapter, games turned off (Pop stays), practice kept to the journey, a chapter opened by hand`);
+}
+
+// ---------- Puzzles (phase 9) ----------
+{
+  const SEEDS = 300;
+  for (const id of PUZZLE_IDS)
+    for (let level = 1; level <= PUZZLE_LEVELS[id]; level++)
+      for (let seed = 0; seed < SEEDS; seed++) {
+        const p: Puzzle = makePuzzle(id, level, seed);
+        const where = `${id} L${level} seed ${seed}`;
+        if (JSON.stringify(makePuzzle(id, level, seed)) !== JSON.stringify(p)) fail(`${where}: same seed, another puzzle`);
+        if (p.kind === 'magic') {
+          if (!isMagic(p.solution, p.target)) fail(`${where}: the solution is not magic`);
+          if (new Set(p.solution).size !== 9 || p.solution.some((x) => x < 0)) fail(`${where}: numbers repeat or are negative`);
+          if (p.cells.filter((c) => c === null).length !== (level === 1 ? 3 : 5)) fail(`${where}: missing cells`);
+          if (magicSolutions(p.cells, p.tray, p.target) !== 1) fail(`${where}: not exactly one solution`);
+          if (p.cells.some((c, i) => c !== null && c !== p.solution[i])) fail(`${where}: a shown number is wrong`);
+        } else if (p.kind === 'balance') {
+          if (balanceDiff(p, p.answer) !== 0) fail(`${where}: the answer does not balance`);
+          if (p.tray.length !== 4 || p.tray.filter((w) => balanceDiff(p, w) === 0).length !== 1 || !p.tray.includes(p.answer)) fail(`${where}: not exactly one weight balances`);
+          if ([...p.left, ...p.right, ...p.tray].some((x) => !Number.isInteger(x) || x < 1 || x > 30)) fail(`${where}: weights out of range`);
+          if (p.boxes !== level) fail(`${where}: ${p.boxes} boxes`);
+        } else if (p.kind === 'missing') {
+          const sols = missingSolutions(p.math);
+          if (sols.length !== 1 || sols[0] !== p.answer) fail(`${where}: ${p.math} has ${sols.join(',')} as answers`);
+          if (!p.undo) fail(`${where}: no hint`);
+          if ((p.math.match(/\?/g) ?? []).length !== 1) fail(`${where}: one gap`);
+          if (level === 2 && !/[×:]/.test(p.math)) fail(`${where}: level 2 times or division`);
+          if (level === 3 && !/[+−].*[×:]|[×:].*[+−]/.test(p.math)) fail(`${where}: level 3 two steps`);
+        } else {
+          if (!kenkenOk(p.cages, p.solution)) fail(`${where}: the solution breaks a rule`);
+          const givens = Object.fromEntries(p.givens.map((i) => [i, p.solution[i]]));
+          if (kenkenSolutions(p.cages, givens) !== 1) fail(`${where}: not exactly one solution`);
+          const cells = p.cages.flatMap((c) => c.cells).sort((a, b) => a - b);
+          if (cells.join() !== Array.from({ length: 16 }, (_, i) => i).join()) fail(`${where}: cages do not cover the grid once`);
+          for (const c of p.cages) {
+            if (c.cells.length > 3 || (c.cells.length === 1) !== (c.op === '')) fail(`${where}: cage ${JSON.stringify(c)}`);
+            if (level === 1 && c.op !== '+' && c.op !== '') fail(`${where}: level 1 only adds`);
+            // Connected: every cell next to another one of the cage.
+            if (c.cells.length > 1 && c.cells.some((i) => !c.cells.some((j) => j !== i && (Math.abs(i - j) === 4 || (Math.abs(i - j) === 1 && Math.floor(i / 4) === Math.floor(j / 4)))))) fail(`${where}: cage not connected ${c.cells}`);
+          }
+        }
+      }
+  if (puzzleStars(0, 0) !== 3 || puzzleStars(0, 1) !== 3 || puzzleStars(1, 0) !== 2 || puzzleStars(0, 3) !== 2 || puzzleStars(2, 0) !== 1 || puzzleStars(0, 5) !== 1) fail('puzzleStars');
+  // On the map: every puzzle and level at a station, stable ids, 3 stars like practice.
+  const pz = allNodes().filter((n) => n.kind === 'puzzle');
+  for (const id of PUZZLE_IDS) for (let level = 1; level <= PUZZLE_LEVELS[id]; level++) if (!pz.some((n) => n.kind === 'puzzle' && n.puzzle === id && n.level === level)) fail(`no station for puzzle ${id} L${level}`);
+  for (const n of pz) if (maxStars(n) !== 3) fail(`${n.id}: a puzzle gives 3 stars`);
+  ok(`puzzles: ${PUZZLE_IDS.length} kinds × every level × ${SEEDS} seeds – exactly one solution, same seed = same puzzle; ${pz.length} puzzle stations; stars by hints and slips`);
+}
+
+// ---------- Chapters 6–10 and the parents' words for them (phase 9) ----------
+{
+  for (const t of TEMPLATE_IDS) if (t !== 'pop' && !(TEMPLATE_NAMES as Record<string, string>)[t]) fail(`no parents' name for the game ${t}`);
+  const later = JOURNEY.chapters.slice(5);
+  if (later.map((c) => c.id).join() !== 'c6,c7,c8,c9,c10') fail('chapters 6–10');
+  for (const c of later) {
+    const list = chapterNodes(c);
+    if (!list.some((n) => n.kind === 'puzzle')) fail(`${c.id}: no puzzle`);
+    if (list.length > 20) fail(`${c.id}: ${list.length} stations (a chapter stays light)`);
+  }
+  // Chapters 1–5 unchanged: their ids, in order.
+  const early = JOURNEY.chapters.slice(0, 5).flatMap(chapterNodes).map((n) => n.id);
+  if (early.length !== 66 || early[0] !== 'c1-count-lesson' || early.at(-1) !== 'c5-boss') fail('chapters 1–5 changed: ' + early.length);
+  const sk = skillsByChapter({});
+  for (const c of later) if (!sk.find((x) => x.id === c.id)?.skills.length) fail(`${c.id}: no skills for parents`);
+  if (sk.find((x) => x.id === 'more')?.skills.map((x) => x.skillId).join() !== 'story.within10') fail('only story.within10 is off the map');
+  const v = journeyView(emptyProgress());
+  if (v.puzzles.total !== allNodes().filter((n) => n.kind === 'puzzle').length || v.puzzles.solved !== 0) fail('journeyView: puzzles ' + JSON.stringify(v.puzzles));
+  const solved = journeyView(withStars(emptyProgress(), 'c6-magic', 2));
+  if (solved.puzzles.solved !== 1) fail('journeyView: a solved puzzle counts');
+  ok(`chapters 6–10: puzzles in every chapter, chapters 1–5 unchanged, skills by chapter for parents, ${Object.keys(TEMPLATE_NAMES).length} games in parents' words, puzzles counted on the journey`);
 }
 
 if (failures) {

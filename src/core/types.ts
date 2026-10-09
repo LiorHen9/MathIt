@@ -25,14 +25,30 @@ export type SkillId =
   | 'money'
   | 'clock'
   | 'add.within100'
-  | 'sub.within100';
+  | 'sub.within100'
+  // Phase 9: grades 3–6.
+  | 'mul.table'
+  | 'div'
+  | 'mul.big'
+  | 'story.muldiv'
+  | 'col.add'
+  | 'col.sub'
+  | 'frac.part'
+  | 'frac.compare'
+  | 'frac.equiv'
+  | 'frac.add'
+  | 'dec.read'
+  | 'dec.compare'
+  | 'dec.add'
+  | 'geo.area'
+  | 'geo.perimeter';
 
 /**
  * The game templates (docs/ARCHITECTURE.md §4.3): how a question is played. Data only – games/
  * draws them. Pop works for every question; the others where `templateFits` says so.
  */
-export type TemplateId = 'pop' | 'jump' | 'build' | 'match' | 'clock' | 'shop';
-export const TEMPLATE_IDS: readonly TemplateId[] = ['pop', 'jump', 'build', 'match', 'clock', 'shop'];
+export type TemplateId = 'pop' | 'jump' | 'build' | 'match' | 'clock' | 'shop' | 'slice' | 'pattern' | 'speed';
+export const TEMPLATE_IDS: readonly TemplateId[] = ['pop', 'jump', 'build', 'match', 'clock', 'shop', 'slice', 'pattern', 'speed'];
 
 /** A difficulty level: every number in the question and its choices stays in [min, max]. */
 export interface DifficultyLevel {
@@ -75,7 +91,22 @@ export type GeneratorId =
   | 'money'
   | 'clock'
   | 'add100'
-  | 'sub100';
+  | 'sub100'
+  | 'mulTable'
+  | 'div'
+  | 'mulBig'
+  | 'storyMulDiv'
+  | 'colAdd'
+  | 'colSub'
+  | 'fracPart'
+  | 'fracCompare'
+  | 'fracEquiv'
+  | 'fracAdd'
+  | 'decRead'
+  | 'decCompare'
+  | 'decAdd'
+  | 'area'
+  | 'perimeter';
 
 /** A comparison sign. */
 export type Sign = '<' | '>' | '=';
@@ -84,18 +115,34 @@ export interface Time {
   h: number;
   m: number;
 }
+/** A fraction `n`/`d` (phase 9): 3/4 is { n: 3, d: 4 }. Never reduced on its own – 2/4 stays 2/4. */
+export interface Frac {
+  n: number;
+  d: number;
+}
 /**
- * A number (money in shekels may end in .5 – fifty agorot), a sign for comparisons, or a time.
- * Compare and key answers with `answerKey` / `sameAnswer`, never with `===` (a time is an object).
+ * A number (money in shekels may end in .5 – fifty agorot; decimals in hundredths, phase 9), a
+ * sign for comparisons, a time, or a fraction. Compare and key answers with `answerKey` /
+ * `sameAnswer`, never with `===` (a time and a fraction are objects).
  */
-export type Answer = number | Sign | Time;
+export type Answer = number | Sign | Time | Frac;
 
 export function isTime(a: unknown): a is Time {
   return typeof a === 'object' && a !== null && typeof (a as Time).h === 'number' && typeof (a as Time).m === 'number';
 }
 
-/** The answer as a stable string: "7", "<", "3:05" – keys `errorTags`, choices and the DOM. */
+export function isFrac(a: unknown): a is Frac {
+  return typeof a === 'object' && a !== null && typeof (a as Frac).n === 'number' && typeof (a as Frac).d === 'number';
+}
+
+/** The same amount: 2/4 and 1/2 (cross-multiplied, whole numbers only). */
+export function sameValue(a: Frac, b: Frac): boolean {
+  return a.d > 0 && b.d > 0 && a.n * b.d === b.n * a.d;
+}
+
+/** The answer as a stable string: "7", "<", "3:05", "3/4" – keys `errorTags`, choices and the DOM. */
 export function answerKey(a: Answer): string {
+  if (isFrac(a)) return `${a.n}/${a.d}`;
   return isTime(a) ? `${a.h}:${String(a.m).padStart(2, '0')}` : String(a);
 }
 
@@ -108,7 +155,7 @@ export function moneyText(n: number): string {
   return `${Number.isInteger(n) ? n : n.toFixed(2)} ₪`;
 }
 
-/** How an answer is shown: a number (with the question's unit), a sign, or "3:30". */
+/** How an answer is shown: a number (with the question's unit), a sign, "3:30" or "3/4". */
 export function answerText(a: Answer, unit?: string): string {
   if (typeof a === 'number') return unit === '₪' ? moneyText(a) : String(a);
   return answerKey(a);
@@ -134,7 +181,19 @@ export type Visual =
     }
   | { kind: 'blocks'; tens: number; ones: number }
   | { kind: 'coins'; coins: number[] }
-  | { kind: 'clock'; h: number; m: number };
+  | { kind: 'clock'; h: number; m: number }
+  // Phase 9.
+  /** A round pizza cut into `d` equal slices, `n` of them coloured. */
+  | { kind: 'pizza'; n: number; d: number }
+  /**
+   * A rectangle `w` × `h` on a grid of squares (`sides`: drawn without the squares, the side
+   * lengths written on it); `cut`: a corner of `cut.w` × `cut.h` missing (an L shape).
+   */
+  | { kind: 'grid'; w: number; h: number; cut?: { w: number; h: number }; sides?: boolean }
+  /** An exercise written in columns ("במאונך"): the numbers one under the other, ones under ones. */
+  | { kind: 'column'; rows: number[]; op: '+' | '−' }
+  /** A square of 100: `n` hundredths coloured (a full column is a tenth). */
+  | { kind: 'hundred'; n: number };
 
 /** The coins (in shekels) a child meets: 50 agorot, 1, 2, 5 and 10 shekels. */
 export const COIN_VALUES: readonly number[] = [10, 5, 2, 1, 0.5];
@@ -169,7 +228,21 @@ export type ErrorTag =
   | 'no-carry' // ten ones were not turned into a ten (38 + 25 → 53)
   | 'no-borrow' // took the small ones from the big ones instead of breaking a ten (52 − 17 → 45)
   | 'wrong-step' // a sequence continued with the wrong step (2, 4, 6 → 7)
-  | 'hands-swapped'; // read the clock's hands the other way round (3:00 → 12:15)
+  | 'hands-swapped' // read the clock's hands the other way round (3:00 → 12:15)
+  // Phase 9.
+  | 'times-as-plus' // added instead of multiplying (3 × 4 → 7), or took away instead of dividing
+  | 'table-neighbor' // one group too many or too few (3 × 4 → 8 or 16)
+  | 'remainder-dropped' // forgot what is left over (17 : 5 – the remainder is 0)
+  | 'misaligned' // the numbers not lined up by place (345 + 27 → 615)
+  | 'part-to-part' // the coloured part over the rest, not over the whole (3 of 4 → 3/1)
+  | 'flipped-fraction' // the parts and the whole the other way round (3/4 → 4/3)
+  | 'bigger-denominator' // a bigger denominator taken for a bigger fraction (1/8 > 1/4)
+  | 'added-denominators' // added the denominators too (1/4 + 2/4 → 3/8)
+  | 'equiv-add' // added the same number on top and below instead of multiplying (1/2 → 3/4)
+  | 'decimal-as-whole' // the digits after the point read as a whole number (0.5 + 0.7 → 0.12)
+  | 'longer-is-bigger' // more digits after the point taken for bigger (0.25 > 0.3)
+  | 'area-perimeter' // the area for the perimeter, or the other way round
+  | 'half-perimeter'; // the two sides once, not all four (a 5 × 3 rectangle → 8)
 
 export const ERROR_TAGS: readonly ErrorTag[] = [
   'count-off-by-one',
@@ -185,7 +258,20 @@ export const ERROR_TAGS: readonly ErrorTag[] = [
   'no-carry',
   'no-borrow',
   'wrong-step',
-  'hands-swapped'
+  'hands-swapped',
+  'times-as-plus',
+  'table-neighbor',
+  'remainder-dropped',
+  'misaligned',
+  'part-to-part',
+  'flipped-fraction',
+  'bigger-denominator',
+  'added-denominators',
+  'equiv-add',
+  'decimal-as-whole',
+  'longer-is-bigger',
+  'area-perimeter',
+  'half-perimeter'
 ];
 
 /**
@@ -207,6 +293,20 @@ export const ERROR_TAGS: readonly ErrorTag[] = [
  * - line: a number line up to `max` (20 or 100), from `from`, hops of any size (tens and ones).
  * - clock: the hands turn from 12:00 to h:m, the minutes counted in fives.
  * - coins: coins (in shekels) land on a stack one by one, the total counted up.
+ * Phase 9:
+ * - array: `rows` rows of `cols` appear row by row, counted on by `cols` (multiplying is adding
+ *   again and again); `turn` turns it round (3 × 4 = 4 × 3); `unit` 10: every dot is a ten.
+ * - share: `total` things fly to `groups` plates one round at a time; what does not fill a
+ *   round stays aside. `ask`: what each plate got, or what was left.
+ * - pizza: a pizza is cut into `d` slices and `n` are coloured; then `add` more are coloured, or
+ *   every slice is cut into `split` (2/4 → 4/8), or every `join` slices are glued (4/8 → 1/2);
+ *   `vs`: a second pizza beside it, and the sign between them.
+ * - column: `a` and `b` written in columns; column by column from the ones, a carried ten flies to
+ *   the next column (or a ten is broken from it when taking away).
+ * - grid: the squares of a `w` × `h` rectangle (minus a `cut` corner) fill row by row (the area),
+ *   or the line around it stretches side by side (the perimeter).
+ * - decimal: a square of 100 fills with `a` hundredths (a column = a tenth), then `b` more, or a
+ *   second square of `vs` beside it and the sign between them.
  */
 export type Action =
   | { kind: 'count'; n: number }
@@ -219,10 +319,42 @@ export type Action =
   | { kind: 'doubleFrame'; a: number; b: number }
   | { kind: 'line'; from: number; hops: number[]; max: 20 | 100 }
   | { kind: 'clock'; h: number; m: number }
-  | { kind: 'coins'; coins: number[] };
+  | { kind: 'coins'; coins: number[] }
+  | { kind: 'array'; rows: number; cols: number; turn?: boolean; unit?: 10 }
+  | { kind: 'share'; total: number; groups: number; ask: 'each' | 'left' }
+  | { kind: 'pizza'; d: number; n: number; add?: number; split?: number; join?: number; vs?: Frac }
+  | { kind: 'column'; a: number; b: number; op: '+' | '-' }
+  | { kind: 'grid'; w: number; h: number; cut?: { w: number; h: number }; ask: 'area' | 'perimeter' }
+  | { kind: 'decimal'; a: number; b?: number; vs?: number };
 
 export type ActionKind = Action['kind'];
-export const ACTION_KINDS: readonly ActionKind[] = ['count', 'tenFrame', 'combine', 'takeAway', 'jump', 'compare', 'tens', 'doubleFrame', 'line', 'clock', 'coins'];
+export const ACTION_KINDS: readonly ActionKind[] = [
+  'count',
+  'tenFrame',
+  'combine',
+  'takeAway',
+  'jump',
+  'compare',
+  'tens',
+  'doubleFrame',
+  'line',
+  'clock',
+  'coins',
+  'array',
+  'share',
+  'pizza',
+  'column',
+  'grid',
+  'decimal'
+];
+
+const sign = (x: number, y: number): Sign => (x > y ? '>' : x < y ? '<' : '=');
+
+/** The area and the perimeter of a `w` × `h` rectangle with a corner `cut` off (an L shape). */
+export function gridMeasures(w: number, h: number, cut?: { w: number; h: number }): { area: number; perimeter: number } {
+  // Cutting a corner off moves two sides in and keeps the perimeter (a surprise worth showing).
+  return { area: w * h - (cut ? cut.w * cut.h : 0), perimeter: 2 * (w + h) };
+}
 
 /** The value an action ends on: the count, the sum, what is left, where the hops land, the sign, the time. */
 export function actionResult(a: Action): Answer {
@@ -251,6 +383,25 @@ export function actionResult(a: Action): Answer {
       return { h: a.h, m: a.m };
     case 'coins':
       return Math.round(a.coins.reduce((x, c) => x + c, 0) * 100) / 100;
+    case 'array':
+      return a.rows * a.cols * (a.unit ?? 1);
+    case 'share':
+      return a.ask === 'each' ? Math.floor(a.total / a.groups) : a.total % a.groups;
+    case 'pizza': {
+      if (a.vs) return sign(a.n * a.vs.d, a.vs.n * a.d);
+      if (a.split) return { n: a.n * a.split, d: a.d * a.split };
+      if (a.join) return { n: a.n / a.join, d: a.d / a.join };
+      return { n: a.n + (a.add ?? 0), d: a.d };
+    }
+    case 'column':
+      return a.op === '+' ? a.a + a.b : a.a - a.b;
+    case 'grid': {
+      const m = gridMeasures(a.w, a.h, a.cut);
+      return a.ask === 'area' ? m.area : m.perimeter;
+    }
+    case 'decimal':
+      // Hundredths are whole numbers: no floating-point slips (0.1 + 0.2).
+      return a.vs !== undefined ? sign(a.a, a.vs) : (a.a + (a.b ?? 0)) / 100;
   }
 }
 
@@ -270,7 +421,15 @@ export const ACTION_LIMITS: Record<ActionKind, number> = {
   doubleFrame: 20,
   line: 100,
   clock: 12,
-  coins: 100
+  coins: 100,
+  // Phase 9: rows × cols (a ten per dot to 1,000), things shared, slices of a pizza, numbers in
+  // columns (four columns), the side of a grid, hundredths (two squares).
+  array: 1000,
+  share: 100,
+  pizza: 12,
+  column: 9999,
+  grid: 12,
+  decimal: 200
 };
 /** At most this many hops on a line, coins on a stack (an animation a child can follow). */
 export const MAX_HOPS = 12;
@@ -322,6 +481,31 @@ export function actionValid(a: Action): boolean {
         a.coins.every((c) => COIN_VALUES.includes(c)) &&
         (actionResult(a) as number) <= max
       );
+    case 'array':
+      return n(a.rows, 1, 10) && n(a.cols, 1, 10) && (a.unit === undefined || a.unit === 10);
+    case 'share':
+      return n(a.total, 1) && n(a.groups, 2, 10) && a.total >= a.groups && Math.ceil(a.total / a.groups) <= 10 && (a.ask === 'each' || a.ask === 'left');
+    case 'pizza': {
+      if (!n(a.d, 1) || !n(a.n, 0, a.d)) return false;
+      const extras = [a.add, a.split, a.join, a.vs].filter((x) => x !== undefined).length;
+      if (extras > 1) return false;
+      if (a.add !== undefined && !(n(a.add, 1) && a.n + a.add <= a.d)) return false;
+      if (a.split !== undefined && !(n(a.split, 2, 4) && a.d * a.split <= max)) return false;
+      if (a.join !== undefined && !(n(a.join, 2, 6) && a.d % a.join === 0 && a.n % a.join === 0)) return false;
+      if (a.vs !== undefined && !(n(a.vs.d, 1) && n(a.vs.n, 0, a.vs.d))) return false;
+      return true;
+    }
+    case 'column':
+      return n(a.a, 1) && n(a.b, 1) && (a.op === '+' ? a.a + a.b <= max : a.op === '-' && a.b <= a.a);
+    case 'grid':
+      return (
+        n(a.w, 1) &&
+        n(a.h, 1) &&
+        (a.ask === 'area' || a.ask === 'perimeter') &&
+        (!a.cut || (n(a.cut.w, 1, a.w - 1) && n(a.cut.h, 1, a.h - 1)))
+      );
+    case 'decimal':
+      return n(a.a, 0, 100) && (a.b === undefined || (n(a.b, 1, 100) && a.a + a.b <= max)) && (a.vs === undefined || (n(a.vs, 0, 100) && a.b === undefined));
   }
 }
 
@@ -383,6 +567,11 @@ export interface Question {
   /** A unit shown after number answers ("₪" for money). */
   unit?: string;
   /**
+   * Phase 9: a fraction that is worth the same counts as right too (2/4 for 1/2) – only when the
+   * question says so (adding fractions, colouring a pizza); the choices never hold such a fraction.
+   */
+  equivalent?: boolean;
+  /**
    * The same question asked another way in some templates: the clock template says "set the
    * hands to 3:30" where Pop asks "what time is it?"; the shop asks to pay. Same answer.
    */
@@ -391,8 +580,12 @@ export interface Question {
 
 export type Generator = (level: DifficultyLevel, rng: Rng) => Omit<Question, 'id' | 'skillId' | 'level' | 'seed' | 'choices'>;
 
-/** Is this the right answer? By kind: numbers, signs and times are compared by value. */
-export function isCorrect(q: Pick<Question, 'answer'>, a: Answer): boolean {
+/**
+ * Is this the right answer? By kind: numbers, signs and times are compared by value; a fraction
+ * as written (2/4 is not 1/2), unless the question accepts one worth the same (`equivalent`).
+ */
+export function isCorrect(q: Pick<Question, 'answer' | 'equivalent'>, a: Answer): boolean {
+  if (q.equivalent && isFrac(q.answer) && isFrac(a)) return sameValue(q.answer, a);
   return sameAnswer(q.answer, a);
 }
 
@@ -421,5 +614,15 @@ export function templateFits(t: TemplateId, q: Pick<Question, 'answer' | 'unit' 
       return isTime(a);
     case 'shop':
       return q.unit === '₪' && typeof a === 'number' && a > 0 && !!q.prompts?.shop;
+    // Phase 9.
+    case 'slice':
+      // A fraction coloured on a pizza – asked its own way ("צובעים 3/4 מהפיצה").
+      return isFrac(a) && a.d <= 12 && !!q.prompts?.slice;
+    case 'pattern':
+      // A sequence with a gap, completed by placing a tile.
+      return typeof a === 'number' && Number.isInteger(a) && !!q.prompts?.pattern?.math && q.prompts.pattern.math.includes('?');
+    case 'speed':
+      // Quick facts against a gentle clock (the times table).
+      return typeof a === 'number' && Number.isInteger(a) && !!q.prompts?.speed;
   }
 }

@@ -1,9 +1,10 @@
 // Manipulatives (docs/ARCHITECTURE.md §6.1): the teaching animations. Each takes plain numbers,
 // knows nothing about questions, plays on mount (again when `play` changes), calls `onDone` at the
 // end, and shows its end state at once when `stopped`. Sounds go through the Feedback Director
-// (count, jump, ten, whoosh; phase 7 leap, tick, clink). They load with the game and lesson
+// (count, jump, ten, whoosh; phase 7 leap, tick, clink; phase 9 slice, carry). They load with the game and lesson
 // screens, never on first load; the phase 7 ones (rods and cubes, two ten frames, the long number
-// line, the clock, coins, comparing to 100) are chunks of their own, loaded the first time they show.
+// line, the clock, coins, comparing to 100) and phase 9 ones (arrays, sharing, pizzas, columns,
+// squared paper, hundredths) are chunks of their own, loaded the first time they show.
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { Action } from '../core/types';
@@ -46,6 +47,13 @@ export const LongLine = lazyPart(() => import('./LongLine').then((m) => m.LongLi
 export const ClockAnim = lazyPart(() => import('./ClockAnim').then((m) => m.ClockAnim));
 export const CoinStack = lazyPart(() => import('./CoinStack').then((m) => m.CoinStack));
 export const CompareTens = lazyPart(() => import('./CompareTens').then((m) => m.CompareTens));
+// Phase 9: arrays, sharing, pizzas, columns, squared paper, hundredths – each its own chunk.
+export const ArrayAnim = lazyPart(() => import('./ArrayAnim').then((m) => m.ArrayAnim));
+export const ShareAnim = lazyPart(() => import('./ShareAnim').then((m) => m.ShareAnim));
+export const PizzaAnim = lazyPart(() => import('./PizzaAnim').then((m) => m.PizzaAnim));
+export const ColumnAnim = lazyPart(() => import('./ColumnAnim').then((m) => m.ColumnAnim));
+export const GridAnim = lazyPart(() => import('./GridAnim').then((m) => m.GridAnim));
+export const DecimalAnim = lazyPart(() => import('./DecimalAnim').then((m) => m.DecimalAnim));
 
 /** The manipulative for an action from the Learning Core. */
 export function Manipulative({ action, ...run }: { action: Action } & RunProps) {
@@ -72,5 +80,17 @@ export function Manipulative({ action, ...run }: { action: Action } & RunProps) 
       return <ClockAnim h={action.h} m={action.m} {...run} />;
     case 'coins':
       return <CoinStack coins={action.coins} {...run} />;
+    case 'array':
+      return <ArrayAnim rows={action.rows} cols={action.cols} turn={action.turn} unit={action.unit} {...run} />;
+    case 'share':
+      return <ShareAnim total={action.total} groups={action.groups} ask={action.ask} {...run} />;
+    case 'pizza':
+      return <PizzaAnim d={action.d} n={action.n} add={action.add} split={action.split} join={action.join} vs={action.vs} {...run} />;
+    case 'column':
+      return <ColumnAnim a={action.a} b={action.b} op={action.op} {...run} />;
+    case 'grid':
+      return <GridAnim w={action.w} h={action.h} cut={action.cut} ask={action.ask} {...run} />;
+    case 'decimal':
+      return <DecimalAnim a={action.a} b={action.b} vs={action.vs} {...run} />;
   }
 }

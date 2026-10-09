@@ -29,6 +29,9 @@ export type SfxName =
   | 'leap'
   | 'tick'
   | 'clink'
+  // Teaching, phase 9: a knife through a pizza, a carried ten flying to the next column.
+  | 'slice'
+  | 'carry'
   // The quest map (phase 4).
   | 'step'
   | 'unlock'
@@ -321,6 +324,24 @@ const SOUNDS: Record<SfxName, Sound> = {
     },
     echo: { time: 0.07, feedback: 0.2, wet: 0.12 }
   },
+  // A cut through the pizza: a short swish of the knife and a soft knock on the board, a little
+  // higher with every cut (the ear hears the slices getting more).
+  slice: {
+    tones: (o) => {
+      const f = countPitch(o.step ?? 1);
+      return [
+        { wave: 'noise', at: 0, len: 0.09, vol: 0.16, attack: 0.01, filter: { type: 'bandpass', freq: 2400, to: 5200, q: 2 } },
+        { wave: 'triangle', freq: f, to: f * 0.9, at: 0.07, len: 0.09, vol: 0.2, attack: 0.002 }
+      ];
+    }
+  },
+  // A carried (or borrowed) ten flies to the next column: a quick rising whistle and a little "ding".
+  carry: {
+    tones: () => [
+      { wave: 'sine', freq: 620, to: 1240, at: 0, len: 0.18, vol: 0.14, attack: 0.02 },
+      ...bell(1568, 0.17, 0.12, 0.5)
+    ]
+  },
   // Something flying away: a soft rush of air, rising.
   whoosh: {
     tones: () => [
@@ -496,10 +517,10 @@ const SOUNDS: Record<SfxName, Sound> = {
 export const SFX_NAMES = Object.keys(SOUNDS) as SfxName[];
 
 /** Teaching sounds: the content itself, the same in every world – never from a pack. */
-export const TEACHING_SOUNDS: readonly SfxName[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink'];
+export const TEACHING_SOUNDS: readonly SfxName[] = ['count', 'jump', 'ten', 'whoosh', 'leap', 'tick', 'clink', 'slice', 'carry'];
 
 /** A world's sounds: any shared sound but the teaching ones and the world samples. */
-export type PackSound = Exclude<SfxName, 'count' | 'jump' | 'ten' | 'whoosh' | 'leap' | 'tick' | 'clink' | `world-${string}`>;
+export type PackSound = Exclude<SfxName, 'count' | 'jump' | 'ten' | 'whoosh' | 'leap' | 'tick' | 'clink' | 'slice' | 'carry' | `world-${string}`>;
 export type SoundPack = Partial<Record<PackSound, Sound>>;
 
 /** What every world's pack must have (tests/worlds/check.ts). "wrong" may stay shared: it is soft. */

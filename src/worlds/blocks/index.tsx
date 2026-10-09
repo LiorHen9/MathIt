@@ -91,14 +91,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'block' }, jump: { look: 'pillars' }, build: { look: 'brick' }, match: { look: 'crate', deco: '📦' }, clock: { look: 'pixel' }, shop: { look: 'mine', icons: ['⛏️', '🔦', '💎'] } },
+  templateSkins: { pop: { look: 'block' }, jump: { look: 'pillars' }, build: { look: 'brick' }, match: { look: 'crate', deco: '📦' }, clock: { look: 'pixel' }, shop: { look: 'mine', icons: ['⛏️', '🔦', '💎'] }, slice: { look: 'slice-pixel' }, pattern: { look: 'pat-blocks' }, speed: { look: 'speed-redstone' } },
   story: {
     chapters: [
       'בונים מחנה ליד המערה, וכל תשובה נכונה מוסיפה עוד בלוק!',
       'יורדים לקומה השנייה של המכרה, ושם בונים עד 20!',
       'במכרה העמוק יש מאה בלוקים – מסדרים אותם בעשרות!',
       'בתחנת המסחר קונים במטבעות, ושעון הלבה מתקתק!',
-      'בונים את הטירה הגדולה מחשבון עד 100!'
+      'בונים את הטירה הגדולה מחשבון עד 100!',
+      'בחוות היצורים בונים מכלאות בשורות שוות – זה לוח הכפל!',
+      'בחדר המכונות סופרים אלפי בלוקים במאונך!',
+      'בתחנת האוכל חותכים עוגת פיקסלים לחלקים שווים!',
+      'בחדר הניסויים מודדים שיקויים במספרים עשרוניים!',
+      'בונים עיר שלמה ומודדים את השטח וההיקף של כל בית – זה הבניין האחרון!'
     ]
   },
   vocabulary: { items: ['קוביות', 'אבני חן', 'לבנים'], place: ['במערה', 'במחנה'], thing: ['מכוש', 'פנס', 'יהלום'] },

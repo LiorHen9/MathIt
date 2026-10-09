@@ -22,7 +22,10 @@ export const TEMPLATE_NAMES: Record<Exclude<TemplateId, 'pop'>, string> = {
   build: '🧱 בנייה בעשרות ואחדות',
   match: '🃏 זיכרון (זוגות)',
   clock: '🕒 כיוון שעון',
-  shop: '🛒 חנות'
+  shop: '🛒 חנות',
+  slice: '🍕 פיצה (צובעים שברים)',
+  pattern: '🧩 סדרות (משלימים את החסר)',
+  speed: '⏱️ מרוץ לוח הכפל (עם שעון)'
 };
 
 /** Chapters reached on the journey: a station done in them, the next station there, or opened by hand. */

@@ -82,14 +82,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'magic' }, jump: { look: 'clouds' }, build: { look: 'crystal' }, match: { look: 'wand', deco: '🪄' }, clock: { look: 'flower' }, shop: { look: 'stall', icons: ['🪄', '👑', '🧪'] } },
+  templateSkins: { pop: { look: 'magic' }, jump: { look: 'clouds' }, build: { look: 'crystal' }, match: { look: 'wand', deco: '🪄' }, clock: { look: 'flower' }, shop: { look: 'stall', icons: ['🪄', '👑', '🧪'] }, slice: { look: 'slice-cake' }, pattern: { look: 'pat-beads' }, speed: { look: 'speed-hourglass' } },
   story: {
     chapters: [
       'מכשפת הערפל כיסתה את הגינה הקסומה – כל תשובה נכונה מחזירה לה צבע!',
       'הערפל חזר אל יער הפיות, ורק חשבון עד 20 יפזר אותו!',
       'בעמק הפרחים צומחים מאה פרחים – בואו נספור אותם בעשרות!',
       'בשוק הקסום של הפיות קונים במטבעות ומודדים זמן בשעון פרחים!',
-      'לטירת הענן מגיעים רק בחשבון עד 100 – זה המסע הגדול!'
+      'לטירת הענן מגיעים רק בחשבון עד 100 – זה המסע הגדול!',
+      'בגן הכפל צומחים פרחים בשורות שוות – סופרים אותם בכפל!',
+      'בספריית הקסמים כותבים מספרים גדולים אחד מתחת לשני!',
+      'במסיבת הפיות חותכים עוגת קסם לחלקים שווים!',
+      'על כנפי הפרפרים מופיעות נקודות עשרוניות – בואו נקרא אותן!',
+      'בונים גינה חדשה ומודדים את השטח וההיקף שלה – זה המסע האחרון!'
     ]
   },
   vocabulary: { items: ['אבני קסם', 'פרחים', 'פרפרים'], place: ['בגינה הקסומה', 'על ענן הפיות'], thing: ['שרביט קסם', 'כתר פרחים', 'שיקוי נצנצים'] },

@@ -170,7 +170,7 @@ async function watch(p, where, shot) {
     await newProfile(p, { name: 'נועה', age: 6, gender: 'girl', world: 'fairies' });
     const lessonBtns = await p.$$eval('.lesson-btn', (els) => els.map((e) => e.dataset.lesson));
     // Phase 7: a lesson for every skill (17).
-    must(lessonBtns.slice(0, 5).join() === 'count.to10,compare.to10,add.within10,sub.within10,story.within10' && lessonBtns.length === 17, 'lesson buttons: ' + lessonBtns);
+    must(lessonBtns.slice(0, 5).join() === 'count.to10,compare.to10,add.within10,sub.within10,story.within10' && lessonBtns.length === 32, 'lesson buttons: ' + lessonBtns);
     await layoutOk(p, 'home');
     await p.screenshot({ path: `${SHOTS}/60-home-lessons.png`, fullPage: true });
     step('home: a "lesson" button beside practice for each of the four skills');

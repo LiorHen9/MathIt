@@ -76,6 +76,7 @@ export function nodeIcon(n: QuestNode): string {
   if (n.kind === 'lesson') return '📖';
   if (n.kind === 'review') return '🔁';
   if (n.kind === 'practice') return getSkill(n.skillId)?.icon ?? '⭐';
+  if (n.kind === 'puzzle') return '🧩';
   return n.kind === 'chest' ? '🎁' : '👾';
 }
 

@@ -97,14 +97,19 @@ export const world: WorldTheme = {
   music: () => import('./music').then((m) => m.loop),
   bosses: [boss],
   mapSkin,
-  templateSkins: { pop: { look: 'spot' }, jump: { look: 'lights' }, build: { look: 'neon' }, match: { look: 'ticket', deco: '🎟️' }, clock: { look: 'disco' }, shop: { look: 'merch', icons: ['🎤', '🎸', '🎩'] } },
+  templateSkins: { pop: { look: 'spot' }, jump: { look: 'lights' }, build: { look: 'neon' }, match: { look: 'ticket', deco: '🎟️' }, clock: { look: 'disco' }, shop: { look: 'merch', icons: ['🎤', '🎸', '🎩'] }, slice: { look: 'slice-record' }, pattern: { look: 'pat-lights' }, speed: { look: 'speed-metronome' } },
   story: {
     chapters: [
       'שד הצל גנב את האורות מהבמה – רק שיר של מספרים יחזיר אותם!',
       'יוצאים לסיבוב הופעות, ושם שרים מספרים עד 20!',
       'באולם יש מאה כיסאות – סופרים אותם בעשרות!',
       'בדוכן המזכרות קונים במטבעות, ושעון ההופעה מתקתק!',
-      'ההופעה הגדולה מתחילה – שרים מספרים עד 100!'
+      'ההופעה הגדולה מתחילה – שרים מספרים עד 100!',
+      'בחזרות רוקדים בשורות שוות – זה לוח הכפל!',
+      'בקופה של האולם סופרים אלפי כרטיסים במאונך!',
+      'בחגיגה שאחרי ההופעה חותכים עוגה לחלקים שווים!',
+      'בעמדת התאורה מכוונים אורות במספרים עשרוניים!',
+      'בונים במה חדשה ומודדים את השטח וההיקף שלה – זו ההופעה האחרונה!'
     ]
   },
   vocabulary: { items: ['מיקרופונים', 'זרקורים', 'כרטיסים'], place: ['על הבמה', 'מאחורי הקלעים'], thing: ['מיקרופון', 'גיטרה', 'כובע נוצץ'] },

@@ -27,7 +27,7 @@ export interface BossDef {
   intro: string;
   /**
    * Phase 7: the boss comes back stronger at the end of every later chapter – one sentence for
-   * each return (chapter 2, 3, 4, 5).
+   * each return (chapters 2–10).
    */
   comebacks?: string[];
   /** Original SVG, colours from CSS variables only. */

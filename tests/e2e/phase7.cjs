@@ -244,7 +244,7 @@ async function playRound(p, { tpl, wrong1, hintKind, wrong2 }) {
       await newProfile(p, { name: 'תמר', age: 7, gender: 'girl', world: 'ninja' });
       // The first chapter on the map, and its tabs (the later chapters closed).
       must((await p.getAttribute('[data-testid=map-chapter]', 'data-chapter')) === 'c1', 'the map opens at chapter 1');
-      must((await p.$$('[data-testid=chapter-tabs] button')).length === 5, 'five chapter tabs');
+      must((await p.$$('[data-testid=chapter-tabs] button')).length === 10, 'ten chapter tabs (phase 9)');
       const m0 = await mark(p);
       await p.tap('[data-testid=chapter-tab-3]');
       await waitFx(p, m0, 'locked');

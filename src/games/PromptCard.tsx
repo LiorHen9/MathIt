@@ -8,6 +8,7 @@ import { useState } from 'preact/hooks';
 import { answerText, type Hint, type Question } from '../core/types';
 import { SpeakButton } from '../components/Speak';
 import { Picture } from '../ui/Picture';
+import { MathText } from '../ui/MathText';
 import { Manipulative } from '../manipulatives/index';
 import { playSfx } from '../audio/sfx';
 
@@ -49,14 +50,18 @@ interface Props {
   slotRef?: Ref<HTMLSpanElement>;
   /** Hide the static picture (the template draws its own: a shop, a clock). */
   noPicture?: boolean;
+  /** Hide the exercise line (the template writes it its own way: a sequence of tiles). */
+  noMath?: boolean;
 }
 
-export function PromptCard({ question: q, done, reveal, hint, earlyHint = false, explaining = false, slotText, slotRef, noPicture = false }: Props) {
+export function PromptCard({ question: q, done, reveal, hint, earlyHint = false, explaining = false, slotText, slotRef, noPicture = false, noMath = false }: Props) {
   const [replay, setReplay] = useState(0);
   const showAnswer = done || reveal;
   const slot = showAnswer ? answerText(q.answer, q.unit) : slotText || '?';
   const visual = hint?.visual ?? (noPicture ? undefined : q.prompt.visual);
   const parts = (q.prompt.math ?? '?').split('?');
+  // Phase 9: an exercise in columns is written one number under the other, the answer below the line.
+  const column = q.prompt.visual?.kind === 'column' ? q.prompt.visual : null;
   return (
     <section class="card prompt">
       <p class="prompt-text">
@@ -83,20 +88,36 @@ export function PromptCard({ question: q, done, reveal, hint, earlyHint = false,
       ) : (
         visual && !explaining && <Picture visual={visual} key={hint ? 'hint' : 'q'} class={hint ? 'is-hint' : ''} />
       )}
+      {noMath ? null : column ? (
+        <div class="prompt-column math" dir="ltr" data-testid="prompt-math" data-column="yes" role="img" aria-label={q.prompt.speech}>
+          <span class="pc-row">{column.rows[0]}</span>
+          <span class="pc-row">
+            <span class="pc-op">{column.op}</span>
+            {column.rows[1]}
+          </span>
+          <span class="pc-line" />
+          <span class="pc-row">
+            <span ref={slotRef} class={`slot ${showAnswer ? 'is-answer' : ''} ${slotText && !showAnswer ? 'is-typed' : ''}`} data-testid="slot">
+              {slot}
+            </span>
+          </span>
+        </div>
+      ) : (
       <p class={`prompt-math math ${q.prompt.math ? '' : 'is-solo'}`} dir="ltr" data-testid="prompt-math">
         {parts.map((part, i) => [
           part && (
             <span key={`p${i}`} class="prompt-part">
-              {part.trim()}
+              <MathText text={part.trim()} />
             </span>
           ),
           i < parts.length - 1 && (
             <span key={`s${i}`} ref={slotRef} class={`slot ${showAnswer ? 'is-answer' : ''} ${slotText && !showAnswer ? 'is-typed' : ''}`} data-testid="slot">
-              {slot}
+              <MathText text={slot} />
             </span>
           )
         ])}
       </p>
+      )}
       {hint && (
         <p class="prompt-hint" data-testid="hint" data-early={earlyHint ? 'yes' : 'no'}>
           💡 {hint.text} <SpeakButton text={hint.text} class="speak-inline" />

@@ -4,7 +4,7 @@
 # Usage: scripts/local-check.sh <scratch-dir> [--no-e2e]
 # Output: <scratch-dir>/dist (the site), <scratch-dir>/shots (screenshots).
 # The real build is `npm run build` (Vite + vite-plugin-pwa) in GitHub Actions; this one has no
-# manifest or Service Worker, and bun puts all CSS in main.css.
+# manifest or Service Worker, and bun puts all CSS in main.css (lazy chunks' CSS is appended to it).
 set -euo pipefail
 S=$(realpath "${1:?scratch dir}")
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -64,6 +64,9 @@ sed -e 's#<script type="module" src="/src/main.tsx"></script>#<link rel="stylesh
 FIRST=0
 for f in "$S/dist/main.js" "$S/dist/main.css" "$S/dist/index.html" "$S/dist/fonts/rubik.woff2"; do FIRST=$((FIRST + $(gzip -9c "$f" | wc -c))); done
 echo "first load ≈ $((FIRST / 1024))KB gzip (budget 300KB)"
+# CSS that lazy chunks import (phase 9) comes out as chunk-*.css; Vite loads it with its chunk, bun
+# does not – here it joins main.css (after the first-load count, which is the real build's).
+for f in "$S"/dist/chunk-*.css; do [ -f "$f" ] && cat "$f" >> "$S/dist/main.css"; done
 
 echo "== unit checks"
 bun tests/core/check.ts

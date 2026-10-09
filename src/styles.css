@@ -4911,6 +4911,30 @@ p {
   width: 120px;
   height: 120px;
 }
+/* Phase 9, chapters 6–10: a hotter aura every chapter. */
+.boss-tier-6 {
+  filter: drop-shadow(0 0 6px var(--num-4)) drop-shadow(0 0 3px var(--danger));
+}
+.boss-tier-7 {
+  filter: drop-shadow(0 0 8px var(--num-4)) drop-shadow(0 0 4px var(--danger));
+}
+.boss-tier-8 {
+  filter: drop-shadow(0 0 10px var(--danger)) drop-shadow(0 0 4px var(--accent));
+}
+.boss-tier-9 {
+  filter: drop-shadow(0 0 12px var(--danger)) drop-shadow(0 0 5px var(--num-1));
+}
+.boss-tier-10 {
+  filter: drop-shadow(0 0 14px var(--brand)) drop-shadow(0 0 6px var(--danger));
+}
+.boss-screen[data-tier='6'] .boss-big,
+.boss-screen[data-tier='7'] .boss-big,
+.boss-screen[data-tier='8'] .boss-big,
+.boss-screen[data-tier='9'] .boss-big,
+.boss-screen[data-tier='10'] .boss-big {
+  width: 128px;
+  height: 128px;
+}
 
 /* Chapter tabs on the map (phase 7): one chapter is drawn at a time. */
 .map-chapters {
@@ -4938,4 +4962,92 @@ p {
 
 .map-chapter-tab.is-locked {
   opacity: 0.6;
+}
+
+/* ---------- Phase 9: the new games in every world's dress ----------
+   Slice (the pizza: cake, orange, pie, sushi, pixels, a record), Pattern (the tiles: beads,
+   jerseys, a scoreboard, scrolls, blocks, lights) and Speed (the clock's bar). */
+.skin-slice-cake .pz-crust {
+  fill: var(--hero-trim);
+}
+.skin-slice-cake .pz-slice.is-on {
+  fill: var(--hero-main);
+}
+.skin-slice-orange .pz-crust {
+  fill: var(--num-4);
+}
+.skin-slice-orange .pz-slice.is-on {
+  fill: var(--accent);
+}
+.skin-slice-pie .pz-crust {
+  fill: var(--hero-prop);
+}
+.skin-slice-pie .pz-slice.is-on {
+  fill: var(--num-4);
+}
+.skin-slice-sushi .pz-crust {
+  fill: var(--hero-ink);
+}
+.skin-slice-sushi .pz-slice.is-on {
+  fill: var(--num-1);
+}
+.skin-slice-pixel .pz-crust {
+  fill: var(--num-3);
+}
+.skin-slice-pixel .pz-slice.is-on {
+  fill: var(--num-2);
+}
+.skin-slice-record .pz-crust {
+  fill: var(--hero-ink);
+}
+.skin-slice-record .pz-slice.is-on {
+  fill: var(--brand);
+}
+
+.skin-pat-beads .pt-tile,
+.skin-pat-beads .pt-term {
+  border-radius: 999px;
+}
+.skin-pat-jerseys .pt-tile {
+  border-radius: 14px 14px 6px 6px;
+  background: var(--num-3);
+}
+.skin-pat-scoreboard .pt-term {
+  background: var(--hero-ink);
+  color: var(--accent);
+  border-color: var(--hero-ink);
+}
+.skin-pat-scrolls .pt-tile {
+  border-radius: 6px;
+  background: var(--num-1);
+}
+.skin-pat-blocks .pt-tile,
+.skin-pat-blocks .pt-term {
+  border-radius: 2px;
+}
+.skin-pat-blocks .pt-tile {
+  background: var(--num-3);
+}
+.skin-pat-lights .pt-tile {
+  background: var(--num-2);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.skin-speed-hourglass .sp-bar {
+  background: var(--hero-main);
+}
+.skin-speed-stopwatch .sp-bar {
+  background: var(--good);
+}
+.skin-speed-shotclock .sp-bar {
+  background: var(--num-4);
+}
+.skin-speed-incense .sp-bar {
+  background: var(--num-2);
+}
+.skin-speed-redstone .sp-bar {
+  background: var(--danger);
+}
+.skin-speed-metronome .sp-bar {
+  background: var(--brand);
 }

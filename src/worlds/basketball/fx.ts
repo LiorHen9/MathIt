@@ -12,5 +12,6 @@ export const fx: WorldFx = {
   levelUp: (_e, b) => ({ particles: { kind: 'flame', count: b.particles?.count ?? 30, at: 'el' } }),
   goalReached: (_e, b) => ({ particles: { kind: 'flame', count: b.particles?.count ?? 40, at: 'el' } }),
   bossHit: (e) => ({ particles: { kind: e.n >= 4 ? 'flame' : 'spark', count: 16 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'סל!' : undefined }),
-  coin: () => ({ fly: '🏅' })
+  coin: () => ({ fly: '🏅' }),
+  puzzleSolved: (_e, b) => ({ particles: { kind: 'spark', count: b.particles?.count ?? 80, at: 'screen' }, word: 'סל של חידה!' }),
 };

@@ -5,14 +5,15 @@
 //   (core pickHint), animated in the question card (manipulatives/), calm, with a replay button;
 // - second mistake → the hero explains step by step, animated and read aloud (Explainer); the
 //   answer appears at the end, and only then "next" (or "skip" during the explanation).
-// The template (games/Pop.tsx and, phase 7, Jump, Build, Match, Clock, Shop) only shows the
+// The template (games/Pop.tsx; phase 7 Jump, Build, Match, Clock, Shop; phase 9 Slice, Pattern,
+// Speed) only shows the
 // question and reports answers; hints, the explanation and the engine work the same in all.
 // Phase 6: every question ends in one `onResult` for the mastery engine (right or shown, mistakes
 // before, time, the kinds of mistakes); the hint also fits the child's most common mistake
 // (`common`), and a child who is struggling gets it early, before any mistake (`hintAfterMs`).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { MAX_WRONG } from '../core/round';
-import { answerKey, answerText, isCorrect, isTime, pickHint, type Answer, type ErrorTag, type Hint, type Question } from '../core/types';
+import { answerKey, answerText, isCorrect, isFrac, isTime, pickHint, type Answer, type ErrorTag, type Hint, type Question } from '../core/types';
 import type { AnswerResult } from '../core/mastery/engine';
 import { emit } from '../fx/director';
 import { Explainer } from '../manipulatives/Explainer';
@@ -23,6 +24,7 @@ import { playSfx } from '../audio/sfx';
 import type { ComponentType } from 'preact';
 import type { TemplateId } from '../core/types';
 import { Pop, type InputMode } from './Pop';
+import { fracWords } from '../core/generators/fractions';
 import type { TemplateProps } from './PromptCard';
 
 /** A template in its own chunk (phase 7): a quiet placeholder until it arrives. */
@@ -55,7 +57,11 @@ export const TEMPLATES: Record<TemplateId, ComponentType<TemplateProps>> = {
   build: lazyTemplate(() => import('./Build').then((m) => m.Build)),
   match: lazyTemplate(() => import('./Match').then((m) => m.Match)),
   clock: lazyTemplate(() => import('./ClockSet').then((m) => m.ClockSet)),
-  shop: lazyTemplate(() => import('./Shop').then((m) => m.Shop))
+  shop: lazyTemplate(() => import('./Shop').then((m) => m.Shop)),
+  // Phase 9.
+  slice: lazyTemplate(() => import('./Slice').then((m) => m.Slice)),
+  pattern: lazyTemplate(() => import('./Pattern').then((m) => m.Pattern)),
+  speed: lazyTemplate(() => import('./Speed').then((m) => m.Speed))
 };
 
 export type AskStatus = 'asking' | 'solved' | 'explaining' | 'shown';
@@ -162,8 +168,14 @@ export function Ask({ question: q, mode, profile, onMessage, onRight, onWrong, o
       setSkipped(true);
     }
     setStatus('shown');
-    const shown = isTime(q.answer) ? `השעה היא ${answerKey(q.answer)}.` : typeof q.answer === 'number' ? `התשובה היא ${answerText(q.answer, q.unit)}.` : `הסימן הנכון הוא ${q.answer}`;
-    onMessage(msg(shown, 'info'));
+    const shown = isTime(q.answer)
+      ? `השעה היא ${answerKey(q.answer)}.`
+      : isFrac(q.answer)
+        ? `התשובה היא ${answerKey(q.answer)}.`
+        : typeof q.answer === 'number'
+          ? `התשובה היא ${answerText(q.answer, q.unit)}.`
+          : `הסימן הנכון הוא ${q.answer}`;
+    onMessage(msg(shown, 'info', isFrac(q.answer) ? `התשובה היא ${fracWords(q.answer)}.` : undefined));
     onShown?.();
   }
 

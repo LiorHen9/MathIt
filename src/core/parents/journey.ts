@@ -21,11 +21,14 @@ export interface JourneyView {
   station: string | null;
   chapters: ChapterLine[];
   bossesBeaten: number;
+  /** Puzzle stations solved (phase 9), of all on the journey. */
+  puzzles: { solved: number; total: number };
 }
 
 export function journeyView(p: QuestProgress, j: Journey = JOURNEY): JourneyView {
   const next = nextNode(p, j);
   const ch = next ? chapterOf(next.id, j) : undefined;
+  const puzzles = j.chapters.flatMap(chapterNodes).filter((n) => n.kind === 'puzzle');
   const chapters = j.chapters.map((c) => {
     const nodes = chapterNodes(c);
     const boss = nodes.find((n) => n.kind === 'boss');
@@ -42,7 +45,8 @@ export function journeyView(p: QuestProgress, j: Journey = JOURNEY): JourneyView
     chapter: ch ? { index: j.chapters.indexOf(ch), title: ch.title } : null,
     station: next?.title ?? null,
     chapters,
-    bossesBeaten: chapters.filter((c) => c.bossBeaten).length
+    bossesBeaten: chapters.filter((c) => c.bossBeaten).length,
+    puzzles: { solved: puzzles.filter((n) => isDone(n, p)).length, total: puzzles.length }
   };
 }
 

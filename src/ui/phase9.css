@@ -1,0 +1,615 @@
+/* Phase 9 (grades 3–6): fractions, pizzas, squared paper, squares of 100, columns, arrays, sharing.
+   Colours from the world's variables only. Loaded with the game, the lessons and the puzzles – never
+   on the first screen. Teaching animations move with transform and opacity only (WAAPI). */
+
+/* A stacked fraction: the numerator over a line over the denominator. */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1;
+  font-size: 0.82em;
+  margin: 0 0.08em;
+}
+
+.frac-n {
+  padding: 0 0.12em 0.06em;
+  border-bottom: 0.09em solid currentColor;
+}
+
+.frac-d {
+  padding: 0.06em 0.12em 0;
+}
+
+/* ---------- Pizza ---------- */
+.pizza {
+  width: 132px;
+  height: 132px;
+  overflow: visible;
+}
+
+.pz-crust {
+  fill: var(--accent);
+}
+
+.pz-slice {
+  fill: color-mix(in srgb, var(--accent) 22%, var(--surface));
+}
+
+.pz-slice.is-on,
+.pz-top.is-on {
+  fill: var(--num-1);
+}
+
+.pz-top.is-add {
+  fill: var(--num-3);
+}
+
+.pz-cut {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pic-pizza {
+  display: flex;
+  justify-content: center;
+}
+
+.pz-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+.pz-row.is-two .pizza {
+  width: 112px;
+  height: 112px;
+}
+
+.pz-sign,
+.dc-sign {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--brand);
+  min-width: 1.2em;
+  text-align: center;
+}
+
+/* ---------- Squared paper ---------- */
+.pic-grid,
+.gr-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 18px;
+}
+
+.gr-shape {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.gr-sq {
+  position: absolute;
+  width: var(--gr-c);
+  height: var(--gr-c);
+  background: color-mix(in srgb, var(--num-3) 28%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--num-3) 55%, var(--surface));
+  box-sizing: border-box;
+}
+
+.gr-shape.is-plain .gr-sq {
+  border-color: transparent;
+}
+
+.m-grid .gr-sq.m-hide,
+.manip .gr-sq.m-hide {
+  background: var(--num-3);
+}
+
+.gr-side {
+  position: absolute;
+  background: var(--brand);
+  border-radius: 3px;
+}
+
+.gr-side.is-h {
+  height: 4px;
+  margin-top: -2px;
+}
+
+.gr-side.is-v {
+  width: 4px;
+  margin-left: -2px;
+}
+
+.gr-len {
+  position: absolute;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 0 3px;
+  line-height: 1.2;
+}
+
+.gr-side.is-h .gr-len {
+  left: 50%;
+  top: -1.45em;
+  translate: -50% 0;
+}
+
+.gr-side.is-v .gr-len {
+  top: 50%;
+  left: 7px;
+  translate: 0 -50%;
+}
+
+.gr-sums {
+  display: grid;
+  grid-auto-rows: var(--gr-c);
+  align-items: center;
+}
+
+.gr-sum {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--brand);
+  min-width: 2ch;
+}
+
+/* ---------- A square of 100 ---------- */
+.pic-hundred {
+  display: flex;
+  justify-content: center;
+}
+
+.dc-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+.dc-square {
+  --dc: 12px;
+  display: grid;
+  grid-template-columns: repeat(10, var(--dc));
+  grid-template-rows: repeat(10, var(--dc));
+  gap: 1px;
+  padding: 2px;
+  background: var(--line);
+  border: 2px solid var(--ink-soft);
+  border-radius: 4px;
+}
+
+.dc-row.is-two .dc-square {
+  --dc: 10px;
+}
+
+.dc-cell {
+  background: var(--surface);
+}
+
+.dc-cell.is-1 {
+  background: var(--num-2);
+}
+
+.dc-cell.is-2 {
+  background: var(--num-3);
+}
+
+.dc-cell.is-3 {
+  background: var(--num-4);
+}
+
+/* ---------- Columns ---------- */
+.prompt-column {
+  display: grid;
+  justify-items: end;
+  justify-content: center;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  margin: var(--s2) auto 0;
+}
+
+.pc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.pc-op {
+  color: var(--brand);
+}
+
+.pc-line {
+  justify-self: stretch;
+  height: 3px;
+  margin: 2px 0 4px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.co-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--co-cols), 30px);
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.co-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.3em;
+}
+
+.co-top {
+  gap: 1px;
+  font-size: 0.85rem;
+  min-height: 1.4em;
+}
+
+.co-carry {
+  color: var(--num-1);
+}
+
+.co-carry.is-borrow {
+  color: var(--good);
+}
+
+.co-mark {
+  color: var(--danger);
+}
+
+.co-op {
+  color: var(--brand);
+}
+
+.co-line {
+  grid-column: 1 / -1;
+  height: 3px;
+  margin: 2px 0;
+  background: var(--ink);
+  border-radius: 2px;
+  transform-origin: right;
+}
+
+.co-r {
+  color: var(--brand);
+}
+
+/* ---------- Arrays ---------- */
+.ar-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ar-side);
+  height: var(--ar-side);
+  max-width: 100%;
+}
+
+.ar-turn {
+  display: block;
+}
+
+.ar-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.ar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ar-dot {
+  display: grid;
+  place-items: center;
+  width: var(--ar-d);
+  height: var(--ar-d);
+  border-radius: 50%;
+  background: var(--num-2);
+}
+
+.ar-dot.is-ten {
+  border-radius: 4px;
+  background: var(--num-4);
+}
+
+.ar-ten {
+  font-size: calc(var(--ar-d) * 0.45);
+  font-weight: 800;
+  color: var(--brand-ink);
+}
+
+.ar-sum {
+  margin-inline-start: 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--brand);
+  min-width: 2.2ch;
+}
+
+.ar-swap {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* ---------- Sharing onto plates ---------- */
+.sh-pile {
+  display: grid;
+  grid-template-columns: repeat(10, var(--sh-d));
+  gap: 2px;
+  justify-content: center;
+  visibility: hidden;
+}
+
+.sh-pslot {
+  width: var(--sh-d);
+  height: var(--sh-d);
+}
+
+.sh-table {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--s2);
+  max-width: 100%;
+}
+
+.sh-plates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sh-plate,
+.sh-left {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.sh-plate .sh-stack {
+  padding: 4px 6px 6px;
+  border-bottom: 4px solid var(--ink-soft);
+  border-radius: 0 0 12px 12px;
+  min-width: calc(var(--sh-d) + 12px);
+}
+
+.sh-stack {
+  display: grid;
+  grid-template-columns: repeat(2, var(--sh-d));
+  gap: 2px;
+  justify-content: center;
+  align-content: end;
+  min-height: var(--sh-d);
+}
+
+.sh-dot {
+  width: var(--sh-d);
+  height: var(--sh-d);
+  border-radius: 50%;
+  background: var(--num-2);
+}
+
+.sh-dot.is-left {
+  background: var(--num-1);
+}
+
+.sh-count,
+.sh-left-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.sh-left-label {
+  color: var(--num-1);
+}
+
+/* ---------- Slice: a pizza to cut and colour ---------- */
+.sl-board {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.sl-pizza {
+  width: min(62vw, 220px);
+  height: min(62vw, 220px);
+  touch-action: manipulation;
+}
+
+.sl-slice {
+  cursor: pointer;
+  stroke: transparent;
+  transition: fill var(--t-fast) var(--ease-out);
+}
+
+.sl-slice:focus-visible {
+  outline: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+}
+
+.sl-now {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.sl-tools {
+  gap: var(--s2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.sl-tools .btn,
+.sl-tools .icon-btn {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* ---------- Pattern: tiles in a row and a tray ---------- */
+.pt-board {
+  display: grid;
+  gap: var(--s3, 12px);
+  margin-top: var(--s2);
+}
+
+.pt-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.pt-term {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 6px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 2px solid var(--line);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.pt-gap {
+  border-style: dashed;
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.pt-gap.is-answer {
+  border-style: solid;
+}
+
+.pt-tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+.pt-tile {
+  min-width: 64px;
+  min-height: 56px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 800;
+  cursor: grab;
+  touch-action: none;
+  position: relative;
+  z-index: 1;
+}
+
+.pt-tile.is-dragging {
+  z-index: 5;
+  cursor: grabbing;
+}
+
+.pt-tile.is-wrong {
+  opacity: 0.35;
+}
+
+.pt-tile.is-placed {
+  visibility: hidden;
+}
+
+/* ---------- Speed: a gentle clock over Pop ---------- */
+.sp-clock {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 var(--s2);
+}
+
+.sp-icon {
+  font-size: 1.3rem;
+}
+
+.sp-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.sp-bar {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--good);
+  transform-origin: left;
+  animation: sp-drain var(--sp-ms) linear forwards;
+}
+
+.sp-bar.is-stopped {
+  animation-play-state: paused;
+}
+
+.sp-bar.is-still {
+  animation: none;
+}
+
+.speed[data-out='yes'] .sp-bar {
+  opacity: 0.25;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+@keyframes sp-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.sp-note {
+  margin: 4px 0 0;
+  min-height: 1.3em;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Long answers (four digits, decimals) shrink to fit their bubble. */
+.bubble-face.is-long.len-4 {
+  font-size: 1.75rem;
+}
+.bubble-face.is-long.len-5 {
+  font-size: 1.45rem;
+}
