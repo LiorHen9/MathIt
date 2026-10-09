@@ -38,6 +38,8 @@
 
 **תקציב טעינה ראשונה: 300KB** (כמו ChessIt). עולמות, מוזיקה, משחקים ושיעורים נטענים בעצלות.
 
+**גרסה חדשה (שלב 10):** ה-Service Worker (‏vite-plugin-pwa, `registerType: 'prompt'`, הרישום שלנו ב-`app/updates.ts`) שומר הכול מראש; גרסה חדשה מותקנת ברקע **ומחכה**, כדי שילד באמצע סבב לא ייטען מחדש. כשהיא מחכה, `App` מציג "✨ יש גרסה חדשה" רק במסכים רגועים (מי משחק, מפה, הגדרות, אוסף, הישגים, אודות, אזור ההורים); "לעדכן" שולח `SKIP_WAITING` והדף נטען פעם אחת כשהיא נכנסת. בלי נגיעה – היא נכנסת בפתיחה הבאה. בודקים עדכונים בחזרה לאפליקציה ופעם בשעה. בבנייה המקומית אין Worker (`__PWA__` לא מוגדר) – כלום לא נרשם. ה-CI בודק ש-`sw.js` מאזין ל-`SKIP_WAITING`. תמונת השיתוף ו-`screenshots/` לא נשמרים מראש (`globIgnores`).
+
 ### מה מועבר מ-ChessIt
 | מודול ב-ChessIt | שימוש ב-MathIt |
 |---|---|
@@ -234,6 +236,7 @@ interface World {
 - **משוב (שלב 2):** מיפוי משוב אחד משותף לכל העולמות (`fx/director.ts`), והעולם רק "צובע" את הצליל של תשובה נכונה (`flavor`: פיות – פעמון, כדורגל – בעיטה וקהל, כדורסל – סוויש, נינג׳ה – להב, קוביות – בלוק נכנס למקום, כוכבות הבמה – אקורד סינתי). `World.fx` ו-`SoundPack` מלא לכל עולם – בשלב 5.
 - **מצב היום (שלב 7):** `templateSkins` – `TemplateSkin { look, deco?, icons? }` לכל אחת משש התבניות (מראה ייחודי לעולם, עם CSS `.skin-<look>`); `vocabulary.thing` (דברים שקונים בחנות, יחיד) ו-`shop.icons` מקבילים; `story.chapters` – משפט לכל אחד מחמשת הפרקים; `BossDef.comebacks`; משתני צבע `--coin-gold`, `--coin-silver`, `--coin-ink`.
 - **מצב היום (שלב 5):** `WorldTheme` מלא – `fx` (‏`WorldFx`: כלל לאירוע מעל המיפוי המשותף), `sounds` (‏`SoundPack`), `music` (‏`() => import('./music')`), `bosses` (‏`BossDef`: id, name, intro, Art), `mapSkin` (‏`Scenery`, `node`, `path`, `sectionIcons`), `templateSkins.pop.look`, `story.chapters`, `vocabulary` (‏`items`, `place`), `coin`, `rewards`. כל עולם בתיקייה: `index.tsx` (צבעים, גיבור, רישום), `fx.ts`, `sounds.ts`, `music.ts`, `boss.tsx`, `skin.tsx`. `applyWorld` מחליף גם את חבילת הצלילים ואת הלופ. `--map-bg`/`--map-deco` נוספו ל-`REQUIRED_VARS`.
+- **מצב היום (שלב 10):** `story.ends` – משפט לסוף כל אחד מעשרת הפרקים (נאמר בחגיגת סוף הפרק, בגוף ראשון רבים – "ניצחנו", כך שהוא נכון לכל ילד), ו-`story.finale` – משפט לסוף המסע. מיפוי משלו לכל עולם לשלושת האירועים החדשים (`achievement`, `chapterDone`, `journeyDone`: סוג החלקיקים של העולם ומילה – "הדרן!", "גביע הפרק!", "מאסטר המסע!"…).
 - אפשר להחליף עולם בפרופיל בכל זמן; ההתקדמות נשמרת (היא שייכת למיומנויות, לא לעולם). האוסף נשמר לכל עולם בנפרד.
 
 ---
@@ -316,6 +319,8 @@ interface WorldFx {
 
 **מצב היום (שלב 6):** אירוע `levelUp{level}` – שלוש נכונות ברצף העלו את הרמה בתוך הסבב: צליל `unlock`, גיבור `cheer`, pop וחלקיקים על שבב "שלב N" (בכל עולם בסוג החלקיקים של ה-`unlock` שלו). תחנת החזרה נפתחת ב-`unlock` הקיים, ורמז מוקדם הוא `hint` רגיל.
 
+**מצב היום (שלב 10):** שלושה אירועים חדשים (34 בסך הכול). `achievement` – תג של הישג נוחת בראש המסך: צליל `unlock`, הגיבור מריע, pop ונצנוצים בתג (`at: 'el'`, קטן מחגיגת סבב, כי הוא יכול ליפול באמצע אחד). `chapterDone{chapter}` – חגיגת סוף פרק: `fanfare` וקונפטי שגדל עם הפרק. `journeyDone` – סוף המסע: `victory` והכי הרבה קונפטי. `tests/worlds/check.ts`: מילה משלו לכל עולם, ותג < פרק ≤ מסע.
+
 **מצב היום (שלב 7):** אירועי הוראה חדשים – `leap{n}` (קפיצה של 10 על הציר, או ספירת מוט בעשרות; `leapPitch` עולה עם העשרות), `tick{n}` (מחוג שזז 5 דקות; `tickPitch` עולה), `clink{n}` (מטבע על המגש) – צליל בלבד, בלי מצב גיבור, לא מחבילת העולם (`TEACHING_SOUNDS`). `ten` משמש גם להצמדת עשר קוביות למוט ולפריטת מוט. `jumpPitch` מעל 10 – התו של האחדות.
 
 **מצב היום (שלב 5):** `planFor(e, world)` = `sharedPlan(e)` + `world.fx[e.type]`; `FxPlan.word`; אירוע `coin{n}` (מלווה, בלי מצב גיבור); סוגי חלקיקים לכל עולם. ביומן: `pack`, `kind`, `fly`, `word`.
@@ -326,7 +331,7 @@ interface WorldFx {
 
 ### 6.5 כלי האנימציה
 - `fx/motion.ts` — פריסטים מעל Web Animations API: `pop`, `shake`, `hop`, `arc(el, from, to)` (פרבולה, לקפיצות וזריקות), `flyTo(from, target, token)` (אסימון שעף בקשת ונעלם), `countUp(el, from, to)`. בתנועה מופחתת כל אחד הופך לדהייה של עד 200ms או קורה מיד.
-- `fx/particles.ts` — Canvas אחד מעל המסך (`.fx-canvas`, בלי נגיעות, `aria-hidden`): `burst(point, 'sparkle' | 'confetti', n)`, `confetti()`, `clearParticles()`. תקרה `MAX_PARTICLES` = 180, רץ רק כשיש חלקיקים, ולא עושה כלום בתנועה מופחתת. `data-count` על ה-Canvas לבדיקות.
+- `fx/particles.ts` — Canvas אחד מעל המסך (`.fx-canvas`, בלי נגיעות, `aria-hidden`): `burst(point, 'sparkle' | 'confetti', n)`, `confetti()`, `clearParticles()`. תקרה `MAX_PARTICLES` = 180, רץ רק כשיש חלקיקים, ולא עושה כלום בתנועה מופחתת. `data-count` על ה-Canvas לבדיקות. **שלב 10 – טלפון חלש** (`lowEnd()`: `hardwareConcurrency` ≤ 4 או `deviceMemory` ≤ 2GB, כשהדפדפן מדווח): חצי מכל פרץ, תקרה `LOW_END_MAX` = 90 ו-Canvas ב-1× (`data-cap`).
 - `audio/sfx.ts` — סינתזה בסגנון ZzFX: מתנדים ורעש עם מעטפת, גלישת גובה, ויברטו, מתנד תאום מכוון מעט (צליל מלא), פילטר נע והד לכל צליל. צלילים עם פרמטרים: `correct` (גובה עולה לפי הרצף, `comboPitch`; נצנוץ מ-3 ברצף; גוון העולם), `star` (תו עולה לכל כוכב, `starPitch`), `click` (מקש לפי הספרה), `wrong` (רך ונמוך, בלי ריבועי/מסור), `hint`, `fanfare`. `hushSfx()` משתיק צלילים שעוד מצלצלים.
 - `fx/Hero.tsx` — הגיבור והמצבים שלו.
 - `fx/director.ts` — Feedback Director.
@@ -342,6 +347,20 @@ interface WorldFx {
 - **צלילים רק אחרי נגיעה ראשונה** (חסימת הדפדפנים) ובהתאם למתג השקט באייפון — כמו ב-ChessIt.
 - **`prefers-reduced-motion` והגדרה בפרופיל**: אנימציות משוב מתקצרות לדהייה, אבל **אנימציות מלמדות נשארות** (בקצב איטי ורגוע), כי הן התוכן.
 - נכסים מקוריים בלבד: גיבורים, צלילים ומוזיקה שאנחנו יוצרים.
+
+### 6.7 מעבר בין מסכים (שלב 10)
+- `App` מחזיק את המסך בתוך `.stage` עם מפתח לכל מעבר, ו-`setScreen` **טוען קודם את ה-chunk** של המסך הבא (`lazy().preload`): המסך הישן נשאר עד שהחדש מוכן – לכל היותר `PRELOAD_WAIT_MS` = 250ms – ואז עובר בצעד אחד. chunk איטי יותר: המסך מתחלף ו-`ScreenPlaceholder` מציג קווי מתאר שקטים (סרגל עליון ושני כרטיסים) שמופיעים רק אחרי 350ms. אף פעם לא מסך ריק. הקריאה האחרונה מנצחת (שתי נגיעות מהירות לא מחזירות מסך ישן).
+- **תנועה אחת, קצרה:** 200ms, `transform` + `opacity` בלבד, בלי `fill` (כשהיא נגמרת אין `transform`, כך שחלקים `position: fixed` לא נלכדים בתוכה). אנימציית CSS לא חוסמת נגיעות – אפשר ללחוץ באמצע.
+- **החלטה – כיוון:** האפליקציה נקראת מימין לשמאל, כמו דף בעברית. **"קדימה" – עמוק יותר** (מפה ← תחנה ← סוף פרק; לפי `DEPTH` של כל מסך) – **המסך החדש נכנס משמאל** (28px), כמו עמוד שמתהפך בספר עברי; **"אחורה" – נכנס מימין.** המפה רק מתעמעמת (`is-fade`), כי הרציף שלה `fixed`. בתנועה מופחתת – דהייה של 160ms בכל מעבר.
+- בזמן התנועה `.stage-host.is-moving` חותך בצד (`overflow-x: clip`): בדף RTL כל מה שיוצא שמאלה היה מרחיב את הדף ל-200ms. רק אז – במנוחה לא נחתך כלום, כך שגלישה אמיתית עדיין נתפסת בבדיקות.
+- כל מסך מתחיל בראש הדף (`scrollTo` ב-layout effect, לפני שהוא מצויר); המפה גוללת בעצמה אל הגיבור.
+
+### 6.8 הישגים וחגיגות (שלב 10)
+- **הישגים** – `core/achievements/` (טהור): 20 הישגים עם ids יציבים (`ids.ts`), אייקון, שם והסבר בשלוש צורות (זכר/נקבה/לא הוגדר – המסכים בוחרים ב-`byGender`), ו-`test`/`progress` טהורים מתוך `AchievementInput` (skillStates, questProgress, sessions, inventory והרצף הארוך). כלום לא מושג מנתונים ריקים. "ימים ברצף" לפי תאריכים מקומיים, דרך מעבר חודש ושעון קיץ.
+- **מתי בודקים:** כל מאגר שמשתנה (תשובה, תחנה, תיבה, חזרה, מטבע, פריט) משדר `progressChanged` (`storage/changes.ts`, אירוע חלון). `App` מחכה רגע (בדיקה אחת לרצף שינויים), טוען בעצלות את `storage/achievements.ts` ו-`checkAchievements` מחזיר את מה שחדש – שנשמר כ"נחגג" לפני שהוא מוחזר, בתור אחד לכל פרופיל, כך שכל הישג נחגג **פעם אחת בלבד**. הבדיקה הראשונה (בפתיחת המפה) מסמנת בשקט כל מה שכבר הושג – בשדרוג מגרסה ישנה או אחרי שחזור גיבוי לא "מתפוצצים" הישגים ישנים.
+- **התג** (`AchievementToast`, עצל) נוחת בראש המסך באזור `aria-live` קבוע, האירוע `achievement` דרך ה-director, ונעלם אחרי 3.6 שניות או בנגיעה; כמה – בתור. לא במסכים המשותפים, לא באזור ההורים, ולא מעל חגיגת סוף פרק או מסע (מחכים למפה).
+- **"ההישגים שלי"** (עצל, ליד "האוסף שלי"): מה שהושג בצבע עם היום שבו נפתח, השאר בקווי מתאר עם מד התקדמות (`transform`). בדשבורד ההורים – אותם הישגים והרצף הארוך.
+- **סוף פרק** (`ChapterEnd`, עצל): רק בניצחון **הראשון** על בוס של פרק. הגיבור מריע, הבוס בורח שמאלה מהמסך, `story.ends[k]` נאמר, `chapterDone` – ואז סיכום: כוכבים בפרק, חידות שנפתרו, מטבעות העולם. נגיעה מדלגת. משם – לפרק הבא (המפה הולכת) או, אחרי פרק 10, **לסוף המסע** (`Finale`): `journeyDone`, `story.finale`, ו**תעודה** – SVG אחד (`screens/certificate.ts`) בצבעי העולם עם השם והמין, מוצג במסך ונשמר/משותף כ-PNG של 1200×840 (הגופן מוטמע, רקע בפינות). אפשר לפתוח אותה שוב מהתג "סוף המסע" ב"ההישגים שלי".
 
 ---
 
@@ -430,6 +449,7 @@ interface Profile {              // src/profiles/profiles.ts
 - כמה פרופילים במכשיר, בחירה במסך פתיחה (בלי סיסמה).
 - **אזור הורים** (שלב 8): "👪 להורים" ב"מי משחק?" ובהגדרות; שער (`ParentGate`) עם תרגיל כפל למבוגרים או קוד הורים נפרד (meta `parentLock`, hash עם salt; "שכחתי" מסיר אותו בתרגיל); לחיצה כפולה מהירה לא נכנסת. `ParentHome` – הילדים, קוד ההורים והגיבוי. `ParentDashboard` לכל ילד – מסע, זמן תרגול (היום / שבוע בעמודות SVG / סך הכול), חזרות, מבחן מיקום, "איפה קשה" בניסוח להורים לפי `ErrorTag` (`PARENT_ERRORS`, זכר/נקבה + טיפ) עם "▶ לתרגל את זה" (סבב מכוון לטעות: `GameHost.focus`, בעולם של הילד, בלי ה-PIN שלו) ו"📖 שיעור", ושליטה לכל מיומנות לפי פרקים; בתחתית `ParentKidSettings`. הכול עצל, במראה הבסיס.
 - **גיבוי** (`storage/backup.ts`, מ-ChessIt): קובץ `mathit-backup-YYYY-MM-DD.json` עם `format`, `version` (1), `schemaVersion`, וכל המאגרים של המשפחה – profiles, skillStates, questProgress, inventory, sessions – ו-`parentLock`; בלי שאר ה-meta (מזהה הטלפון, הפרופיל האחרון, יומן שגיאות). קריאה קפדנית (`parseBackup`: גודל, JSON, פורמט, גרסה עתידית, ChessIt, בעלות של כל רשומה, מיומנות/עולם/יום ידועים, כפילויות) ואז `normalize*` הקיים לכל רשומה, כך שקובץ מטלפון בסכמה 3/4 (בלי inventory/sessions) או בלי שדות חדשים משוחזר עם ברירות מחדל. שחזור (`restoreOps`, טהור; `dbWrite` אחד, הכול או כלום): "להחליף הכול" או "להוסיף" – וילד שקיים בשניהם: להשאיר או לקחת מהגיבוי (הרשומות הישנות שלו נמחקות קודם). שמירה בהורדה או בשיתוף (Web Share עם קבצים, אם יש). `storage/backupState.ts` – "גיבוי אחרון" ב-meta ותזכורת עדינה אחרי 14 יום. בטלפון חדש: "📂 יש לנו גיבוי" במסך הפרופיל הראשון → השער → שחזור. `tests/storage/check.ts` מוודא שכל שדה בכל מאגר נכנס לגיבוי.
+- **אודות ופרטיות** (שלב 10, `About`, עצל, מההגדרות ומאזור ההורים, כמו ב-ChessIt): מה האפליקציה, גרסה ויום בנייה, פרטיות במילים פשוטות (הכול בטלפון, אין שרת, אין מעקב), איך מגבים, קרדיטים (נכסים מקוריים, Rubik, Preact), שיתוף האפליקציה (Web Share, ובלעדיו העתקת הקישור) ו"מצאתם בעיה?" (פרטי גרסה ומכשיר להעתקה, לא נשלחים לשום מקום).
 - רצף ימים (streak) עדין — "הקפאה" אוטומטית, בלי לחץ.
 
 ---
@@ -445,8 +465,10 @@ DB: mathit (IndexedDB)
  ├─ questProgress key: profileId → { stars{nodeId}, chests{nodeId: prize}, at, revealed[], last, updated,
  │                 שלב 6: reviewedAt, reviews, reviewRevealed, placedAt }  (שלב 4, גרסה 3)
  ├─ inventory     key: profileId:worldId → { coins, items[], updated }  (שלב 5, גרסה 4)
- └─ sessions      key: profileId:yyyy-mm-dd → { ms, questions, right, goalAt }  (שלב 8, גרסה 5; עד 90 יום)
+ ├─ sessions      key: profileId:yyyy-mm-dd → { ms, questions, right, goalAt }  (שלב 8, גרסה 5; עד 90 יום)
+ └─ achievements  key: profileId → { unlocked{id: ms}, streak, bestStreak, since, updated }  (שלב 10, גרסה 6)
 ```
+- גרסה 6 (שלב 10) מוסיפה את `achievements` (‏`storage/achievementRecord.ts`: הרשומה, `normalizeAchievementRecord`, `noteAnswer` מתוך `recordAnswer`; `storage/achievements.ts`: `achievementInput`, `checkAchievements`). נוצר ריק – מה שהושג קודם מחושב מהמאגרים האחרים ומסומן כ"נחגג" בבדיקה הראשונה. בגיבוי: רשימה חדשה `achievements` (פורמט הגיבוי נשאר 1 – גיבוי מסכמה 5 פשוט בלעדיה), ב-`restoreOps` ובמחיקת פרופיל.
 - שלב 8 – הגדרות הורים בלי סכמה חדשה: `Profile.parent` (‏goal, breakAfter, blocked, lockAhead; `normalizeParentSettings`) ו-`QuestRecord.opened` (פרקים שהורה פתח; `setChapterOpen`).
 - גרסה 5 (שלב 8) מוסיפה את `sessions` (‏`storage/sessions.ts`: `recordDay` – נקרא מתוך `recordAnswer` בתור משלו לכל מפתח, `markGoal`, `getDayLog`, `listDayLogs`). נוצר ריק – ימים לפני השדרוג לא נרשמו, וה"סך הכול" בדשבורד בא מ-`skillStates.totalMs`. יום חדש מוחק ימים ישנים מ-90 (`staleDays`). החישובים להורים טהורים ב-`core/parents/` (‏`timeStats`, `journeyView`, `skillsByChapter`, `PARENT_ERRORS`, `goalProgress`, `breakDue`).
 - גרסה 4 (שלב 5) מוסיפה את `inventory` (‏`storage/inventory.ts`: `getInventory`, `addCoins`, `addItem` בתור לכל מפתח, `nextReward`, `listInventories`, `deleteInventories`). מדבקה מתיבה שנפתחה לפני כן נשארת ב-`questProgress.chests`.
@@ -464,12 +486,12 @@ DB: mathit (IndexedDB)
 ```
 MathIt/
 ├─ CLAUDE.md
-├─ scripts/local-check.sh   בנייה ובדיקה בלי npm (סביבת Claude)
+├─ scripts/local-check.sh   בנייה ובדיקה בלי npm (סביבת Claude); og-image.ts + og-image-shot.cjs (תמונת השיתוף)
 ├─ docs/ ARCHITECTURE.md · ROADMAP.md
-├─ public/ icons, manifest, fonts/rubik.woff2
+├─ public/ icons, fonts/rubik.woff2, og-image.png (תמונת השיתוף, 1200×630), screenshots/ (ל-manifest)
 ├─ src/
-│  ├─ app/            App.tsx (מכונת מצבים), lazy.tsx, version, errorLog, clock (שעון מוזרק לבדיקות)
-│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), PuzzleHost (חידות, שלב 9), Placement (מבחן מיקום), ParentGate, ParentHome, ParentDashboard, ParentKidSettings, BackupPanel (אזור ההורים, שלב 8)
+│  ├─ app/            App.tsx (מכונת מצבים, מעברים, תור התגים), lazy.tsx (+preload, placeholder), version, errorLog, clock (שעון מוזרק לבדיקות), updates.ts (גרסה חדשה – Service Worker, שלב 10)
+│  ├─ screens/        Profiles, QuestMap (המסך הראשי) + quest/ (layout, art), Home (תרגול חופשי), GameHost (סבב + חגיגת כוכבים), Lesson (שיעור), Chest, Boss, Collection (האוסף שלי), PuzzleHost (חידות, שלב 9), Placement (מבחן מיקום), ParentGate, ParentHome, ParentDashboard, ParentKidSettings, BackupPanel (אזור ההורים, שלב 8); שלב 10: Achievements, AchievementToast, ChapterEnd, Finale + certificate.ts, About
 │  ├─ core/
 │  │  ├─ types.ts     Skill, Question, Answer, Visual, ErrorTag, Generator
 │  │  ├─ round.ts     ניקוד סבב, כוכבים, רמה הבאה
@@ -478,6 +500,7 @@ MathIt/
 │  │  ├─ mastery/     engine (שליטה, חזרה מרווחת), adaptive (רמה בסבב), placement (מבחן מיקום), summary (המלצות, סיכום), pick (בחירת שאלות – עם המשחק)
 │  │  ├─ lessons/     שיעורים לכל מיומנות (data)
 │  │  ├─ parents/     אזור ההורים, טהור: errors (טעויות בניסוח להורים), days (זמן לפי יום/שבוע), goal (יעד והפסקה), journey (מסע ומיומנויות לפי פרקים), prefs + settings (הגדרות הורים)
+│  │  ├─ achievements/ הישגים (שלב 10): ids.ts (ids יציבים, הרצף), index.ts (ACHIEVEMENTS, achieved, newlyAchieved) – טהור
 │  │  ├─ puzzles/     חידות (שלב 9): types, magic, balance, missing, kenken, index (makePuzzle) – פתרון יחיד
 │  │  ├─ quest/       types, chapter1, chapters (2–5), chapters6 (6–10) (data), index (סטטוס, פתיחה, כוכבים, המרה מ-skillStates, מיקום)
 │  │  ├─ story.ts     placeholders לבעיות מילוליות (fillText, fillQuestion)
@@ -490,18 +513,19 @@ MathIt/
 │  │  └─ index.ts     רישום עולמות, applyWorld (טעינה עצלה)
 │  ├─ manipulatives/  אנימציות מלמדות: timeline.ts, Counters, TenFrame, Combine, TakeAway, NumberLine, Compare, Explainer; שלב 7 (עצלים): TensBlocks, DoubleFrame, LongLine, ClockAnim, CoinStack, CompareTens; שלב 9 (עצלים): ArrayAnim, ShareAnim, PizzaAnim, ColumnAnim, GridAnim, DecimalAnim
 │  ├─ fx/             motion.ts (תנועה מופחתת + פריסטים), particles.ts, Hero.tsx, director.ts
-│  ├─ ui/             רכיבים משותפים: NumPad, Dots, Picture (ציור Visual), art (מוטות, קוביות, מטבעות, שעון), Pizza, Grid, MathText (שברים מוערמים), phase9.css, ובהמשך Button, Stars, Dialog
+│  ├─ ui/             רכיבים משותפים: NumPad, Dots, Picture (ציור Visual), art (מוטות, קוביות, מטבעות, שעון), Pizza, Grid, MathText (שברים מוערמים), phase9.css, phase10.css (הישגים, סוף פרק, תעודה, אודות)
 │  ├─ audio/          sfx.ts (סינתזה), packs.ts (בניית SoundPack), music.ts (סקוונסר), speech.ts (הקראה)
 │  ├─ profiles/       profiles.ts (פרופיל, byGender, גיל/כיתה), settings.ts (פרופיל פעיל), pin.ts  (מ-ChessIt)
 │  ├─ components/     Speak (+NarrationHelp), WorldPicker, PinPad, ParentCheck
-│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, inventory.ts, sessions.ts, backup.ts, backupState.ts  (מ-ChessIt)
+│  ├─ storage/        db.ts, skillStates.ts, questProgress.ts, inventory.ts, sessions.ts, achievementRecord.ts + achievements.ts (שלב 10), changes.ts (אות "התקדמות השתנתה"), backup.ts, backupState.ts  (מ-ChessIt)
 │  └─ i18n/he.ts      כל הטקסטים
 └─ tests/
    ├─ core/check.ts     מחוללים ומנוע שליטה (bun)
    ├─ profiles/check.ts byGender, גיל/כיתה, normalizeProfile, PIN, הגדרות הורים (bun)
-   ├─ storage/check.ts  גיבוי: כל שדה, קבצים פגומים, הוספה/החלפה, תזכורת (bun)
+   ├─ storage/check.ts  גיבוי: כל שדה, קבצים פגומים, הוספה/החלפה, תזכורת, גיבוי מסכמה 5 (bun)
+   ├─ app/check.ts      גרסה חדשה (updates.ts) מול Service Worker מדומה (bun, שלב 10)
    ├─ worlds/check.ts   ניגודיות ושלמות כל עולם (צבעים, צלילים, מיפוי אירועים)
-   └─ e2e/phaseN.cjs    Playwright לכל שלב + a11y.cjs
+   └─ e2e/phaseN.cjs    Playwright לכל שלב + a11y.cjs (כל המסכים, ששת העולמות, בהיר וכהה; גם מודול לבדיקות האחרות)
 ```
 
 ---
@@ -519,6 +543,8 @@ MathIt/
 - **בדיקות משוב**: e2e קורא את יומן האירועים `window.__mathitFx` ואת יומן הצלילים, ומוודא שכל תשובה נכונה/שגויה מפעילה את המשוב הנכון בכל עולם.
 - **תקציב ביצועים**: טעינה ראשונה עד 300KB (כמו ChessIt), 60fps באנימציות, בדיקה על טלפון ישן.
 - **נגישות**: אזורי מגע ≥ 48px, ניגודיות בכל עולם (בדיקה אוטומטית), `aria-live` למשוב, מצב תנועה מופחתת.
+- **מצב היום (שלב 10):** `tests/e2e/a11y.cjs` עובר בכל ששת העולמות, בבהיר ובכהה, על המפה, תרגול חופשי, סבב ורמז, שיעור, האוסף, ההישגים, ההגדרות, אודות, קנקן, הבוס, סוף הפרק והתעודה, ועל המסכים המשותפים ואזור ההורים: ניגודיות טקסט (WCAG, כולל שקיפות; טקסט שעוד לא נחשף באנימציה מלמדת או באמצע דהייה – לא נבדק), שם לכל כפתור וקישור, מגע ≥ 48px, בלי גלילה הצידה, `aria-live`, תפקידים (grid בקנקן); בבהיר גם Tab עם טבעת פוקוס נראית ו-Enter שעונה, 320px וטקסט ב-200% (כפתורי אייקון גדלים עם הטקסט). ניגודיות של תמונות שקוראים (3:1): פרוסה צבועה מול ריקה, קווי רשת השטח (מלאים, `--num-3`) – ב-`tests/worlds`.
+- **טלפון ישן (שלב 10):** `phase10.cjs` – CPU ×4, ובטעינה הראשונה גם Slow 3G (400ms, 400kbit/s) מול שרת עם gzip; ספים: טעינה ראשונה, מפה, סבב, שיעור וחידה – עד 2.5 שניות כל אחד (נמדד: כ-2.1s / 0.45s / 0.2s / 0.2s / 0.2s). אחרי סבב, שיעור, חידה והאוסף – אותו מספר אנימציות כמו לפני, בלי אסימונים או חלקיקים שנשארו; המפה של פרק 10 ~400 אלמנטים.
 
 ---
 
