@@ -34,7 +34,7 @@
 | אופליין | `vite-plugin-pwa` | התקנה למסך הבית |
 | גופן | Rubik מקומי ב-`public/fonts/` | בלי תלות ב-Google |
 | בדיקות | סקריפטי `bun` לבדיקות לוגיקה + Playwright לזרימות | כמו ChessIt (`tests/*/check.ts`, `tests/e2e/phase*.cjs`) |
-| פריסה | GitHub Actions ← GitHub Pages | כמו ChessIt |
+| פריסה | GitHub Actions ← Firebase Hosting (`mathit-liorhen9`, ‏`docs/FIREBASE.md`); בכתובת הישנה ב-GitHub Pages – מסך מעבר עם גיבוי (`legacy-pages/`) | כמו ChessIt |
 
 **תקציב טעינה ראשונה: 300KB** (כמו ChessIt). עולמות, מוזיקה, משחקים ושיעורים נטענים בעצלות.
 

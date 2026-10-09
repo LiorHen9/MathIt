@@ -533,7 +533,7 @@ async function oldPhone(ctx, p, network = true) {
       // No share sheet here: the link is copied.
       await p.tap('[data-testid=share-app]');
       await p.waitForSelector('[data-testid=share-note].is-good');
-      must((await p.evaluate(() => navigator.clipboard.readText())) === 'https://liorhen9.github.io/MathIt/', 'the link copied');
+      must((await p.evaluate(() => navigator.clipboard.readText())) === 'https://mathit-liorhen9.web.app/', 'the link copied');
       await p.tap('[data-testid=about-back]');
       await p.waitForSelector('.settings-screen');
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
@@ -557,14 +557,14 @@ async function oldPhone(ctx, p, network = true) {
       must((await s.p.textContent('[data-testid=about-back]')).includes('לאזור ההורים'), 'back to the parents');
       await s.p.tap('[data-testid=share-app]');
       const shared = await s.p.evaluate(() => window.__shared);
-      must(shared.length === 1 && shared[0].url === 'https://liorhen9.github.io/MathIt/' && /MathIt/.test(shared[0].title), 'Web Share: ' + JSON.stringify(shared));
+      must(shared.length === 1 && shared[0].url === 'https://mathit-liorhen9.web.app/' && /MathIt/.test(shared[0].title), 'Web Share: ' + JSON.stringify(shared));
       await checkScreen(s.p, 'base/dark about (parents)');
       await s.p.screenshot({ path: `${SHOTS}/p10-about-dark.png` });
       await s.p.tap('[data-testid=about-back]');
       await s.p.waitForSelector('[data-testid=parent-home]');
       // The share card.
       const meta = await s.p.evaluate(() => Object.fromEntries([...document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]')].map((m) => [m.getAttribute('property') || m.getAttribute('name'), m.content])));
-      must(meta['og:image'] === 'https://liorhen9.github.io/MathIt/og-image.png' && meta['og:title'].includes('MathIt') && meta['twitter:card'] === 'summary_large_image' && meta['og:locale'] === 'he_IL', 'og/twitter meta: ' + JSON.stringify(meta));
+      must(meta['og:image'] === 'https://mathit-liorhen9.web.app/og-image.png' && meta['og:title'].includes('MathIt') && meta['twitter:card'] === 'summary_large_image' && meta['og:locale'] === 'he_IL', 'og/twitter meta: ' + JSON.stringify(meta));
       const img = await s.p.evaluate(async (u) => {
         const r = await fetch(u);
         const bmp = await createImageBitmap(await r.blob());

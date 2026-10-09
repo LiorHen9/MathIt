@@ -11,7 +11,7 @@ import { listProfiles } from '../profiles/profiles';
 import { playSfx } from '../audio/sfx';
 import '../ui/phase10.css';
 
-export const SITE_URL = 'https://liorhen9.github.io/MathIt/';
+export const SITE_URL = 'https://mathit-liorhen9.web.app/';
 export const REPO_URL = 'https://github.com/LiorHen9/MathIt';
 
 interface Props {
