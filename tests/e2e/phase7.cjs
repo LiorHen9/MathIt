@@ -359,7 +359,7 @@ async function playRound(p, { tpl, wrong1, hintKind, wrong2 }) {
       await p.tap('[data-testid=lesson-home]');
       await p.waitForSelector('.home');
       await p.screenshot({ path: `${SHOTS}/p7-practice-17-football-dark.png`, fullPage: true });
-      must((await p.$$('.skill-btn')).length === 17, 'free practice: 17 skills');
+      must((await p.$$('.skill-btn')).length === 32, 'free practice: 32 skills (phase 9)');
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
       await ctx.close();
     }
