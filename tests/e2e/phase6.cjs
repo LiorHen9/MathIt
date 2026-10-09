@@ -184,7 +184,7 @@ async function placement(p, knows) {
       await newProfile(p, { name: 'נועם', age: 6, gender: 'boy', world: 'fairies' });
       await p.tap('[data-testid=open-practice]');
       await p.waitForSelector('.home .skill-btn');
-      must((await p.$$('.mastery-meter')).length === 17 && !(await p.$('[data-testid=crown]')), 'free practice: a meter per skill, no crowns yet');
+      must((await p.$$('.mastery-meter')).length === 32 && !(await p.$('[data-testid=crown]')), 'free practice: a meter per skill, no crowns yet');
       await p.tap('[data-skill="add.within10"]');
       await p.waitForSelector('.game .pop');
       must((await p.getAttribute('.game', 'data-level')) === '1', 'a 6-year-old starts adding at level 1');
