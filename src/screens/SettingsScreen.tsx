@@ -20,6 +20,8 @@ interface Props {
   onPlacement: () => void;
   /** The parents' area (phase 8, behind a door for adults). */
   onParents: () => void;
+  /** About and privacy (phase 10). */
+  onAbout: () => void;
 }
 
 type PinStep = 'idle' | 'new' | 'confirm' | 'saved' | 'removed';
@@ -31,7 +33,7 @@ const MOTION: { id: MotionChoice; label: string; value: boolean | null }[] = [
   { id: 'off', label: 'מלאה', value: false }
 ];
 
-export function SettingsScreen({ onBack, onEdit, onPlacement, onParents }: Props) {
+export function SettingsScreen({ onBack, onEdit, onPlacement, onParents, onAbout }: Props) {
   const profile = useActiveProfile();
   const voice = useHebrewVoice();
   const [pinStep, setPinStep] = useState<PinStep>('idle');
@@ -269,6 +271,17 @@ export function SettingsScreen({ onBack, onEdit, onPlacement, onParents }: Props
         </button>
       </section>
 
+      <button
+        type="button"
+        class="btn btn-ghost"
+        data-testid="open-about"
+        onClick={() => {
+          playSfx('tap');
+          onAbout();
+        }}
+      >
+        ℹ️ אודות ופרטיות
+      </button>
       <p class="version fineprint">
         גרסה <span class="math">{versionLabel()}</span>
       </p>

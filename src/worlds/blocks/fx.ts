@@ -15,4 +15,7 @@ export const fx: WorldFx = {
   bossHit: (e) => ({ particles: { kind: 'block', count: 16 + e.n * 2, at: 'el' }, word: e.left === 0 ? 'קראק!' : undefined }),
   coin: () => ({ fly: '💠' }),
   puzzleSolved: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 80, at: 'screen' }, word: 'נבנה!' }),
+  achievement: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 36, at: 'el' }, word: 'נבנה הישג!' }),
+  chapterDone: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 120, at: 'screen' }, word: 'הפרק נבנה!' }),
+  journeyDone: (_e, b) => ({ particles: { kind: 'block', count: b.particles?.count ?? 180, at: 'screen' }, word: 'הטירה הושלמה!' })
 };

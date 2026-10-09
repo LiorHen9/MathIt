@@ -7,8 +7,10 @@
 // does not, placement on the map, the review station, recommendations and the summary);
 // phase 8 the parents' area (mistakes in parents' words for every ErrorTag, practice time by
 // day with an injected clock, the daily goal and the break reminder, the journey and the skills
-// by chapter as parents see them).
+// by chapter as parents see them); phase 10 achievements (computed purely from every store, stable
+// ids, words for every gender, nothing from empty data, the streak, days in a row).
 import { createRng } from '../../src/core/rng';
+import { ACHIEVEMENTS, ACHIEVEMENT_IDS, achieved, emptyInput, forGender, getAchievement, longestDayRun, newlyAchieved, nextStreak, type AchievementInput } from '../../src/core/achievements/index';
 import { SKILLS, getSkill, recommendedSkills, startLevel } from '../../src/core/skills/index';
 import { GENERATORS, findQuestion, makeQuestion, makeRound } from '../../src/core/generators/index';
 import { LESSONS, getLesson } from '../../src/core/lessons/index';
@@ -1333,6 +1335,88 @@ const shownR: AnswerResult = { correct: false, wrongBefore: 2, ms: 15000, errorT
   const solved = journeyView(withStars(emptyProgress(), 'c6-magic', 2));
   if (solved.puzzles.solved !== 1) fail('journeyView: a solved puzzle counts');
   ok(`chapters 6–10: puzzles in every chapter, chapters 1–5 unchanged, skills by chapter for parents, ${Object.keys(TEMPLATE_NAMES).length} games in parents' words, puzzles counted on the journey`);
+}
+
+// ---------- Achievements (phase 10) ----------
+{
+  // Stable ids: these are saved on phones (the achievements store) – never renamed or reordered away.
+  const SHIPPED = ['first-right', 'first-lesson', 'streak-10', 'streak-25', 'three-stars', 'first-chest', 'first-boss', 'first-puzzle', 'answers-100', 'answers-1000', 'days-3', 'week', 'chapter-puzzles', 'chapter-perfect', 'bosses-5', 'table-master', 'coins-100', 'collector', 'reviews-5', 'journey-end'];
+  for (const id of SHIPPED) if (!ACHIEVEMENT_IDS.includes(id as never) || !getAchievement(id)) fail(`achievement id ${id} is gone`);
+  if (ACHIEVEMENTS.map((a) => a.id).join() !== ACHIEVEMENT_IDS.join()) fail('ACHIEVEMENT_IDS (ids.ts) and ACHIEVEMENTS out of step');
+  if (new Set(ACHIEVEMENT_IDS).size !== ACHIEVEMENT_IDS.length) fail('duplicate achievement ids');
+  if (new Set(ACHIEVEMENTS.map((a) => a.icon)).size !== ACHIEVEMENTS.length) fail('two achievements share an icon');
+  // Words for every gender, Hebrew, one sentence each; the girl's and the boy's differ where Hebrew does.
+  for (const a of ACHIEVEMENTS) {
+    for (const g of ['boy', 'girl', 'other'] as const) {
+      const t = forGender(a.title, g);
+      const x = forGender(a.text, g);
+      if (!/[א-ת]/.test(t) || !/[א-ת]/.test(x) || /[.!?]\s+\S.*[.!?]$/.test(x)) fail(`${a.id}/${g}: "${t}" – "${x}"`);
+    }
+    if (a.text.x === a.text.m && /(ענית|ראית|קיבלת|פתחת|ניצחת|פתרת|תרגלת|אספת|עשית)/.test(a.text.x)) fail(`${a.id}: the plural form is the singular`);
+    if (!/\p{Extended_Pictographic}/u.test(a.icon)) fail(`${a.id}: an icon`);
+  }
+  // Nothing at all from empty data – a new profile has no achievements.
+  const empty = emptyInput();
+  if (achieved(empty).length) fail('achieved from nothing: ' + achieved(empty));
+  for (const a of ACHIEVEMENTS) if (a.progress && a.progress(empty).done !== 0) fail(`${a.id}: progress from nothing`);
+  // A full picture: each store opens its own achievements, and a test is pure (same input, same out).
+  const full: AchievementInput = {
+    skills: { 'add.within10': { attempts: 1200, mastery: 0.9, lessonSeen: true, recentResults: [true] }, 'mul.table': { attempts: 30, mastery: 0.9, lessonSeen: false } },
+    quest: { stars: Object.fromEntries(allNodes().filter((n) => n.kind !== 'chest').map((n) => [n.id, maxStars(n)])), chests: Object.fromEntries(allNodes().filter((n) => n.kind === 'chest').map((n) => [n.id, '🌈'])), reviews: 5 },
+    days: Array.from({ length: 7 }, (_, k) => ({ day: `2026-10-0${k + 1}`, questions: 5, right: 4 })),
+    coins: 150,
+    items: 6,
+    bestStreak: 30
+  };
+  const all = achieved(full);
+  if (all.length !== ACHIEVEMENTS.length) fail('a full picture should achieve everything; missing ' + ACHIEVEMENTS.filter((a) => !all.includes(a.id)).map((a) => a.id));
+  if (achieved(full).join() !== all.join()) fail('achieved is not pure');
+  // Single stores, one by one.
+  const one = (patch: Partial<AchievementInput>) => achieved({ ...emptyInput(), ...patch });
+  const has = (patch: Partial<AchievementInput>, id: string, want = true) => {
+    if (one(patch).includes(id as never) !== want) fail(`${id} ${want ? 'not ' : ''}achieved from ${JSON.stringify(patch).slice(0, 120)}`);
+  };
+  has({ bestStreak: 9 }, 'streak-10', false);
+  has({ bestStreak: 10 }, 'streak-10');
+  has({ bestStreak: 24 }, 'streak-25', false);
+  has({ quest: { stars: { 'c1-boss': 1 }, chests: {} } }, 'first-boss');
+  has({ quest: { stars: { 'c1-boss': 1 }, chests: {} } }, 'journey-end', false);
+  has({ quest: { stars: { 'c10-boss': 2 }, chests: {} } }, 'journey-end');
+  has({ quest: { stars: { 'c1-count-5': 3 }, chests: {} } }, 'three-stars');
+  has({ quest: { stars: { 'c1-count-5': 2 }, chests: {} } }, 'three-stars', false);
+  has({ quest: { stars: {}, chests: { 'c1-chest': '🌈' } } }, 'first-chest');
+  has({ quest: { stars: {}, chests: {}, reviews: 5 } }, 'reviews-5');
+  const c6 = JOURNEY.chapters[5];
+  const c6Puzzles = chapterNodes(c6).filter((n) => n.kind === 'puzzle');
+  has({ quest: { stars: Object.fromEntries(c6Puzzles.map((n) => [n.id, 1])), chests: {} } }, 'chapter-puzzles');
+  has({ quest: { stars: Object.fromEntries(c6Puzzles.map((n) => [n.id, 1])), chests: {} } }, 'first-puzzle');
+  const c1 = JOURNEY.chapters[0];
+  const perfect = Object.fromEntries(chapterNodes(c1).map((n) => [n.id, maxStars(n)]));
+  has({ quest: { stars: perfect, chests: {} } }, 'chapter-perfect');
+  has({ quest: { stars: { ...perfect, 'c1-count-5': 2 }, chests: {} } }, 'chapter-perfect', false);
+  has({ skills: { 'mul.table': { attempts: 20, mastery: 0.8, lessonSeen: true } } }, 'table-master', false);
+  has({ skills: { 'mul.table': { attempts: 20, mastery: MASTERED, lessonSeen: true } } }, 'table-master');
+  has({ skills: { 'add.within10': { attempts: 99, mastery: 0.5, lessonSeen: false } } }, 'answers-100', false);
+  has({ skills: { 'add.within10': { attempts: 60, mastery: 0.5, lessonSeen: false }, 'sub.within10': { attempts: 40, mastery: 0.5, lessonSeen: false } } }, 'answers-100');
+  has({ coins: 99 }, 'coins-100', false);
+  has({ coins: 100 }, 'coins-100');
+  has({ items: 6 }, 'collector');
+  has({ days: [{ day: '2026-10-01', questions: 3, right: 0 }] }, 'first-right', false);
+  has({ days: [{ day: '2026-10-01', questions: 3, right: 1 }] }, 'first-right');
+  // Days in a row: gaps and empty days break the run; a month's end and daylight saving do not.
+  const days = (xs: string[], q = 1) => xs.map((day) => ({ day, questions: q }));
+  if (longestDayRun(days(['2026-10-01', '2026-10-02', '2026-10-04', '2026-10-05', '2026-10-06'])) !== 3) fail('days in a row: a gap');
+  if (longestDayRun(days(['2026-09-30', '2026-10-01', '2026-10-02'])) !== 3) fail('days in a row: over the month');
+  if (longestDayRun(days(['2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27'])) !== 4) fail('days in a row: over a clock change');
+  if (longestDayRun(days(['2026-10-01', '2026-10-02'], 0)) !== 0) fail('days without questions do not count');
+  has({ days: days(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06']) }, 'week', false);
+  has({ days: days(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07']) }, 'week');
+  // The streak; what is new.
+  let run = 0;
+  for (const r of [true, true, true, false, true]) run = nextStreak(run, r);
+  if (run !== 1) fail('the streak ends on a slip');
+  if (newlyAchieved(full, ACHIEVEMENT_IDS.slice(1)).join() !== 'first-right' || newlyAchieved(full, ACHIEVEMENT_IDS).length) fail('newlyAchieved');
+  ok(`achievements: ${ACHIEVEMENTS.length} with stable ids and icons, words for every gender, nothing from empty data, each store opens its own, days in a row over gaps and clock changes, the streak`);
 }
 
 if (failures) {

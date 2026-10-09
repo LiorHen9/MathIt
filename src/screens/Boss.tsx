@@ -8,18 +8,19 @@
 // picture, intro and sounds – on the same station and the same battle. Every hit earns a coin,
 // and beating it wins the next collectible of the world (storage/inventory.ts). Every answer
 // goes to the mastery engine of its skill (phase 6).
+// The first win over a chapter's boss goes on to the chapter's end party (phase 10, ChapterEnd).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { makeQuestion, makeRound } from '../core/generators/index';
 import { findNode, type BossNode } from '../core/quest/index';
 import { questionPoints, starsFor } from '../core/round';
-import type { Question } from '../core/types';
+import { answerKey, type Question } from '../core/types';
 import { emit, hushFeedback, setFxWorld } from '../fx/director';
 import { Hero, setHeroMood, useHeroMood } from '../fx/Hero';
 import { reducedMotion } from '../fx/motion';
 import { Feedback, SpeakButton, useAutoSpeak, type Message } from '../components/Speak';
 import { Ask, msg } from '../games/Ask';
 import { byGender, type Profile } from '../profiles/profiles';
-import { recordNodeStars } from '../storage/questProgress';
+import { getQuestRecord, recordNodeStars } from '../storage/questProgress';
 import { recordAnswer } from '../storage/skillStates';
 import { bossOf, useWorld, type Collectible } from '../worlds/index';
 import { CoinChip, useCoins } from '../components/Coins';
@@ -31,6 +32,8 @@ interface Props {
   profile: Profile;
   nodeId: string;
   onMap: () => void;
+  /** The boss is beaten for the first time: on to the chapter's end (phase 10). */
+  onChapterEnd?: () => void;
 }
 
 /** The boss's questions: the skills taking turns, no exercise twice. */
@@ -44,7 +47,7 @@ function battleQuestions(node: BossNode, seed: number): Question[] {
 
 type Phase = 'intro' | 'fight' | 'won';
 
-export function Boss({ profile, nodeId, onMap }: Props) {
+export function Boss({ profile, nodeId, onMap, onChapterEnd }: Props) {
   const node = findNode(nodeId) as BossNode;
   const world = useWorld();
   const def = bossOf(world, node.tier ?? 1);
@@ -62,6 +65,8 @@ export function Boss({ profile, nodeId, onMap }: Props) {
   const [stars, setStars] = useState(0);
   const [message, setMessage] = useState<Message | null>(null);
   const [over, setOver] = useState(false);
+  /** Never beaten before this battle: the win leads to the chapter's party. */
+  const [firstWin, setFirstWin] = useState(false);
   const bossEl = useRef<HTMLDivElement>(null);
   const timers = useRef<number[]>([]);
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms));
@@ -74,6 +79,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
   useEffect(() => {
     setFxWorld(world.id);
     later(() => emit({ type: 'bossAppear' }, { el: bossEl.current }), 250);
+    void getQuestRecord(profile.id).then((r) => setFirstWin(!(r.stars[nodeId] >= 1)));
     return () => {
       timers.current.forEach(clearTimeout);
       hushFeedback();
@@ -143,7 +149,7 @@ export function Boss({ profile, nodeId, onMap }: Props) {
   );
 
   return (
-    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" data-boss={def?.id ?? 'muddler'} data-tier={node.tier ?? 1} onClick={skipParty}>
+    <main class={`screen game boss-screen is-${phase}`} data-phase={phase} data-testid="boss" data-boss={def?.id ?? 'muddler'} data-tier={node.tier ?? 1} data-answer={phase === 'fight' ? answerKey(q.answer) : undefined} onClick={skipParty}>
       <header class="topbar game-top">
         <button
           type="button"
@@ -229,9 +235,15 @@ export function Boss({ profile, nodeId, onMap }: Props) {
             </p>
           )}
           {over ? (
-            <button type="button" class="btn btn-primary btn-big" data-testid="boss-to-map" onClick={onMap}>
-              🗺️ חזרה למפה
-            </button>
+            firstWin && onChapterEnd ? (
+              <button type="button" class="btn btn-primary btn-big" data-testid="boss-to-map" data-next="chapter-end" onClick={onChapterEnd}>
+                🎉 {byGender(profile, 'המשך', 'המשיכי', 'המשיכו')}
+              </button>
+            ) : (
+              <button type="button" class="btn btn-primary btn-big" data-testid="boss-to-map" onClick={onMap}>
+                🗺️ חזרה למפה
+              </button>
+            )
           ) : (
             <button type="button" class="btn btn-ghost skip-btn" data-testid="boss-skip">
               {byGender(profile, 'גע', 'געי', 'געו')} כדי לדלג ⏭

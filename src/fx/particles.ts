@@ -3,11 +3,34 @@
 // (phase 5): a rainbow trail (fairies), grass flying off a kick (football), fire (basketball),
 // sparks and smoke (ninja), little blocks (blocks), music notes (stage). It ignores touches,
 // is hidden from screen readers, runs only while there are particles, never holds more than
-// MAX_PARTICLES, and does nothing at all with reduced motion.
+// MAX_PARTICLES (LOW_END_MAX, and half of each burst, on a weak phone – phase 10), and does nothing
+// at all with reduced motion.
 // Colours are the world's CSS variables, read when a burst starts.
 import { reducedMotion, type Point } from './motion';
 
 export const MAX_PARTICLES = 180;
+/** Phase 10: on a weak phone, half the particles and this cap (and a 1× canvas). */
+export const LOW_END_MAX = 90;
+
+let weak: boolean | null = null;
+/**
+ * A weak phone: few cores or little memory (navigator.hardwareConcurrency ≤ 4, deviceMemory ≤ 2GB,
+ * where the browser says). Celebrations stay, just lighter, so the frame rate holds.
+ */
+export function lowEnd(): boolean {
+  if (weak === null) {
+    const nav = typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { deviceMemory?: number });
+    const cores = nav?.hardwareConcurrency ?? 0;
+    const mem = nav?.deviceMemory ?? 0;
+    weak = (cores > 0 && cores <= 4) || (mem > 0 && mem <= 2);
+  }
+  return weak;
+}
+
+/** The most particles on the screen at once on this phone. */
+export function particleCap(): number {
+  return lowEnd() ? LOW_END_MAX : MAX_PARTICLES;
+}
 
 export type ParticleKind = 'sparkle' | 'confetti' | 'rainbow' | 'leaf' | 'spark' | 'smoke' | 'block' | 'note' | 'flame';
 export const PARTICLE_KINDS: readonly ParticleKind[] = ['sparkle', 'confetti', 'rainbow', 'leaf', 'spark', 'smoke', 'block', 'note', 'flame'];
@@ -82,6 +105,7 @@ function ensureCanvas(): boolean {
   canvas.className = 'fx-canvas';
   canvas.setAttribute('aria-hidden', 'true');
   canvas.dataset.count = '0';
+  canvas.dataset.cap = String(particleCap());
   document.body.append(canvas);
   g = canvas.getContext('2d');
   resize();
@@ -91,7 +115,7 @@ function ensureCanvas(): boolean {
 
 function resize(): void {
   if (!canvas) return;
-  dpr = Math.min(2, window.devicePixelRatio || 1);
+  dpr = lowEnd() ? 1 : Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(window.innerWidth * dpr);
   canvas.height = Math.round(window.innerHeight * dpr);
 }
@@ -104,8 +128,8 @@ function rand(a: number, b: number): number {
 export function burst(at: Point, kind: ParticleKind = 'sparkle', count = 18): number {
   if (reducedMotion() || !ensureCanvas()) return 0;
   const colors = palette(kind);
-  const room = Math.max(0, MAX_PARTICLES - live.length);
-  const n = Math.min(Math.round(count), room);
+  const room = Math.max(0, particleCap() - live.length);
+  const n = Math.min(Math.round(lowEnd() ? count / 2 : count), room);
   for (let i = 0; i < n; i++) {
     const { a, speed, size, life } = launch(kind, i, n);
     live.push({

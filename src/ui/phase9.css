@@ -99,7 +99,9 @@
   width: var(--gr-c);
   height: var(--gr-c);
   background: color-mix(in srgb, var(--num-3) 28%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--num-3) 55%, var(--surface));
+  /* Phase 10: the lines between squares are what a child counts – full colour, 3:1 against the
+     squares and the paper in every world (tests/worlds/check.ts). */
+  border: 1px solid var(--num-3);
   box-sizing: border-box;
 }
 

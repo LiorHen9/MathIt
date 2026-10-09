@@ -100,8 +100,12 @@ button.parent-kid:active {
   font-size: var(--fs-sm);
 }
 
+/* Chapters not reached yet: quieter text (still readable – no opacity on text), a faint meter. */
 .dash-chapters li.is-ahead {
-  opacity: 0.6;
+  color: var(--ink-soft);
+}
+.dash-chapters li.is-ahead .dash-meter {
+  opacity: 0.5;
 }
 
 .dash-ch-stars {

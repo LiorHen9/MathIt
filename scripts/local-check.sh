@@ -71,6 +71,7 @@ for f in "$S"/dist/chunk-*.css; do [ -f "$f" ] && cat "$f" >> "$S/dist/main.css"
 echo "== unit checks"
 bun tests/core/check.ts
 bun tests/storage/check.ts
+bun tests/app/check.ts
 bun --tsconfig-override="$S/tsconfig.bun.json" tests/profiles/check.ts 2>&1 | grep -v "directory mismatch"
 bun --tsconfig-override="$S/tsconfig.bun.json" tests/worlds/check.ts 2>&1 | grep -v 'directory mismatch'
 
@@ -81,9 +82,10 @@ if [ "${2:-}" != "--no-e2e" ]; then
   (python3 -m http.server 4173 -d "$S/dist" >/dev/null 2>&1 &)
   sleep 1
   mkdir -p "$S/shots"
-  for t in tests/e2e/phase*.cjs; do
+  # phase10.cjs's old-phone timing serves this dist itself (gzip, port 4175); a11y.cjs runs all worlds.
+  for t in tests/e2e/phase*.cjs tests/e2e/a11y.cjs; do
     echo "-- $t"
-    NODE_PATH=$(npm root -g) node "$t" "$S/shots"
+    NODE_PATH=$(npm root -g) DIST="$S/dist" node "$t" "$S/shots"
   done
 fi
 echo "== all good"

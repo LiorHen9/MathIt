@@ -1,0 +1,449 @@
+/* Phase 10 – polish: achievements (the toast and "my achievements"), the chapter's end and the
+   journey's end with the certificate, and the About page. Loaded with those lazy chunks
+   (scripts/local-check.sh appends it to main.css after the first-load count). Colours: variables
+   only. Animations: transform and opacity only; reduced motion turns them into short fades. */
+
+/* ---------- A new achievement (screens/AchievementToast.tsx) ---------- */
+.ach-live {
+  position: fixed;
+  inset-inline: 0;
+  top: max(8px, env(safe-area-inset-top));
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ach-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(360px, calc(100vw - 32px));
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.22), inset 0 0 0 2px var(--accent);
+  cursor: pointer;
+  animation: ach-in 420ms var(--ease-back) both;
+}
+
+.ach-toast.is-out {
+  animation: ach-out 200ms ease-in forwards;
+}
+
+.ach-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  min-height: 52px;
+  aspect-ratio: 1;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.ach-toast-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.ach-toast-kicker {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.ach-toast-title {
+  font-size: var(--fs-md);
+}
+
+.ach-toast-text {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.ach-toast .speak-inline {
+  margin-inline-start: auto;
+}
+
+@keyframes ach-in {
+  from {
+    opacity: 0;
+    transform: translateY(-120%) scale(0.9);
+  }
+}
+
+@keyframes ach-out {
+  to {
+    opacity: 0;
+    transform: translateY(-60%);
+  }
+}
+
+:root[data-motion='reduced'] .ach-toast {
+  animation: stage-fade 160ms linear;
+}
+:root[data-motion='reduced'] .ach-toast.is-out {
+  animation: ach-fade-out 120ms linear forwards;
+}
+@keyframes ach-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---------- "My achievements" (screens/Achievements.tsx) ---------- */
+.achievements {
+  gap: var(--s3);
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ach-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s3) var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 2px solid var(--line);
+  text-align: center;
+}
+
+.ach-card.is-won {
+  border-color: var(--accent);
+}
+
+.ach-card.is-locked {
+  background: var(--surface-2);
+}
+
+.ach-icon {
+  font-size: 2.2rem;
+  line-height: 1.2;
+}
+
+.ach-card.is-locked .ach-icon {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.ach-title {
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ach-text {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  color: var(--ink-soft);
+}
+
+.ach-date {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.ach-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  width: 100%;
+  margin-top: var(--s1);
+}
+
+.ach-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.ach-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  transform-origin: right center;
+}
+
+.ach-progress-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* In the parents' dashboard: the badges a child has, in one row that wraps. */
+.parent-ach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parent-ach li {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ach-cert {
+  margin-top: var(--s2);
+  min-height: var(--touch);
+}
+
+/* ---------- The end of a chapter (screens/ChapterEnd.tsx) and of the journey (Finale.tsx) ---------- */
+.chapter-end,
+.finale {
+  align-items: center;
+  text-align: center;
+  cursor: default;
+}
+
+.chapter-end-title {
+  margin-top: var(--s4);
+}
+
+/* The hero on the right, the boss on its left – running off to the left edge. */
+.chapter-end-stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--s4);
+  width: 100%;
+  min-height: 190px;
+  overflow: hidden;
+}
+
+.chapter-end-hero {
+  width: min(38vw, 150px);
+  height: auto;
+  aspect-ratio: 120 / 160;
+}
+
+.chapter-end-boss {
+  animation: boss-flee 2600ms 900ms cubic-bezier(0.5, 0, 0.75, 0.4) forwards;
+}
+
+@keyframes boss-flee {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  12% {
+    transform: translateX(10px) translateY(-14px) rotate(8deg);
+  }
+  24% {
+    transform: translateX(0) translateY(0) rotate(-6deg);
+  }
+  100% {
+    transform: translateX(-120vw) translateY(-10px) rotate(-18deg);
+    opacity: 0.2;
+  }
+}
+
+:root[data-motion='reduced'] .chapter-end-boss {
+  animation: ach-fade-out 600ms 300ms linear forwards;
+}
+
+.chapter-end-story {
+  max-width: 34ch;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.chapter-sum {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: var(--s2);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: stage-fade 300ms linear;
+}
+
+.chapter-sum li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s3) var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 2px solid var(--line);
+}
+
+.chapter-sum-icon {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.chapter-sum-num {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.chapter-sum-label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.certificate {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: cert-in 520ms var(--ease-back);
+}
+
+.certificate svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes cert-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotate(-2deg);
+  }
+}
+
+:root[data-motion='reduced'] .certificate {
+  animation: stage-fade 160ms linear;
+}
+
+.finale-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+/* ---------- About and privacy (screens/About.tsx) ---------- */
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  text-align: center;
+}
+
+.about-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+}
+
+.about-name {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--brand);
+  direction: ltr;
+}
+
+.about-lead {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.about-version {
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.about-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding-inline-start: var(--s5);
+}
+
+.credits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.credit {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--s2);
+  min-height: var(--touch);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.credit-name {
+  font-weight: 800;
+}
+
+.credit-what {
+  grid-column: 1;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.credit-licence {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.report-box {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.inline-link {
+  display: inline-block;
+  min-height: var(--touch);
+  padding: 12px 2px;
+  color: var(--brand);
+  font-weight: 700;
+}

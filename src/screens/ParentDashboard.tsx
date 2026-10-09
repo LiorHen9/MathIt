@@ -17,7 +17,11 @@ import { getQuestRecord, setChapterOpen } from '../storage/questProgress';
 import { ParentKidSettings } from './ParentKidSettings';
 import { listDayLogs } from '../storage/sessions';
 import { WORLD_LIST } from '../worlds/index';
+import { ACHIEVEMENTS, achieved } from '../core/achievements/index';
+import { achievementInput } from '../storage/achievements';
+import { getAchievementRecord } from '../storage/achievementRecord';
 import './parent.css';
+import '../ui/phase10.css';
 
 interface Props {
   profile: Profile;
@@ -37,6 +41,9 @@ interface Data {
   due: SkillId[];
   placedAt: number;
   opened: string[];
+  /** Achievements won (phase 10), in display order, and the best run of first-try right answers. */
+  won: string[];
+  bestStreak: number;
 }
 
 const STATUS: Record<SkillStatus, string> = { mastered: 'נשלט', learning: 'בלמידה', new: 'עוד לא' };
@@ -52,7 +59,8 @@ export function ParentDashboard({ profile, onBack, onPractice, onLesson, onSave 
     let alive = true;
     void (async () => {
       const now = clockNow();
-      const [states, quest, days] = await Promise.all([listSkillStates(profile.id), getQuestRecord(profile.id), listDayLogs(profile.id)]);
+      const [states, quest, days, rec] = await Promise.all([listSkillStates(profile.id), getQuestRecord(profile.id), listDayLogs(profile.id), getAchievementRecord(profile.id)]);
+      const got = new Set([...Object.keys(rec.unlocked), ...achieved(await achievementInput(profile.id, rec))]);
       if (!alive) return;
       setData({
         journey: journeyView(quest),
@@ -61,7 +69,9 @@ export function ParentDashboard({ profile, onBack, onPractice, onLesson, onSave 
         time: timeStats(days, profile.id, now),
         due: dueSkills(states, now),
         placedAt: quest.placedAt,
-        opened: quest.opened
+        opened: quest.opened,
+        won: ACHIEVEMENTS.filter((a) => got.has(a.id)).map((a) => a.id),
+        bestStreak: rec.bestStreak
       });
     })();
     return () => {
@@ -162,6 +172,25 @@ function Dashboard({ profile, worldName, data, onPractice, onLesson }: { profile
           <p class="settings-note" data-testid="dash-placed">
             {placedAt ? `מבחן מיקום: ${dateText(placedAt)}` : 'מבחן מיקום: עוד לא'}
           </p>
+        </div>
+      </section>
+
+      <section class="settings-section" data-testid="dash-achievements" data-won={data.won.length}>
+        <h2 class="section-title">🏅 הישגים</h2>
+        <div class="card dash-card">
+          <p class="settings-note">
+            {data.won.length === 0 ? g('עוד אין הישגים – הם נפתחים תוך כדי משחק.', 'עוד אין הישגים – הם נפתחים תוך כדי משחק.') : `${data.won.length} מתוך ${ACHIEVEMENTS.length} הישגים.`}
+            {data.bestStreak > 0 && ` הרצף הארוך ביותר: ${data.bestStreak} תשובות נכונות ברצף.`}
+          </p>
+          {data.won.length > 0 && (
+            <ul class="parent-ach">
+              {ACHIEVEMENTS.filter((a) => data.won.includes(a.id)).map((a) => (
+                <li key={a.id} data-achievement={a.id}>
+                  <span aria-hidden="true">{a.icon}</span> {byGender(profile, a.title.m, a.title.f, a.title.x)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 

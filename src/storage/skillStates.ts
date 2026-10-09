@@ -22,6 +22,8 @@ import type { SkillId } from '../core/types';
 import { now as clockNow } from '../app/clock';
 import { dbGet, dbGetAll, dbPut } from './db';
 import { recordDay } from './sessions';
+import { noteAnswer } from './achievementRecord';
+import { progressChanged } from './changes';
 
 export interface SkillState extends MasteryFields {
   profileId: string;
@@ -90,8 +92,13 @@ export async function listSkillStates(profileId: string): Promise<Record<string,
  */
 export function recordAnswer(profileId: string, skillId: string, result: AnswerResult, startLevel = 1, now = clockNow()): Promise<SkillState> {
   // Today's practice for parents (storage/sessions.ts), in its own queue.
-  void recordDay(profileId, result.ms, result.correct && result.wrongBefore === 0, now);
-  return change(profileId, skillId, (prev) => updateMastery(prev ?? fresh(profileId, skillId, startLevel), result, now));
+  const firstTry = result.correct && result.wrongBefore === 0;
+  void recordDay(profileId, result.ms, firstTry, now);
+  // The run of first-try right answers, for achievements (phase 10).
+  void noteAnswer(profileId, firstTry);
+  const saved = change(profileId, skillId, (prev) => updateMastery(prev ?? fresh(profileId, skillId, startLevel), result, now));
+  void saved.then(() => progressChanged(profileId));
+  return saved;
 }
 
 /** Record a finished round: the next level, the best stars, one more round. */

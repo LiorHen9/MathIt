@@ -15,6 +15,7 @@ import { now as clockNow } from '../app/clock';
 import type { SkillId } from '../core/types';
 import { dbGet, dbPut } from './db';
 import { listSkillStates } from './skillStates';
+import { progressChanged } from './changes';
 
 export interface QuestRecord extends QuestProgress {
   profileId: string;
@@ -65,6 +66,7 @@ export function normalizeQuestRecord(raw: Partial<QuestRecord> | undefined, prof
 async function put(r: QuestRecord): Promise<QuestRecord> {
   const next = { ...r, updated: Date.now() };
   await dbPut('questProgress', r.profileId, next);
+  progressChanged(r.profileId);
   return next;
 }
 

@@ -15,4 +15,7 @@ export const fx: WorldFx = {
   bossHit: (e) => ({ particles: { kind: 'smoke', count: 10 + e.n, at: 'el' }, word: e.left === 0 ? 'פוף!' : undefined }),
   coin: () => ({ fly: '💎' }),
   puzzleSolved: (_e, b) => ({ particles: { kind: 'rainbow', count: b.particles?.count ?? 80, at: 'screen' }, word: 'פתרון קסום!' }),
+  achievement: (_e, b) => ({ particles: { kind: 'rainbow', count: b.particles?.count ?? 36, at: 'el' }, word: 'הישג קסום!' }),
+  chapterDone: (_e, b) => ({ particles: { kind: 'rainbow', count: b.particles?.count ?? 120, at: 'screen' }, word: 'קסם של פרק!' }),
+  journeyDone: (_e, b) => ({ particles: { kind: 'rainbow', count: b.particles?.count ?? 180, at: 'screen' }, word: 'המסע הקסום הושלם!' })
 };

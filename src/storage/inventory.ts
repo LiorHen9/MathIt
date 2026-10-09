@@ -5,6 +5,7 @@
 // Saved at once (after every coin), through a queue per key so quick answers never overwrite
 // each other. Loaded with the map and the games (not in the first load).
 import { dbDelete, dbGet, dbGetAll, dbKeys, dbPut } from './db';
+import { progressChanged } from './changes';
 
 export interface Inventory {
   profileId: string;
@@ -43,6 +44,7 @@ function change(profileId: string, worldId: string, f: (inv: Inventory) => Inven
   const run = (queues.get(k) ?? Promise.resolve()).catch(() => {}).then(async () => {
     const next = { ...f(await getInventory(profileId, worldId)), updated: Date.now() };
     await dbPut('inventory', k, next);
+    progressChanged(profileId);
     return next;
   });
   queues.set(k, run);

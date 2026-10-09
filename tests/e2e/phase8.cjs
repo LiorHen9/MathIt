@@ -12,7 +12,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 //   practice kept to the journey, a chapter opened by hand, reading aloud off;
 // - backup: save a file from one phone, restore it on a new phone (from the first-run screen) –
 //   profiles, settings, the journey, coins and collectibles, results and days all come back; a
-//   broken file is refused with a reason; an old phone (schema 4) moves to schema 5;
+//   broken file is refused with a reason; an old phone (schema 4) moves to schema 6;
 // - transform/opacity only, touch targets ≥ 48px, no sideways scroll, light and dark.
 const SHOTS = process.argv[2] || '.';
 const URL = process.argv[3] || 'http://localhost:4173/';
@@ -295,8 +295,8 @@ async function enterParents(p) {
       await p.waitForTimeout(300);
       const db1 = await idb(p, (db, getAll) => Promise.all([getAll(db, 'sessions'), new Promise((r) => { const g = db.transaction('meta').objectStore('meta').get('schemaVersion'); g.onsuccess = () => r(g.result); })]));
       const [days, v] = db1;
-      must(v === 5 && days.length === 1 && days[0].questions === 4 && days[0].right === 2 && days[0].ms > 0 && /^\d{4}-\d{2}-\d{2}$/.test(days[0].day), 'today in sessions: ' + JSON.stringify(db1));
-      step('schema 5: every answer adds to today in the new sessions store (4 questions, 2 right the first time)');
+      must(v === 6 && days.length === 1 && days[0].questions === 4 && days[0].right === 2 && days[0].ms > 0 && /^\d{4}-\d{2}-\d{2}$/.test(days[0].day), 'today in sessions: ' + JSON.stringify(db1));
+      step('schema 6: every answer adds to today in the new sessions store (4 questions, 2 right the first time)');
       // Make the common mistake certain (the bubbles picked above are any wrong ones).
       await idb(p, (db) =>
         new Promise((res) => {
@@ -499,7 +499,7 @@ async function enterParents(p) {
       await dl.saveAs(file);
       const text = require('fs').readFileSync(file, 'utf8');
       const json = JSON.parse(text);
-      must(json.format === 'mathit-backup' && json.schemaVersion === 5 && json.profiles.length === 1 && json.skillStates.length >= 1 && json.questProgress.length === 1 && json.inventory.length === 1 && json.sessions.length === 1, 'the file has every store: ' + Object.keys(json));
+      must(json.format === 'mathit-backup' && json.schemaVersion === 6 && json.profiles.length === 1 && json.skillStates.length >= 1 && json.questProgress.length === 1 && json.inventory.length === 1 && json.sessions.length === 1, 'the file has every store: ' + Object.keys(json));
       await p.waitForSelector('[data-testid=backup-last]');
       must(!(await p.textContent('[data-testid=backup-last]')).includes('עוד לא'), 'last backup shown');
       await layoutOk(p, 'parents home with backup');
@@ -599,10 +599,10 @@ async function enterParents(p) {
       const d = await idb(p, (db, getAll) =>
         Promise.all([new Promise((r) => { const g = db.transaction('meta').objectStore('meta').get('schemaVersion'); g.onsuccess = () => r(g.result); }), [...db.objectStoreNames], getAll(db, 'inventory'), getAll(db, 'profiles')])
       );
-      must(d[0] === 5 && d[1].includes('sessions') && d[2][0].coins === 17 && d[3][0].name === 'יואב', 'migration 4 → 5: ' + JSON.stringify(d));
+      must(d[0] === 6 && d[1].includes('sessions') && d[1].includes('achievements') && d[2][0].coins === 17 && d[3][0].name === 'יואב', 'migration 4 → 6: ' + JSON.stringify(d));
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
       await ctx.close();
-      step('an old phone (schema 4) moves to 5: sessions added, the profile and its coins kept');
+      step('an old phone (schema 4) moves to 6: sessions and achievements added, the profile and its coins kept');
     }
 
     console.log('\nphase 8 e2e passed');

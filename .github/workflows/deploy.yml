@@ -33,6 +33,16 @@ jobs:
           # The site lives at https://<user>.github.io/<repo>/
           BASE_PATH: /${{ github.event.repository.name }}/
 
+      # Phase 10: the worker waits for "update" (it must listen for SKIP_WAITING), the page has its
+      # share card, and the app does not register a second worker of its own.
+      - name: Check the build
+        run: |
+          grep -q SKIP_WAITING dist/sw.js
+          grep -q 'og:image' dist/index.html
+          ! grep -q registerSW dist/index.html
+          test -f dist/og-image.png
+          test -f dist/manifest.webmanifest
+
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

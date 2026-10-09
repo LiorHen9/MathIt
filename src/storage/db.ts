@@ -7,15 +7,16 @@
 // a profile's results per skill – level, best stars, rounds; storage/skillStates.ts) and
 // questProgress (version 3: a profile's way on the quest map; storage/questProgress.ts) and
 // inventory (version 4: coins and collectibles per profile and world; storage/inventory.ts) and
-// sessions (version 5: practice per profile and day, for parents; storage/sessions.ts).
+// sessions (version 5: practice per profile and day, for parents; storage/sessions.ts) and
+// achievements (version 6: celebrated achievements and the best streak per profile; storage/achievements.ts).
 // Each addition bumps SCHEMA_VERSION and adds a step to MIGRATIONS.
 
-export type StoreName = 'meta' | 'profiles' | 'skillStates' | 'questProgress' | 'inventory' | 'sessions';
+export type StoreName = 'meta' | 'profiles' | 'skillStates' | 'questProgress' | 'inventory' | 'sessions' | 'achievements';
 
 const DB_NAME = 'mathit';
 /** Bump when stores change, and add a migration step below. */
-export const SCHEMA_VERSION = 5;
-const STORES: StoreName[] = ['meta', 'profiles', 'skillStates', 'questProgress', 'inventory', 'sessions'];
+export const SCHEMA_VERSION = 6;
+const STORES: StoreName[] = ['meta', 'profiles', 'skillStates', 'questProgress', 'inventory', 'sessions', 'achievements'];
 
 /**
  * Migration steps, by the version they upgrade TO. Each runs inside the upgrade transaction,
@@ -48,6 +49,12 @@ const MIGRATIONS: Record<number, (db: IDBDatabase, tx: IDBTransaction) => void> 
   // skillStates).
   5: (db) => {
     if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions');
+  },
+  // Phase 10: achievements, one record per profile (key = profile id). Nothing to convert: what a
+  // child already earned is computed from the other stores and marked as shown quietly at the
+  // first check (storage/achievements.ts), so an upgrade never bursts with old achievements.
+  6: (db) => {
+    if (!db.objectStoreNames.contains('achievements')) db.createObjectStore('achievements');
   }
 };
 

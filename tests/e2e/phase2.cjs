@@ -185,9 +185,9 @@ async function stored(p) {
     await p.waitForSelector('.profiles-screen');
     must((await p.$$('.profile-pick')).length === 1, 'the old profile is not listed');
     let db = await stored(p);
-    must(db.v === 5 && db.stores.join() === 'inventory,meta,profiles,questProgress,sessions,skillStates', `migration to 5: v=${db.v} stores=${db.stores}`);
+    must(db.v === 6 && db.stores.join() === 'achievements,inventory,meta,profiles,questProgress,sessions,skillStates', `migration to 6: v=${db.v} stores=${db.stores}`);
     must(db.profiles.length === 1 && db.profiles[0].name === 'שירה' && db.profiles[0].worldId === 'fairies', 'the old profile changed: ' + JSON.stringify(db.profiles));
-    step('an old phone (schema 1) is migrated to schema 5: skillStates, questProgress, inventory and sessions added, the profile kept');
+    step('an old phone (schema 1) is migrated to schema 6: skillStates, questProgress, inventory, sessions and achievements added, the profile kept');
 
     // --- Free practice (phase 4: one tap from the map): five skills (word problems from phase 5), the ones for her age recommended ---
     await p.tap('.profile-pick >> nth=0');

@@ -76,6 +76,10 @@ export interface Collectible {
 export interface WorldStory {
   /** One sentence per chapter, read on the map (ages 5–7: one sentence). */
   chapters: string[];
+  /** Phase 10: one sentence per chapter for its end (the boss beaten), read at the chapter's party. */
+  ends: string[];
+  /** Phase 10: the end of the whole journey (the last boss), on the certificate's party. */
+  finale: string;
 }
 
 export interface WorldTheme {

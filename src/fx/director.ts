@@ -88,7 +88,14 @@ export type FeedbackEvent =
   | { type: 'goalReached' }
   // Puzzles (phase 9).
   /** A puzzle is solved (`stars` 1–3: fewer hints and slips, more stars). */
-  | { type: 'puzzleSolved'; stars: number };
+  | { type: 'puzzleSolved'; stars: number }
+  // Polish (phase 10).
+  /** An achievement opens (a toast drops in; `el` = its badge). Once per achievement, ever. */
+  | { type: 'achievement' }
+  /** A chapter's boss was beaten for the first time: the long end-of-chapter party (`chapter` 1–10). */
+  | { type: 'chapterDone'; chapter: number }
+  /** The last boss is beaten: the end of the whole journey, and the certificate. */
+  | { type: 'journeyDone' };
 
 export type FeedbackType = FeedbackEvent['type'];
 export const FEEDBACK_TYPES: readonly FeedbackType[] = [
@@ -122,7 +129,10 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   'coin',
   'levelUp',
   'goalReached',
-  'puzzleSolved'
+  'puzzleSolved',
+  'achievement',
+  'chapterDone',
+  'journeyDone'
 ];
 
 /** Teaching sounds: the hero is busy explaining, so these leave its mood alone. */
@@ -179,7 +189,11 @@ export const SAMPLE_EVENTS: readonly FeedbackEvent[] = [
   { type: 'levelUp', level: 2 },
   { type: 'goalReached' },
   { type: 'puzzleSolved', stars: 3 },
-  { type: 'puzzleSolved', stars: 1 }
+  { type: 'puzzleSolved', stars: 1 },
+  { type: 'achievement' },
+  { type: 'chapterDone', chapter: 1 },
+  { type: 'chapterDone', chapter: 9 },
+  { type: 'journeyDone' }
 ];
 
 /** Where the event happened on screen, for motion and particles (optional). */
@@ -308,6 +322,16 @@ export function sharedPlan(e: FeedbackEvent): FxPlan {
     case 'puzzleSolved':
       // Like a chest opening: the solved puzzle bursts, more for more stars.
       return { sound: 'chestOpen', hero: 'cheer', motion: 'pop', particles: { kind: 'confetti', count: 50 + e.stars * 20, at: 'screen' } };
+    case 'achievement':
+      // A badge drops in: the opening chime and a burst at the badge – smaller than a round's end,
+      // because it may land in the middle of one.
+      return { sound: 'unlock', hero: 'cheer', motion: 'pop', particles: { kind: 'sparkle', count: 36, at: 'el' } };
+    case 'chapterDone':
+      // The end of a chapter: the round's fanfare and a big confetti rain, bigger in later chapters.
+      return { sound: 'fanfare', hero: 'cheer', particles: { kind: 'confetti', count: Math.min(170, 100 + e.chapter * 7), at: 'screen' } };
+    case 'journeyDone':
+      // The end of the journey: the boss's victory music and the most confetti the screen holds.
+      return { sound: 'victory', hero: 'cheer', particles: { kind: 'confetti', count: 180, at: 'screen' } };
   }
 }
 

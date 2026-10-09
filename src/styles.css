@@ -190,6 +190,88 @@ p {
   justify-content: center;
 }
 
+/* ---------- Moving between screens (phase 10, app/App.tsx) ----------
+   Every screen comes in with one short move – transform and opacity only, 200ms, never blocking a
+   tap (a CSS animation does not hold input). The app reads right to left, so going deeper
+   ("forward": map → station) brings the new screen in from the left, the way a Hebrew page turns,
+   and coming back brings it in from the right. No fill mode: when the move ends the transform is
+   gone, so position: fixed parts are not caught inside it. The map only fades (its dock is fixed).
+   Reduced motion: a plain fade. */
+/* While a screen moves in, its host clips sideways: in an RTL page, anything past the left edge would
+   widen the page for those 200ms. Only then – at rest nothing is clipped, so a real overflow still shows. */
+.stage-host.is-moving {
+  overflow-x: clip;
+}
+.stage.move-fwd {
+  animation: stage-fwd 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.stage.move-back {
+  animation: stage-back 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.stage.is-fade,
+:root[data-motion='reduced'] .stage.move-fwd,
+:root[data-motion='reduced'] .stage.move-back {
+  animation: stage-fade 160ms linear;
+}
+.stage.move-none {
+  animation: none;
+}
+@keyframes stage-fwd {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+@keyframes stage-back {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes stage-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A new version is waiting (app/updates.ts): a calm bar above the screen. */
+.update-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  padding: max(var(--s2), env(safe-area-inset-top)) var(--s4) var(--s2);
+  background: var(--brand-soft);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* While a slow chunk arrives (app/lazy.tsx): a faint outline of a screen, shown only after a moment. */
+.ph {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  opacity: 0.55;
+  animation: stage-fade 300ms 350ms linear backwards;
+}
+.ph-bar,
+.ph-card {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.ph-bar {
+  height: 48px;
+}
+.ph-card {
+  height: 160px;
+}
+.ph-card.is-short {
+  height: 96px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -457,8 +539,14 @@ p {
 }
 
 .icon-btn {
-  width: var(--touch);
-  height: var(--touch);
+  /* At least a touch target, and round; larger text (200%) grows it rather than spilling out. */
+  min-width: var(--touch);
+  min-height: var(--touch);
+  aspect-ratio: 1;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 2px;
+  line-height: 1;
   border-radius: 50%;
   border: 2px solid var(--line);
   background: var(--surface);

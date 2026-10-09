@@ -3,15 +3,17 @@
 //
 // What is in the file: every profile (with its settings and the parents' settings; a PIN only as
 // it is on the phone – a hash with its salt), its results per skill, its way on the map, its coins
-// and collectibles in every world, its practice by day, and the parents' PIN (a hash too).
+// and collectibles in every world, its practice by day, its achievements (phase 10: which were
+// celebrated, the best streak), and the parents' PIN (a hash too).
 // What is not: the rest of `meta`, which describes this phone rather than the family – the device
 // id, the last profile used, the error log, when this phone last made a backup.
 //
 // Reading a file is strict about its shape: anything that does not look like a MathIt backup is
 // refused before a single record is touched, with a message in Hebrew that says why. Each record
 // then goes through the same normalize* the app uses when it reads its own stores, so a value from
-// an older version is filled and a broken one dropped. A file from a phone on an older schema (3, 4:
-// no inventory or no sessions yet) simply lacks those lists. A backup from a newer version of the
+// an older version is filled and a broken one dropped. A file from a phone on an older schema (3, 4,
+// 5: no inventory, sessions or achievements yet) simply lacks those lists – achievements already
+// earned are then marked as shown at the first check (storage/achievements.ts). A backup from a newer version of the
 // app is refused ("update the app first").
 import { dbGet, dbGetAll, dbKeys, dbWrite, SCHEMA_VERSION, type DbOp, type StoreName } from './db';
 import { normalizeProfile, PLAY_WORLDS, type PlayWorldId, type Profile } from '../profiles/profiles';
@@ -20,6 +22,7 @@ import { normalizeSkillState, type SkillState } from './skillStates';
 import { normalizeQuestRecord, type QuestRecord } from './questProgress';
 import { normalizeInventory, type Inventory } from './inventory';
 import { DAY_RE, normalizeDayLog, type DayLog } from '../core/parents/days';
+import { normalizeAchievementRecord, type AchievementRecord } from './achievementRecord';
 import { getSkill } from '../core/skills/index';
 import { APP_VERSION } from '../app/version';
 
@@ -45,6 +48,8 @@ export interface Backup {
   questProgress: QuestRecord[];
   inventory: Inventory[];
   sessions: DayLog[];
+  /** Achievements per profile (schema 6; missing in older files). */
+  achievements: AchievementRecord[];
   /** The parents' PIN (meta `parentLock`), or null. */
   parentLock: ParentLock | null;
 }
@@ -185,6 +190,15 @@ export function checkBackup(raw: unknown): ParseResult {
       (d) => `${d.profileId}:${d.day}`,
       'sessions'
     );
+    const achievements = unique(
+      list(b.achievements, 'achievements').map((x, i) => {
+        const v = owned(x, ids, `achievements[${i}]`);
+        need(v.unlocked === undefined || isObj(v.unlocked), `achievements[${i}].unlocked`);
+        return normalizeAchievementRecord(v as Partial<AchievementRecord>, v.profileId as string);
+      }),
+      (a) => a.profileId,
+      'achievements'
+    );
     let parentLock: ParentLock | null = null;
     if (b.parentLock !== undefined && b.parentLock !== null) {
       parentLock = normalizeParentLock(b.parentLock);
@@ -203,6 +217,7 @@ export function checkBackup(raw: unknown): ParseResult {
         questProgress,
         inventory,
         sessions,
+        achievements,
         parentLock
       }
     };
@@ -227,12 +242,13 @@ export function parseBackup(text: string): ParseResult {
 // ---------- Reading and writing the phone ----------
 
 export async function makeBackup(now = new Date()): Promise<Backup> {
-  const [profiles, skillStates, questProgress, inventory, sessions, lock] = await Promise.all([
+  const [profiles, skillStates, questProgress, inventory, sessions, achievements, lock] = await Promise.all([
     dbGetAll<Profile>('profiles'),
     dbGetAll<SkillState>('skillStates'),
     dbGetAll<QuestRecord>('questProgress'),
     dbGetAll<Inventory>('inventory'),
     dbGetAll<DayLog>('sessions'),
+    dbGetAll<AchievementRecord>('achievements'),
     dbGet<unknown>('meta', 'parentLock')
   ]);
   const ids = new Set(profiles.map((p) => p.id));
@@ -249,6 +265,7 @@ export async function makeBackup(now = new Date()): Promise<Backup> {
     questProgress: mine(questProgress),
     inventory: mine(inventory),
     sessions: mine(sessions),
+    achievements: mine(achievements),
     parentLock: normalizeParentLock(lock)
   };
 }
@@ -293,7 +310,8 @@ const PER_PROFILE: { store: StoreName; key: (x: never) => string; of: (b: Backup
   { store: 'skillStates', key: (x: SkillState) => `${x.profileId}:${x.skillId}`, of: (b) => b.skillStates },
   { store: 'questProgress', key: (x: QuestRecord) => x.profileId, of: (b) => b.questProgress },
   { store: 'inventory', key: (x: Inventory) => `${x.profileId}:${x.worldId}`, of: (b) => b.inventory },
-  { store: 'sessions', key: (x: DayLog) => `${x.profileId}:${x.day}`, of: (b) => b.sessions }
+  { store: 'sessions', key: (x: DayLog) => `${x.profileId}:${x.day}`, of: (b) => b.sessions },
+  { store: 'achievements', key: (x: AchievementRecord) => x.profileId, of: (b) => b.achievements }
 ];
 
 export interface PhoneState {

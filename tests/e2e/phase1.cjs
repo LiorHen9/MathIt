@@ -308,13 +308,13 @@ async function storedProfiles(p) {
     must((await p.textContent('.volume-value')).includes('50'), 'נועה\'s volume lost on reload');
     must(await p.$('[data-pin=remove]'), 'נועה\'s PIN lost on reload');
     const db = await storedProfiles(p);
-    must(db.v === 5, 'schema version ' + db.v);
+    must(db.v === 6, 'schema version ' + db.v);
     must(db.profiles.length === 3, 'stored profiles: ' + db.profiles.length);
     must(!JSON.stringify(db.profiles).includes('"1234"'), 'PIN digits stored');
     const noa = db.profiles.find((x) => x.name === 'נועה');
     must(noa.grade === 1 && noa.gender === 'girl' && noa.worldId === 'fairies' && noa.settings.volume === 0.5 && noa.pinHash, 'נועה stored: ' + JSON.stringify(noa));
     must(db.last === noa.id, 'lastProfileId');
-    step('reload keeps profiles, worlds, settings, PIN and the last player (IndexedDB, schema 5)');
+    step('reload keeps profiles, worlds, settings, PIN and the last player (IndexedDB, schema 6)');
 
     // --- Editing a profile: the world changes ---
     await p.tap('[data-testid=edit-profile]');

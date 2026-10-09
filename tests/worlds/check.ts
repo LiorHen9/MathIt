@@ -475,6 +475,53 @@ function badVoice(tones: Tone[]): Tone | null {
   console.log(`✓ phase 9: a puzzle party with its own word in ${PLAY.length} worlds, times and sharing stories filled for every gender, the knife and the carried ten climb, bosses to tier 10`);
 }
 
+// ---------- Phase 10: achievements, the end of every chapter and of the journey ----------
+{
+  const PLAY = WORLDS.slice(1);
+  const oneSentence = (t: string) => !!t && !/[^\s][.!?]\s+\S.*[.!?]$/.test(t) && !hasPlaceholders(t);
+  const words = { achievement: new Set<string>(), chapterDone: new Set<string>(), journeyDone: new Set<string>() };
+  for (const w of PLAY) {
+    const where = (x: string) => `${w.id}: ${x}`;
+    for (const t of ['achievement', 'chapterDone', 'journeyDone'] as const) {
+      if (!w.fx?.[t]) fail(where(`no ${t} mapping of its own`));
+      const plan = planFor(t === 'chapterDone' ? { type: t, chapter: 4 } : { type: t }, w);
+      if (!plan.word) fail(where(`${t} has no word`));
+      else words[t].add(plan.word);
+      if (plan.hero !== 'cheer') fail(where(`${t}: the hero should cheer`));
+      if (!plan.particles || !PARTICLE_KINDS.includes(plan.particles.kind)) fail(where(`${t}: particles of a known kind`));
+    }
+    // A badge in the middle of a round: at the badge, smaller than the chapter's party; the journey's the biggest.
+    const a = planFor({ type: 'achievement' }, w);
+    const c = planFor({ type: 'chapterDone', chapter: 10 }, w);
+    const j = planFor({ type: 'journeyDone' }, w);
+    if (a.particles?.at !== 'el' || c.particles?.at !== 'screen' || j.particles?.at !== 'screen') fail(where('a badge bursts where it is, the parties fill the screen'));
+    if (!((a.particles?.count ?? 0) < (c.particles?.count ?? 0) && (c.particles?.count ?? 0) <= (j.particles?.count ?? 0))) fail(where('badge < chapter < journey'));
+    // One sentence for the end of every chapter, and one for the journey.
+    const ends = w.story?.ends ?? [];
+    if (ends.length !== JOURNEY.chapters.length) fail(where(`${ends.length} chapter endings for ${JOURNEY.chapters.length} chapters`));
+    ends.forEach((e, k) => {
+      if (!oneSentence(e)) fail(where(`chapter ${k + 1}'s ending is not one sentence: "${e}"`));
+      if (e === w.story?.chapters[k]) fail(where(`chapter ${k + 1}'s ending repeats its opening`));
+    });
+    if (new Set(ends).size !== ends.length) fail(where('two chapters end with the same sentence'));
+    if (!w.story?.finale || !oneSentence(w.story.finale)) fail(where('no one-sentence end of the journey'));
+  }
+  for (const [t, set] of Object.entries(words)) if (set.size !== PLAY.length) fail(`worlds share the ${t} word: ${[...set]}`);
+  // Pictures a child reads (phase 10, non-text contrast 3:1): a coloured pizza slice against an empty
+  // one, and the lines of the area grid against its squares and the paper.
+  const hex = (h: string) => [0, 2, 4].map((i) => parseInt(h.replace('#', '').slice(i, i + 2), 16));
+  const mix = (a: string, p: number, b: string) => '#' + hex(a).map((x, i) => Math.round(x * p + hex(b)[i] * (1 - p)).toString(16).padStart(2, '0')).join('');
+  for (const w of WORLDS)
+    for (const mode of ['light', 'dark'] as const) {
+      const v = { ...BASE[mode], ...w[mode] } as Record<string, string>;
+      const empty = mix(v.accent, 0.22, v.surface);
+      const square = mix(v['num-3'], 0.28, v.surface);
+      if (contrast(v['num-1'], empty) < 3) fail(`${w.id}/${mode}: a coloured pizza slice vs an empty one ${contrast(v['num-1'], empty).toFixed(2)}`);
+      if (contrast(v['num-3'], square) < 3 || contrast(v['num-3'], v.surface) < 3) fail(`${w.id}/${mode}: the area grid's lines ${contrast(v['num-3'], square).toFixed(2)} / ${contrast(v['num-3'], v.surface).toFixed(2)}`);
+    }
+  console.log(`✓ phase 10: achievement, chapterDone and journeyDone in ${PLAY.length} worlds, each with its own word (badge < chapter < journey); an ending sentence for all 10 chapters and the journey in every world; pizza slices and the area grid at 3:1`);
+}
+
 // Narration text.
 const SPEECH: [string, string][] = [
   ['7 + 5 = 12', '7 ועוד 5 שווה 12'],

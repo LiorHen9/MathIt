@@ -182,6 +182,8 @@ export async function deleteProfile(id: string): Promise<void> {
   // Practice by day (storage/sessions.ts, key `${profileId}:${day}`) – here too, for the same reason.
   const days = await dbKeys('sessions');
   await Promise.all(days.filter((k) => k.startsWith(`${id}:`)).map((k) => dbDelete('sessions', k)));
+  // Achievements (storage/achievements.ts; one record per profile).
+  await dbDelete('achievements', id);
   if ((await getLastProfileId()) === id) await dbDelete('meta', 'lastProfileId');
 }
 

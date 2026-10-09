@@ -18,11 +18,13 @@ interface Props {
   onChild?: (p: Profile) => void;
   /** A backup was restored: the family on this phone changed. */
   onRestored?: () => void;
+  /** About and privacy (phase 10). */
+  onAbout?: () => void;
 }
 
 type PinStep = 'idle' | 'new' | 'confirm' | 'saved' | 'removed';
 
-export function ParentHome({ profiles, exitLabel, onExit, onChild, onRestored }: Props) {
+export function ParentHome({ profiles, exitLabel, onExit, onChild, onRestored, onAbout }: Props) {
   const [lock, setLock] = useState<ParentLock | null | undefined>(undefined);
   const [pinStep, setPinStep] = useState<PinStep>('idle');
   const [firstPin, setFirstPin] = useState('');
@@ -174,6 +176,12 @@ export function ParentHome({ profiles, exitLabel, onExit, onChild, onRestored }:
       </section>
 
       <BackupPanel profiles={profiles} onRestored={() => onRestored?.()} />
+
+      {onAbout && (
+        <button type="button" class="btn btn-ghost" data-testid="open-about" onClick={onAbout}>
+          ℹ️ אודות ופרטיות
+        </button>
+      )}
     </main>
   );
 }

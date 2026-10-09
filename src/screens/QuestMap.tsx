@@ -56,6 +56,8 @@ interface Props {
   onSettings: () => void;
   onPractice: () => void;
   onCollection: () => void;
+  /** "My achievements" (phase 10). */
+  onAchievements: () => void;
   onNode: (node: QuestNode) => void;
 }
 
@@ -83,7 +85,7 @@ export function nodeIcon(n: QuestNode): string {
 /** The index of the chapter a station is in (0 when unknown). */
 const chapterIndex = (id: string | null | undefined) => Math.max(0, JOURNEY.chapters.findIndex((c) => c === chapterOf(id ?? '')));
 
-export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollection, onNode }: Props) {
+export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollection, onAchievements, onNode }: Props) {
   const world = useWorld();
   const mood = useHeroMood();
   const all = useMemo(() => allNodes(), []);
@@ -525,6 +527,17 @@ export function QuestMap({ profile, onSwitch, onSettings, onPractice, onCollecti
             }}
           >
             🎒 האוסף שלי
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary map-practice"
+            data-testid="open-achievements"
+            onClick={() => {
+              playSfx('tap');
+              onAchievements();
+            }}
+          >
+            🏅 ההישגים שלי
           </button>
         </div>
       </section>
