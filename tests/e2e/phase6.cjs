@@ -68,7 +68,7 @@ async function onlyTransformOpacity(p, where) {
 async function solve(p) {
   // Phase 7: grades 1–2 questions (coins, clocks, sequences…) – the round says its answer (a test hook).
   const said = await p.$eval('.game', (e) => e.dataset.answer).catch(() => undefined);
-  if (said !== undefined && !(await p.$('.pop .numpad'))) return said;
+  if (said !== undefined) return said;
   const math = (await p.textContent('[data-testid=prompt-math]')).replace(/\s+/g, ' ').trim();
   let m;
   if ((m = /^(\d+) \+ (\d+) =/.exec(math))) return String(Number(m[1]) + Number(m[2]));
@@ -357,8 +357,8 @@ async function placement(p, knows) {
       await layoutOk(p, 'placement intro');
       await p.tap('[data-testid=placement-start]');
       await p.waitForSelector('[data-testid=placement][data-phase=test] .pop');
-      // Phase 7: the ladder runs through five chapters; an 8-year-old starts at crossing ten.
-      must((await p.getAttribute('[data-testid=placement]', 'data-skill')) === 'add.bridge10', 'an 8-year-old starts at crossing ten');
+      // Phase 9: the ladder runs through ten chapters; an 8-year-old starts at numbers to 100 (chapter 3).
+      must((await p.getAttribute('[data-testid=placement]', 'data-skill')) === 'numbers.to100', 'an 8-year-old starts at numbers to 100');
       must(await p.$('.placement .game-hero'), 'the hero is there');
       await p.screenshot({ path: `${SHOTS}/p6-07-placement-question-blocks.png` });
       await layoutOk(p, 'placement question');
@@ -383,26 +383,26 @@ async function placement(p, knows) {
       await p.tap('[data-testid=placement-map]');
       await p.waitForSelector('.quest-map .map-node');
       await p.waitForTimeout(1500);
-      // Phase 7: the knower lands at the journey's last boss (chapter 5); chapters 1–4 done, their bosses passed.
-      must((await p.getAttribute('.quest-map', 'data-current')) === 'c5-boss', 'the hero goes to the last boss: ' + (await p.getAttribute('.quest-map', 'data-current')));
-      must((await p.getAttribute('[data-testid=home-hero]', 'data-at')) === 'c5-boss', 'the hero stands at the boss');
-      must((await p.getAttribute('[data-testid=map-chapter]', 'data-chapter')) === 'c5', 'the map shows chapter 5');
+      // Phase 9: the knower lands at the journey's last boss (chapter 10); chapters 1–9 done, their bosses passed.
+      must((await p.getAttribute('.quest-map', 'data-current')) === 'c10-boss', 'the hero goes to the last boss: ' + (await p.getAttribute('.quest-map', 'data-current')));
+      must((await p.getAttribute('[data-testid=home-hero]', 'data-at')) === 'c10-boss', 'the hero stands at the boss');
+      must((await p.getAttribute('[data-testid=map-chapter]', 'data-chapter')) === 'c10', 'the map shows chapter 10');
       must((await fx(p)).slice(mapMark).filter((e) => e.type === 'unlock' || e.type === 'walk').length === 0, 'no bursts or walks for what was skipped');
-      for (const id of ['c5-add-lesson', 'c5-add-2', 'c5-chest', 'c5-sub-3']) must((await p.getAttribute(`.map-node[data-node="${id}"]`, 'data-status')) === 'done', `${id} should be done`);
-      must((await p.$$('[data-testid=map-crown]')).length === 2, 'crowns for the two skills of chapter 5 on the map');
+      for (const id of ['c10-area-lesson', 'c10-area-2', 'c10-chest', 'c10-per-3', 'c10-kenken']) must((await p.getAttribute(`.map-node[data-node="${id}"]`, 'data-status')) === 'done', `${id} should be done`);
+      must((await p.$$('[data-testid=map-crown]')).length === 2, 'crowns for the two skills of chapter 10 on the map');
       await p.screenshot({ path: `${SHOTS}/p6-09-placed-map-blocks.png` });
       await p.tap('[data-testid=chapter-tab-1]');
       await p.waitForSelector('[data-testid=map-chapter][data-chapter=c1]');
       for (const id of ['c1-count-lesson', 'c1-count-10', 'c1-compare-10', 'c1-add-7', 'c1-chest', 'c1-sub-10', 'c1-boss']) must((await p.getAttribute(`.map-node[data-node="${id}"]`, 'data-status')) === 'done', `${id} should be done`);
       must((await p.$$('[data-testid=map-crown]')).length === 4, 'crowns for the four skills of chapter 1');
       const d = await db(p);
-      must(d.states.filter((s) => s.mastery >= 0.85).length === 15 && d.quest[0].placedAt > 0, 'placement saved: ' + JSON.stringify(d.states.map((s) => [s.skillId, s.mastery])));
+      must(d.states.filter((s) => s.mastery >= 0.85).length === 26 && d.quest[0].placedAt > 0, 'placement saved: ' + JSON.stringify(d.states.map((s) => [s.skillId, s.mastery])));
       await p.tap('[data-testid=open-practice]');
       await p.waitForSelector('.home .skill-btn');
-      must((await p.$$('[data-testid=crown]')).length === 15, 'fifteen crowns in free practice');
+      must((await p.$$('[data-testid=crown]')).length === 26, '26 crowns in free practice');
       await p.tap('[data-testid=practice-back]');
       await p.waitForSelector('.quest-map .map-node');
-      step(`placement (blocks): a girl who knows everything answers ${n} questions with the full feedback, lands at the last boss (chapter 5); every station before it done, no bursts; crowns on the map and in free practice`);
+      step(`placement (blocks): a girl who knows everything answers ${n} questions with the full feedback, lands at the last boss (chapter 10); every station before it done, no bursts; crowns on the map and in free practice`);
       must(errors.length === 0, 'errors: ' + errors.join('\n'));
       await ctx.close();
     }
