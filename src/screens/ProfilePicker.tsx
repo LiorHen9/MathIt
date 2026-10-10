@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { versionLabel } from '../app/version';
 import { SpeakButton } from '../components/Speak';
+import { BrowserBanner } from '../components/BrowserNotice';
 import { hasPin } from '../profiles/pin';
 import { byGender, type Profile } from '../profiles/profiles';
 import { loadAllWorlds, prefersDark, WORLD_LIST, worldStyle, type WorldTheme } from '../worlds/index';
@@ -38,6 +39,8 @@ export function ProfilePicker({ profiles, lastId, onPick, onCreate, onEdit, onPa
           {TITLE} <SpeakButton text={TITLE} class="speak-inline" />
         </h1>
       </header>
+
+      <BrowserBanner what="מה שתעשו" />
 
       <ul class="profile-grid">
         {profiles.map((p, i) => {

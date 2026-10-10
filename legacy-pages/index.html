@@ -128,6 +128,20 @@
         border: 2px solid var(--accent);
         font-size: 0.95rem;
       }
+      .copy-box {
+        width: 100%;
+        min-height: 7.5em;
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1.5px solid var(--line);
+        background: var(--bg);
+        color: var(--ink);
+        direction: ltr;
+        text-align: left;
+        font: 16px/1.4 ui-monospace, Menlo, Consolas, monospace;
+        word-break: break-all;
+      }
       [hidden] { display: none !important; }
       footer { text-align: center; color: var(--ink-soft); font-size: 0.85rem; margin-top: 22px; }
     </style>
@@ -148,6 +162,8 @@
         <div id="save-buttons" hidden>
           <button type="button" class="btn btn-primary" id="btn-share" hidden>💾 שמירת קובץ הגיבוי</button>
           <button type="button" class="btn" id="btn-download">⬇️ הורדת קובץ הגיבוי</button>
+          <button type="button" class="btn btn-secondary" id="btn-copy">📋 העתקת הגיבוי כטקסט</button>
+          <textarea id="copy-box" class="copy-box" readonly aria-label="הגיבוי כטקסט" hidden></textarea>
         </div>
         <p id="note" class="note" role="status" aria-live="polite"></p>
       </section>
@@ -168,7 +184,7 @@
         <ol class="how">
           <li>פותחים את MathIt <b>מהאייקון החדש</b> במסך הבית.</li>
           <li>במסך הראשון: <span class="path">📂 יש לנו גיבוי – לשחזר ממנו</span> (או, אם כבר יש ילד: <span class="path">👪 להורים</span> ← <span class="path">💾 גיבוי</span> ← <span class="path">📂 שחזור מקובץ גיבוי</span>).</li>
-          <li>בוחרים את הקובץ שמתחיל ב-<span class="ltr">mathit-backup</span> (בהורדות, או ב"קבצים" באייפון).</li>
+          <li>שמרתם קובץ? <span class="path">📂 שחזור מקובץ גיבוי</span> ובוחרים את הקובץ שמתחיל ב-<span class="ltr">mathit-backup</span> (בהורדות, או ב"קבצים" באייפון).<br />העתקתם טקסט? <span class="path">📋 הדבקת גיבוי כטקסט</span> ומדביקים.</li>
           <li>אחרי שהכול חזר – מוחקים את האייקון הישן ממסך הבית.</li>
         </ol>
       </section>
@@ -358,6 +374,39 @@
             });
         }
 
+        function copyText() {
+          var btn = $('btn-copy');
+          btn.disabled = true;
+          say('');
+          var box = $('copy-box');
+          box.hidden = true;
+          var text = '';
+          makeBackup(db, new Date())
+            .then(function (backup) {
+              text = JSON.stringify(backup); // one line: shorter to paste
+              if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+              return navigator.clipboard.writeText(text);
+            })
+            .then(function () {
+              say('✓ הגיבוי הועתק. כדאי להדביק אותו גם בפתקים או בהודעה לעצמכם, כדי שלא ילך לאיבוד. עכשיו לשלב 2.', 'good');
+            })
+            .catch(function (e) {
+              console.warn('[backup] copy failed', e);
+              if (text) {
+                box.value = text;
+                box.hidden = false;
+                box.focus();
+                box.select();
+                say('הטלפון לא נתן להעתיק אוטומטית. מסמנים את כל הטקסט בתיבה ומעתיקים.', '');
+              } else {
+                say('לא הצלחנו להכין את הגיבוי. אפשר לרענן ולנסות שוב.', 'bad');
+              }
+            })
+            .then(function () { btn.disabled = false; });
+        }
+
+        $('btn-copy').addEventListener('click', copyText);
+        $('copy-box').addEventListener('focus', function (e) { e.target.select(); });
         $('btn-share').addEventListener('click', function () { save('share'); });
         $('btn-download').addEventListener('click', function () { save('download'); });
 

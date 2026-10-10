@@ -526,6 +526,19 @@ async function enterParents(p) {
       await q.waitForSelector('[data-testid=backup-error]');
       must((await q.textContent('[data-testid=backup-error]')).includes('לא קובץ גיבוי'), 'a broken file: ' + (await q.textContent('[data-testid=backup-error]')));
       step('a cut file is refused with a reason in Hebrew, nothing restored');
+      // Backup as text: something else is refused, the whole text gives the same preview as the file.
+      await q.tap('[data-backup=paste]');
+      await q.fill('[data-testid=backup-paste-box]', 'not a backup');
+      await q.tap('[data-backup=paste-check]');
+      await q.waitForSelector('[data-testid=backup-error]');
+      must((await q.textContent('[data-testid=backup-error]')).includes('טקסט של גיבוי'), 'pasted junk: ' + (await q.textContent('[data-testid=backup-error]')));
+      await q.fill('[data-testid=backup-paste-box]', JSON.stringify(json));
+      await q.tap('[data-backup=paste-check]');
+      await q.waitForSelector('[data-testid=backup-preview]');
+      must((await q.textContent('[data-testid=backup-preview]')).includes('רוני'), 'the pasted preview');
+      await q.screenshot({ path: `${SHOTS}/p8-paste-dark.png`, fullPage: true });
+      await q.tap('[data-restore=cancel]');
+      step('a backup pasted as text: junk is refused, the whole text shows the same preview');
       await q.setInputFiles('[data-backup=file]', file);
       await q.waitForSelector('[data-testid=backup-preview]');
       must((await q.textContent('[data-testid=backup-preview]')).includes('רוני') && (await q.textContent('[data-testid=backup-preview]')).includes('🪙 8'), 'the preview: ' + (await q.textContent('[data-testid=backup-preview]')));
@@ -564,6 +577,25 @@ async function enterParents(p) {
       must(B.errors.length === 0, 'errors: ' + B.errors.join('\n'));
       await B.ctx.close();
       step('a new phone (dark, reduced motion): "we have a backup" → the door → the file → everything is back: profile and settings, results, the journey (and a chapter opened by hand), coins and the collection, days, the goal');
+    }
+
+    // ================= iPhone in a browser tab (?browser-notice=1 stands in for it) =================
+    {
+      const { ctx, p, errors } = await phone(b, { colorScheme: 'light' });
+      await p.goto(URL + '?browser-notice=1');
+      await p.waitForSelector('[data-testid=browser-notice]');
+      await layoutOk(p, 'iPhone browser notice');
+      await p.screenshot({ path: `${SHOTS}/p8-browser-notice.png`, fullPage: true });
+      await p.tap('[data-testid=browser-continue]');
+      await p.waitForSelector('.splash');
+      await p.tap('.splash-go', { force: true });
+      await p.waitForSelector('.profile-editor [data-testid=browser-banner]');
+      await p.reload();
+      await p.waitForSelector('.splash');
+      must((await p.$('[data-testid=browser-notice]')) === null, '"continue in the browser" is kept for the tab');
+      must(errors.length === 0, 'errors: ' + errors.join('\n'));
+      await ctx.close();
+      step('iPhone browser tab: first the "open from the home screen" notice, then a reminder line on the new-profile form');
     }
 
     // ================= An old phone: schema 4 → 5 =================

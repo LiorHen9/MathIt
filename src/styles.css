@@ -5139,3 +5139,34 @@ p {
 .skin-speed-metronome .sp-bar {
   background: var(--brand);
 }
+
+/* iPhone/iPad in a browser tab (components/BrowserNotice.tsx). */
+.install-lead {
+  color: var(--ink-soft);
+  margin-top: var(--s2);
+}
+
+.install-why,
+.install-title {
+  margin: 0;
+}
+
+.install-title {
+  font-weight: 600;
+}
+
+.install-steps {
+  margin: 0;
+  padding-inline-start: 1.3em;
+  display: grid;
+  gap: 6px;
+}
+
+.browser-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow), inset 0 0 0 2px var(--accent);
+  font-size: var(--fs-sm);
+}

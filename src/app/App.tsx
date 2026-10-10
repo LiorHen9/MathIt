@@ -27,6 +27,8 @@ import { lazy, type LazyScreen } from './lazy';
 import { logError } from './errorLog';
 import { PROGRESS_EVENT } from '../storage/changes';
 import { appUpdates } from './updates';
+import { acceptBrowser, browserAccepted, inIosBrowser } from './install';
+import { BrowserNotice } from '../components/BrowserNotice';
 import type { AchievementId } from '../core/achievements/ids';
 
 // Not needed for the first screen: separate chunks (see lazy.tsx).
@@ -205,6 +207,8 @@ export function App() {
   }
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [lastId, setLastId] = useState<string | undefined>();
+  // iPhone/iPad browser tab: first explain that the home-screen app keeps its own data (app/install.ts).
+  const [browserOk, setBrowserOk] = useState(() => !inIosBrowser() || browserAccepted());
   const active = useActiveProfile();
 
   async function refresh(): Promise<Profile[]> {
@@ -357,7 +361,17 @@ export function App() {
     else setScreen({ name: 'profiles' });
   }
 
-  const body = renderScreen();
+  const body =
+    browserOk || screen.name === 'loading' ? (
+      renderScreen()
+    ) : (
+      <BrowserNotice
+        onContinue={() => {
+          acceptBrowser();
+          setBrowserOk(true);
+        }}
+      />
+    );
   // The map's dock and break card are position: fixed – a transform would carry them along, so the
   // map only fades in.
   // Badges only on the child's own screens (not the shared or the parents' ones), and not over the

@@ -3,12 +3,16 @@
 // check it, show who is in it, ask whether to add to this phone or replace everything on it (and,
 // when adding, what to do with a child who is on both), then write it all at once.
 // "Last backup" is kept in meta; after 14 days without one, a gentle reminder.
+// Text too (as in ChessIt): the same backup can be copied as text and pasted back – handy on
+// iPhone, where the browser and the home-screen app keep separate data and moving a file between
+// them is a chore.
 import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { now as clockNow } from '../app/clock';
 import type { Profile } from '../profiles/profiles';
 import { backupFileName, backupJson, conflictsWith, errorText, makeBackup, parseBackup, profileSummary, restoreBackup, type Backup, type Conflict } from '../storage/backup';
 import { backupDue, loadBackupState, markBackedUp, type BackupState } from '../storage/backupState';
+import { BrowserBanner } from '../components/BrowserNotice';
 
 interface Props {
   profiles: Profile[];
@@ -16,7 +20,7 @@ interface Props {
   onRestored: () => void;
 }
 
-type Step = { kind: 'idle' } | { kind: 'error'; text: string } | { kind: 'preview'; backup: Backup } | { kind: 'done'; count: number };
+type Step = { kind: 'idle' } | { kind: 'error'; text: string } | { kind: 'info'; text: string } | { kind: 'preview'; backup: Backup } | { kind: 'done'; count: number };
 
 const dateText = (ms: number) => new Date(ms).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
@@ -27,6 +31,13 @@ export function BackupPanel({ profiles, onRestored }: Props) {
   const [mode, setMode] = useState<'add' | 'replace'>('add');
   const [choices, setChoices] = useState<Record<string, Conflict>>({});
   const [busy, setBusy] = useState(false);
+  /** The backup as text, shown when the phone did not let us copy it (select and copy by hand). */
+  const [copyBox, setCopyBox] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  /** The paste box is open. */
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.readText === 'function';
   const canShare = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && (() => {
     try {
       return navigator.canShare({ files: [new File(['{}'], 'x.json', { type: 'application/json' })] });
@@ -76,19 +87,67 @@ export function BackupPanel({ profiles, onRestored }: Props) {
     }
   }
 
+  async function copyText() {
+    playSfx('tap');
+    setBusy(true);
+    setSaved(false);
+    setCopied(false);
+    setCopyBox(null);
+    setStep({ kind: 'idle' });
+    let text = '';
+    try {
+      // One line (no spaces): shorter to paste into notes or a message to yourself.
+      text = JSON.stringify(await makeBackup());
+      await navigator.clipboard.writeText(text);
+      const at = Date.now();
+      await markBackedUp(at);
+      setState({ lastBackupAt: at });
+      setCopied(true);
+    } catch (e) {
+      console.warn('[backup] copy failed', e);
+      if (text) {
+        setCopyBox(text);
+        setStep({ kind: 'info', text: 'הטלפון לא נתן להעתיק אוטומטית. מסמנים את כל הטקסט בתיבה ומעתיקים.' });
+      } else {
+        setStep({ kind: 'error', text: 'לא הצלחנו להכין את הגיבוי. אפשר לנסות שוב.' });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Check a backup (from a file or pasted text) and show who is in it. */
+  function check(text: string, fromText: boolean) {
+    const r = parseBackup(text.trim());
+    if (!r.ok) {
+      const notOurs = r.error.code === 'not-json' || r.error.code === 'not-backup';
+      setStep({ kind: 'error', text: fromText && notOurs ? 'זה לא טקסט של גיבוי MathIt. צריך להדביק את כל הטקסט שהועתק, מההתחלה ועד הסוף.' : errorText(r.error) });
+      return;
+    }
+    setPasting(false);
+    setPasted('');
+    setMode(profiles.length ? 'add' : 'replace');
+    setChoices({});
+    setStep({ kind: 'preview', backup: r.backup });
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      setPasted(text);
+      if (text.trim()) check(text, true);
+    } catch (e) {
+      console.warn('[backup] clipboard read failed', e);
+      setStep({ kind: 'info', text: 'לא הצלחנו לקרוא מההעתקה. לוחצים לחיצה ארוכה בתיבה ← "הדבק".' });
+    }
+  }
+
   async function pick(e: Event) {
     const input = e.target as HTMLInputElement;
     const f = input.files?.[0];
     input.value = '';
     if (!f) return;
-    const r = parseBackup(await f.text());
-    if (!r.ok) {
-      setStep({ kind: 'error', text: errorText(r.error) });
-      return;
-    }
-    setMode(profiles.length ? 'add' : 'replace');
-    setChoices({});
-    setStep({ kind: 'preview', backup: r.backup });
+    check(await f.text(), false);
   }
 
   async function restore(b: Backup) {
@@ -133,17 +192,70 @@ export function BackupPanel({ profiles, onRestored }: Props) {
               📤 שיתוף
             </button>
           )}
+          <button type="button" class="btn btn-secondary" data-backup="copy" disabled={busy} onClick={() => void copyText()}>
+            📋 העתקה כטקסט
+          </button>
         </div>
       )}
+      {copyBox !== null && (
+        <textarea
+          class="input backup-text"
+          readOnly
+          aria-label="הגיבוי כטקסט"
+          data-testid="backup-copy-box"
+          value={copyBox}
+          onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
+        />
+      )}
       {saved && <p class="feedback is-good">✓ הגיבוי נשמר</p>}
+      {copied && (
+        <p class="feedback is-good" data-testid="backup-copied">
+          ✓ הגיבוי הועתק. עכשיו מדביקים אותו במקום שבו משחזרים (או בפתקים, כדי לשמור).
+        </p>
+      )}
 
-      <label class="btn btn-secondary backup-file">
-        📂 שחזור מקובץ גיבוי
-        <input type="file" accept=".json,application/json" data-backup="file" class="visually-hidden" onChange={(e) => void pick(e)} />
-      </label>
+      <BrowserBanner what="השחזור" />
+      <div class="row">
+        <label class="btn btn-secondary backup-file">
+          📂 שחזור מקובץ גיבוי
+          <input type="file" accept=".json,application/json" data-backup="file" class="visually-hidden" onChange={(e) => void pick(e)} />
+        </label>
+        {!pasting && (
+          <button type="button" class="btn btn-secondary" data-backup="paste" onClick={() => setPasting(true)}>
+            📋 הדבקת גיבוי כטקסט
+          </button>
+        )}
+      </div>
+      {pasting && (
+        <div class="backup-paste">
+          <textarea
+            class="input backup-text"
+            aria-label="הדבקת הגיבוי כטקסט"
+            placeholder="לחיצה ארוכה כאן ← הדבק"
+            data-testid="backup-paste-box"
+            value={pasted}
+            onInput={(e) => setPasted((e.target as HTMLTextAreaElement).value)}
+          />
+          <div class="row">
+            <button type="button" class="btn btn-primary" data-backup="paste-check" disabled={!pasted.trim()} onClick={() => check(pasted, true)}>
+              המשך
+            </button>
+            {canReadClipboard && (
+              <button type="button" class="btn btn-secondary" data-backup="paste-clipboard" onClick={() => void pasteFromClipboard()}>
+                📋 הדבקה מההעתקה
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {step.kind === 'error' && (
         <p class="feedback is-bad" role="alert" data-testid="backup-error">
+          {step.text}
+        </p>
+      )}
+      {step.kind === 'info' && (
+        <p class="feedback" role="status" data-testid="backup-info">
           {step.text}
         </p>
       )}

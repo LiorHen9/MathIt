@@ -19,6 +19,7 @@
 
 - מאגר: https://github.com/LiorHen9/MathIt (ענף `main`; כל דחיפה נבנית ומתפרסמת ב-Firebase Hosting, פרויקט `mathit-liorhen9`; `firebase.json`, `.firebaserc`, הקמה למשתמש ב-`docs/FIREBASE.md`)
 - אתר: https://mathit-liorhen9.web.app/ (הכתובת הישנה https://liorhen9.github.io/MathIt/ מציגה רק מסך "עבר לכתובת חדשה" עם גיבוי: `legacy-pages/`, `.github/workflows/legacy-pages.yml`. הכתובת מופיעה גם ב-`index.html` (og), ב-`SITE_URL` שב-`src/screens/About.tsx` וב-`tests/e2e/phase10.cjs`)
+- **אייפון**: דפדפן ואייקון במסך הבית שומרים נתונים בנפרד – `src/app/install.ts` ו-`src/components/BrowserNotice.tsx` (מסך הסבר ושורת תזכורת; `?browser-notice=1` ב-localhost לבדיקות). גיבוי אפשר גם להעתיק ולהדביק כטקסט (`BackupPanel`, וגם בכתובת הישנה).
 - **אח בכור: ChessIt** (https://github.com/LiorHen9/ChessIt). אותו סטאק, ומשם מעבירים פרופילים, אחסון, גיבוי, הקראה, ערכות נושא ובדיקות. לפני שכותבים מודול כזה מאפס, לבדוק איך הוא בנוי שם.
 
 ## טכנולוגיה

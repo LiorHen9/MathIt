@@ -6,6 +6,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { playSfx } from '../audio/sfx';
 import { WorldPicker } from '../components/WorldPicker';
 import { SpeakButton } from '../components/Speak';
+import { BrowserBanner } from '../components/BrowserNotice';
 import { applyWorld } from '../worlds/index';
 import {
   AGES,
@@ -98,6 +99,8 @@ export function ProfileEditor({ profile, onSave, onDelete, onCancel, onRestore }
         <h1 class="topbar-title">{title}</h1>
         <span />
       </header>
+
+      {!profile && <BrowserBanner what="הפרופיל" />}
 
       <form class="form" onSubmit={save}>
         <div class="avatar-preview" aria-hidden="true">
